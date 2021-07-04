@@ -1,17 +1,17 @@
 #include <stdio.h>
+#include <string.h>
 #include "mcu.h"
+#include "mcu_opcodes.h"
 
 const int ROM1_SIZE = 0x8000;
 const int ROM2_SIZE = 0x80000;
 const int RAM_SIZE = 0x8000;
 
-struct mcu_t {
-    uint16_t r0, r1, r2, r3, r4, r5, r6, r7;
-    uint16_t pc;
-    uint8_t cp, dp, ep, fp;
-    uint32_t cycles;
-};
 
+void MCU_ErrorTrap(void)
+{
+    printf("%x %x", mcu.cp, mcu.pc);
+}
 
 mcu_t mcu;
 
@@ -27,7 +27,7 @@ uint8_t MCU_Read(uint32_t address)
     switch (page)
     {
     case 0:
-        if (address & 0x8000)
+        if (!(address & 0x8000))
             ret = rom1[address & 0x7fff];
         else
         {
@@ -41,7 +41,27 @@ uint8_t MCU_Read(uint32_t address)
         ret = rom2[address];
         break;
     }
-    return 0;
+    return ret;
+}
+
+uint16_t MCU_Read16(uint32_t address)
+{
+    address &= ~1;
+    uint8_t b0, b1;
+    b0 = MCU_Read(address);
+    b1 = MCU_Read(address+1);
+    return (b0 << 8) + b1;
+}
+
+uint32_t MCU_Read32(uint32_t address)
+{
+    address &= ~3;
+    uint8_t b0, b1, b2, b3;
+    b0 = MCU_Read(address);
+    b1 = MCU_Read(address+1);
+    b2 = MCU_Read(address+2);
+    b3 = MCU_Read(address+3);
+    return (b0 << 24) + (b1 << 16) + (b2 << 8) + b3;
 }
 
 void MCU_Write(uint32_t address, uint8_t value)
@@ -61,10 +81,59 @@ void MCU_Write(uint32_t address, uint8_t value)
     }
 }
 
+void MCU_Write16(uint32_t address, uint16_t value)
+{
+    address &= ~1;
+    MCU_Write(address, value >> 8);
+    MCU_Write(address + 1, value & 0xff);
+}
+
+void MCU_ReadInstruction(void)
+{
+    uint8_t prefix = MCU_ReadCodeAdvance();
+    mcu.pc++;
+
+    MCU_Opcode_Table[prefix](prefix);
+
+    mcu.cycles++;
+}
+
+void MCU_Init(void)
+{
+    memset(&mcu, 0, sizeof(mcu_t));
+}
+
+void MCU_Reset(void)
+{
+    mcu.r[0] = 0;
+    mcu.r[1] = 0;
+    mcu.r[2] = 0;
+    mcu.r[3] = 0;
+    mcu.r[4] = 0;
+    mcu.r[5] = 0;
+    mcu.r[6] = 0;
+    mcu.r[7] = 0;
+
+    mcu.pc = 0;
+
+    mcu.sr = 0x70;
+
+    mcu.cp = 0;
+    mcu.dp = 0;
+    mcu.ep = 0;
+    mcu.tp = 0;
+    mcu.br = 0;
+
+    uint32_t reset_address = MCU_Read32(VECTOR_RESET * 4);
+    mcu.cp = (reset_address >> 16) & 0xff;
+    mcu.pc = reset_address & 0xffff;
+}
+
 void MCU_Update(int32_t cycles)
 {
     while (mcu.cycles < cycles)
     {
+        MCU_ReadInstruction();
         mcu.cycles++;
     }
 }
@@ -82,6 +151,10 @@ int main()
 
     if (fread(rom2, 1, ROM2_SIZE, r2) != ROM2_SIZE)
         return 0;
+
+    MCU_Init();
+    MCU_Reset();
+    MCU_Update(10000);
 
     fclose(r1);
     fclose(r2);
