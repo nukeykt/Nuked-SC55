@@ -2,6 +2,7 @@
 #include <string.h>
 #include "mcu.h"
 #include "mcu_opcodes.h"
+#include "mcu_interrupt.h"
 
 const int ROM1_SIZE = 0x8000;
 const int ROM2_SIZE = 0x80000;
@@ -10,7 +11,7 @@ const int RAM_SIZE = 0x8000;
 
 void MCU_ErrorTrap(void)
 {
-    printf("%x %x", mcu.cp, mcu.pc);
+    printf("%.2x %.4x\n", mcu.cp, mcu.pc);
 }
 
 mcu_t mcu;
@@ -92,9 +93,12 @@ void MCU_ReadInstruction(void)
 {
     uint8_t operand = MCU_ReadCodeAdvance();
 
-    MCU_Operand_Table[operand](operand);
+    if (mcu.cycles == 3)
+    {
+        mcu.cycles += 0;
+    }
 
-    mcu.cycles++;
+    MCU_Operand_Table[operand](operand);
 }
 
 void MCU_Init(void)
@@ -132,6 +136,10 @@ void MCU_Update(int32_t cycles)
 {
     while (mcu.cycles < cycles)
     {
+        if (!mcu.ex_ignore)
+            MCU_Interrupt_Handle();
+        else
+            mcu.ex_ignore = 0;
         MCU_ReadInstruction();
         mcu.cycles++;
     }

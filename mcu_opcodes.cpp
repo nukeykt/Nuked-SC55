@@ -1,6 +1,6 @@
 #include "mcu.h"
 #include "mcu_opcodes.h"
-
+#include "mcu_interrupt.h"
 
 void MCU_Operand_Nop(uint8_t operand)
 {
@@ -36,6 +36,7 @@ uint8_t operand_size;
 uint8_t operand_reg;
 uint8_t operand_status;
 uint16_t operand_data;
+uint8_t opcode_extended;
 
 uint32_t MCU_Operand_Read(void)
 {
@@ -48,7 +49,13 @@ uint32_t MCU_Operand_Read(void)
     case GENERAL_INDIRECT:
     case GENERAL_ABSOLUTE:
         if (operand_size)
+        {
+            if (operand_ea & 1)
+            {
+                MCU_Interrupt_Request(INTERRUPT_SOURCE_ADDRESS_ERROR);
+            }
             return MCU_Read16(MCU_GetAddress(operand_ep, operand_ea));
+        }
         return MCU_Read(MCU_GetAddress(operand_ep, operand_ea));
     case GENERAL_IMMEDIATE:
         return operand_data;
@@ -58,7 +65,34 @@ uint32_t MCU_Operand_Read(void)
 
 void MCU_Operand_Write(uint32_t data)
 {
-
+    switch (operand_type)
+    {
+    case GENERAL_DIRECT:
+        if (operand_size)
+            mcu.r[operand_reg] = data;
+        else
+        {
+            mcu.r[operand_reg] &= ~0xff;
+            mcu.r[operand_reg] |= data & 0xff;
+        }
+        break;
+    case GENERAL_INDIRECT:
+    case GENERAL_ABSOLUTE:
+        if (operand_size)
+        {
+            if (operand_ea & 1)
+            {
+                MCU_Interrupt_Request(INTERRUPT_SOURCE_ADDRESS_ERROR);
+            }
+            MCU_Write16(MCU_GetAddress(operand_ep, operand_ea), data);
+        }
+        else
+            MCU_Write(MCU_GetAddress(operand_ep, operand_ea), data);
+        break;
+    case GENERAL_IMMEDIATE:
+        MCU_Interrupt_Request(INTERRUPT_SOURCE_INVALID_INSTRUCTION);
+        break;
+    }
 }
 
 void MCU_Operand_General(uint8_t operand)
@@ -149,7 +183,8 @@ void MCU_Operand_General(uint8_t operand)
                 mcu.r[reg] -= 1;
             }
         }
-        else if (increase == INCREASE_INCREASE)
+        ea = mcu.r[reg] + disp;
+        if (increase == INCREASE_INCREASE)
         {
             if (siz || reg == 7)
             {
@@ -160,7 +195,6 @@ void MCU_Operand_General(uint8_t operand)
                 mcu.r[reg] += 1;
             }
         }
-        ea = mcu.r[reg] + disp;
 
         ea &= 0xffff;
 
@@ -174,6 +208,11 @@ void MCU_Operand_General(uint8_t operand)
     }
 
     opcode = MCU_ReadCodeAdvance();
+    opcode_extended = opcode == 0x00;
+    if (opcode_extended)
+    {
+        opcode = MCU_ReadCodeAdvance();
+    }
     opcode_reg = opcode & 0x07;
     opcode >>= 3;
 
@@ -188,9 +227,154 @@ void MCU_Operand_General(uint8_t operand)
     MCU_Opcode_Table[opcode](opcode, opcode_reg);
 }
 
-void MCU_Operand_Short(uint8_t operand)
+void MCU_SetStatusCommon(uint32_t val, uint32_t siz)
 {
+    if (siz)
+        val &= 0xffff;
+    else
+        val &= 0xff;
+    if (siz)
+        MCU_SetStatus(val & 0x8000, STATUS_N);
+    else
+        MCU_SetStatus(val & 0x80, STATUS_N);
+    MCU_SetStatus(val == 0, STATUS_Z);
+    MCU_SetStatus(0, STATUS_V);
+}
 
+void MCU_Opcode_Short_NotImplemented(uint8_t opcode)
+{
+    MCU_ErrorTrap();
+}
+
+void MCU_Opcode_Short_MOVI(uint8_t opcode)
+{
+    uint32_t reg = opcode & 0x07;
+    uint16_t data;
+    data = MCU_ReadCodeAdvance() << 8;
+    data |= MCU_ReadCodeAdvance();
+    mcu.r[reg] = data;
+    MCU_SetStatusCommon(data, 1);
+}
+
+void MCU_Opcode_Short_MOVL(uint8_t opcode)
+{
+    uint32_t reg = opcode & 0x07;
+    uint32_t siz = (opcode & 0x08) != 0;
+    uint16_t addr = mcu.br << 8;
+    addr |= MCU_ReadCodeAdvance();
+    if (siz)
+    {
+        if (addr & 1)
+            MCU_Interrupt_Request(INTERRUPT_SOURCE_ADDRESS_ERROR);
+        mcu.r[reg] = MCU_Read16(addr);
+    }
+    else
+    {
+        mcu.r[reg] &= ~0xff;
+        mcu.r[reg] |= MCU_Read(addr);
+    }
+}
+
+void MCU_Opcode_NotImplemented(uint8_t opcode, uint8_t opcode_reg)
+{
+    MCU_ErrorTrap();
+}
+
+void MCU_Opcode_MOVG_Immediate(uint8_t opcode, uint8_t opcode_reg)
+{
+    if (opcode_reg == 6 && (operand_type == GENERAL_INDIRECT || operand_type == GENERAL_ABSOLUTE))
+    {
+        uint32_t data;
+        data = (int8_t)MCU_ReadCodeAdvance();
+        MCU_Operand_Write(data);
+        MCU_SetStatusCommon(data, operand_size);
+    }
+    else if (opcode_reg == 7 && (operand_type == GENERAL_INDIRECT || operand_type == GENERAL_ABSOLUTE))
+    {
+        uint32_t data;
+        data = MCU_ReadCodeAdvance() << 8;
+        data |= MCU_ReadCodeAdvance();
+        MCU_Operand_Write(data);
+        MCU_SetStatusCommon(data, operand_size);
+    }
+    else
+    {
+        MCU_ErrorTrap();
+    }
+}
+
+void MCU_Opcode_BSET_ORC(uint8_t opcode, uint8_t opcode_reg)
+{
+    if (operand_type == GENERAL_IMMEDIATE) // ORC
+    {
+        uint32_t data = MCU_Operand_Read();
+        uint32_t val = MCU_ControlRegisterRead(opcode_reg, operand_size);
+        val |= data;
+        MCU_ControlRegisterWrite(opcode_reg, operand_size, val);
+        if (opcode_reg >= 2)
+        {
+            MCU_SetStatusCommon(val, operand_size);
+        }
+        if (!mcu.exmode)
+            mcu.ex_ignore = 1;
+    }
+    else // BSET
+    {
+        uint32_t data = MCU_Operand_Read();
+        uint32_t bit = mcu.r[opcode_reg] & 0x0f;
+        MCU_SetStatus((data & (1 << bit)) == 0, STATUS_Z);
+        data |= 1 << bit;
+        MCU_Operand_Write(data);
+    }
+}
+
+void MCU_Opcode_BCLR_ANDC(uint8_t opcode, uint8_t opcode_reg)
+{
+    if (operand_type == GENERAL_IMMEDIATE) // ANDC
+    {
+        uint32_t data = MCU_Operand_Read();
+        uint32_t val = MCU_ControlRegisterRead(opcode_reg, operand_size);
+        val &= data;
+        MCU_ControlRegisterWrite(opcode_reg, operand_size, val);
+        if (opcode_reg >= 2)
+        {
+            MCU_SetStatusCommon(val, operand_size);
+        }
+        if (!mcu.exmode)
+            mcu.ex_ignore = 1;
+    }
+    else // BCLR
+    {
+        uint32_t data = MCU_Operand_Read();
+        uint32_t bit = mcu.r[opcode_reg] & 0x0f;
+        MCU_SetStatus((data & (1 << bit)) == 0, STATUS_Z);
+        data &= ~(1 << bit);
+        MCU_Operand_Write(data);
+    }
+}
+
+void MCU_Opcode_CLR(uint8_t opcode, uint8_t opcode_reg)
+{
+    if (opcode_reg == 3 && operand_type != GENERAL_IMMEDIATE)
+    {
+        MCU_Operand_Write(0);
+        MCU_SetStatus(0, STATUS_N);
+        MCU_SetStatus(1, STATUS_Z);
+        MCU_SetStatus(0, STATUS_V);
+        MCU_SetStatus(0, STATUS_C);
+    }
+    else
+    {
+        MCU_ErrorTrap();
+    }
+}
+
+void MCU_Opcode_LDC(uint8_t opcode, uint8_t opcode_reg)
+{
+    uint32_t data = MCU_Operand_Read();
+    MCU_ControlRegisterWrite(opcode_reg, operand_size, data);
+    if (!mcu.exmode)
+        mcu.ex_ignore = 1;
 }
 
 void (*MCU_Operand_Table[256])(uint8_t operand) = {
@@ -274,86 +458,86 @@ void (*MCU_Operand_Table[256])(uint8_t operand) = {
     MCU_Operand_NotImplemented, // 4D
     MCU_Operand_NotImplemented, // 4E
     MCU_Operand_NotImplemented, // 4F
-    MCU_Operand_Short, // 50
-    MCU_Operand_Short, // 51
-    MCU_Operand_Short, // 52
-    MCU_Operand_Short, // 53
-    MCU_Operand_Short, // 54
-    MCU_Operand_Short, // 55
-    MCU_Operand_Short, // 56
-    MCU_Operand_Short, // 57
-    MCU_Operand_Short, // 58
-    MCU_Operand_Short, // 59
-    MCU_Operand_Short, // 5A
-    MCU_Operand_Short, // 5B
-    MCU_Operand_Short, // 5C
-    MCU_Operand_Short, // 5D
-    MCU_Operand_Short, // 5E
-    MCU_Operand_Short, // 5F
-    MCU_Operand_Short, // 60
-    MCU_Operand_Short, // 61
-    MCU_Operand_Short, // 62
-    MCU_Operand_Short, // 63
-    MCU_Operand_Short, // 64
-    MCU_Operand_Short, // 65
-    MCU_Operand_Short, // 66
-    MCU_Operand_Short, // 67
-    MCU_Operand_Short, // 68
-    MCU_Operand_Short, // 69
-    MCU_Operand_Short, // 6A
-    MCU_Operand_Short, // 6B
-    MCU_Operand_Short, // 6C
-    MCU_Operand_Short, // 6D
-    MCU_Operand_Short, // 6E
-    MCU_Operand_Short, // 6F
-    MCU_Operand_Short, // 70
-    MCU_Operand_Short, // 71
-    MCU_Operand_Short, // 72
-    MCU_Operand_Short, // 73
-    MCU_Operand_Short, // 74
-    MCU_Operand_Short, // 75
-    MCU_Operand_Short, // 76
-    MCU_Operand_Short, // 77
-    MCU_Operand_Short, // 78
-    MCU_Operand_Short, // 79
-    MCU_Operand_Short, // 7A
-    MCU_Operand_Short, // 7B
-    MCU_Operand_Short, // 7C
-    MCU_Operand_Short, // 7D
-    MCU_Operand_Short, // 7E
-    MCU_Operand_Short, // 7F
-    MCU_Operand_Short, // 80
-    MCU_Operand_Short, // 81
-    MCU_Operand_Short, // 82
-    MCU_Operand_Short, // 83
-    MCU_Operand_Short, // 84
-    MCU_Operand_Short, // 85
-    MCU_Operand_Short, // 86
-    MCU_Operand_Short, // 87
-    MCU_Operand_Short, // 88
-    MCU_Operand_Short, // 89
-    MCU_Operand_Short, // 8A
-    MCU_Operand_Short, // 8B
-    MCU_Operand_Short, // 8C
-    MCU_Operand_Short, // 8D
-    MCU_Operand_Short, // 8E
-    MCU_Operand_Short, // 8F
-    MCU_Operand_Short, // 90
-    MCU_Operand_Short, // 91
-    MCU_Operand_Short, // 92
-    MCU_Operand_Short, // 93
-    MCU_Operand_Short, // 94
-    MCU_Operand_Short, // 95
-    MCU_Operand_Short, // 96
-    MCU_Operand_Short, // 97
-    MCU_Operand_Short, // 98
-    MCU_Operand_Short, // 99
-    MCU_Operand_Short, // 9A
-    MCU_Operand_Short, // 9B
-    MCU_Operand_Short, // 9C
-    MCU_Operand_Short, // 9D
-    MCU_Operand_Short, // 9E
-    MCU_Operand_Short, // 9F
+    MCU_Opcode_Short_NotImplemented, // 50
+    MCU_Opcode_Short_NotImplemented, // 51
+    MCU_Opcode_Short_NotImplemented, // 52
+    MCU_Opcode_Short_NotImplemented, // 53
+    MCU_Opcode_Short_NotImplemented, // 54
+    MCU_Opcode_Short_NotImplemented, // 55
+    MCU_Opcode_Short_NotImplemented, // 56
+    MCU_Opcode_Short_NotImplemented, // 57
+    MCU_Opcode_Short_MOVI, // 58
+    MCU_Opcode_Short_MOVI, // 59
+    MCU_Opcode_Short_MOVI, // 5A
+    MCU_Opcode_Short_MOVI, // 5B
+    MCU_Opcode_Short_MOVI, // 5C
+    MCU_Opcode_Short_MOVI, // 5D
+    MCU_Opcode_Short_MOVI, // 5E
+    MCU_Opcode_Short_MOVI, // 5F
+    MCU_Opcode_Short_MOVL, // 60
+    MCU_Opcode_Short_MOVL, // 61
+    MCU_Opcode_Short_MOVL, // 62
+    MCU_Opcode_Short_MOVL, // 63
+    MCU_Opcode_Short_MOVL, // 64
+    MCU_Opcode_Short_MOVL, // 65
+    MCU_Opcode_Short_MOVL, // 66
+    MCU_Opcode_Short_MOVL, // 67
+    MCU_Opcode_Short_MOVL, // 68
+    MCU_Opcode_Short_MOVL, // 69
+    MCU_Opcode_Short_MOVL, // 6A
+    MCU_Opcode_Short_MOVL, // 6B
+    MCU_Opcode_Short_MOVL, // 6C
+    MCU_Opcode_Short_MOVL, // 6D
+    MCU_Opcode_Short_MOVL, // 6E
+    MCU_Opcode_Short_MOVL, // 6F
+    MCU_Opcode_Short_NotImplemented, // 70
+    MCU_Opcode_Short_NotImplemented, // 71
+    MCU_Opcode_Short_NotImplemented, // 72
+    MCU_Opcode_Short_NotImplemented, // 73
+    MCU_Opcode_Short_NotImplemented, // 74
+    MCU_Opcode_Short_NotImplemented, // 75
+    MCU_Opcode_Short_NotImplemented, // 76
+    MCU_Opcode_Short_NotImplemented, // 77
+    MCU_Opcode_Short_NotImplemented, // 78
+    MCU_Opcode_Short_NotImplemented, // 79
+    MCU_Opcode_Short_NotImplemented, // 7A
+    MCU_Opcode_Short_NotImplemented, // 7B
+    MCU_Opcode_Short_NotImplemented, // 7C
+    MCU_Opcode_Short_NotImplemented, // 7D
+    MCU_Opcode_Short_NotImplemented, // 7E
+    MCU_Opcode_Short_NotImplemented, // 7F
+    MCU_Opcode_Short_NotImplemented, // 80
+    MCU_Opcode_Short_NotImplemented, // 81
+    MCU_Opcode_Short_NotImplemented, // 82
+    MCU_Opcode_Short_NotImplemented, // 83
+    MCU_Opcode_Short_NotImplemented, // 84
+    MCU_Opcode_Short_NotImplemented, // 85
+    MCU_Opcode_Short_NotImplemented, // 86
+    MCU_Opcode_Short_NotImplemented, // 87
+    MCU_Opcode_Short_NotImplemented, // 88
+    MCU_Opcode_Short_NotImplemented, // 89
+    MCU_Opcode_Short_NotImplemented, // 8A
+    MCU_Opcode_Short_NotImplemented, // 8B
+    MCU_Opcode_Short_NotImplemented, // 8C
+    MCU_Opcode_Short_NotImplemented, // 8D
+    MCU_Opcode_Short_NotImplemented, // 8E
+    MCU_Opcode_Short_NotImplemented, // 8F
+    MCU_Opcode_Short_NotImplemented, // 90
+    MCU_Opcode_Short_NotImplemented, // 91
+    MCU_Opcode_Short_NotImplemented, // 92
+    MCU_Opcode_Short_NotImplemented, // 93
+    MCU_Opcode_Short_NotImplemented, // 94
+    MCU_Opcode_Short_NotImplemented, // 95
+    MCU_Opcode_Short_NotImplemented, // 96
+    MCU_Opcode_Short_NotImplemented, // 97
+    MCU_Opcode_Short_NotImplemented, // 98
+    MCU_Opcode_Short_NotImplemented, // 99
+    MCU_Opcode_Short_NotImplemented, // 9A
+    MCU_Opcode_Short_NotImplemented, // 9B
+    MCU_Opcode_Short_NotImplemented, // 9C
+    MCU_Opcode_Short_NotImplemented, // 9D
+    MCU_Opcode_Short_NotImplemented, // 9E
+    MCU_Opcode_Short_NotImplemented, // 9F
     MCU_Operand_General, // A0
     MCU_Operand_General, // A1
     MCU_Operand_General, // A2
@@ -452,30 +636,19 @@ void (*MCU_Operand_Table[256])(uint8_t operand) = {
     MCU_Operand_General, // FF
 };
 
-void MCU_Opcode_NotImplemented(uint8_t opcode, uint8_t opcode_reg)
-{
-    MCU_ErrorTrap();
-}
-
-void MCU_Opcode_LDC(uint8_t opcode, uint8_t opcode_reg)
-{
-    uint32_t data = MCU_Operand_Read();
-    MCU_ControlRegisterWrite(opcode_reg, operand_size, data);
-}
-
 void (*MCU_Opcode_Table[32])(uint8_t opcode, uint8_t opcode_reg) = {
-    MCU_Opcode_NotImplemented, // 00
+    MCU_Opcode_MOVG_Immediate, // 00
     MCU_Opcode_NotImplemented, // 01
-    MCU_Opcode_NotImplemented, // 02
+    MCU_Opcode_CLR, // 02
     MCU_Opcode_NotImplemented, // 03
     MCU_Opcode_NotImplemented, // 04
     MCU_Opcode_NotImplemented, // 05
     MCU_Opcode_NotImplemented, // 06
     MCU_Opcode_NotImplemented, // 07
     MCU_Opcode_NotImplemented, // 08
-    MCU_Opcode_NotImplemented, // 09
+    MCU_Opcode_BSET_ORC, // 09
     MCU_Opcode_NotImplemented, // 0A
-    MCU_Opcode_NotImplemented, // 0B
+    MCU_Opcode_BCLR_ANDC, // 0B
     MCU_Opcode_NotImplemented, // 0C
     MCU_Opcode_NotImplemented, // 0D
     MCU_Opcode_NotImplemented, // 0E

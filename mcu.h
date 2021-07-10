@@ -3,7 +3,12 @@
 #include <stdint.h>
 
 const uint16_t sr_mask = 0x870f;
-
+enum {
+    STATUS_N = 0x08,
+    STATUS_Z = 0x04,
+    STATUS_V = 0x02,
+    STATUS_C = 0x01,
+};
 
 enum {
     VECTOR_RESET = 0,
@@ -65,11 +70,24 @@ enum {
     VECTOR_INTERNAL_INTERRUPT_E0, // ADI
 };
 
+enum {
+    INTERRUPT_SOURCE_NMI = 0,
+    INTERRUPT_SOURCE_IRQ0,
+    INTERRUPT_SOURCE_IRQ1,
+    INTERRUPT_SOURCE_ADDRESS_ERROR,
+    INTERRUPT_SOURCE_INVALID_INSTRUCTION,
+    INTERRUPT_SOURCE_MAX
+};
+
+
 struct mcu_t {
     uint16_t r[8];
     uint16_t pc;
     uint16_t sr;
     uint8_t cp, dp, ep, tp, br;
+    uint8_t exmode;
+    uint8_t ex_ignore;
+    uint8_t interrupt_pending[INTERRUPT_SOURCE_MAX];
     uint32_t cycles;
 };
 
@@ -204,5 +222,13 @@ inline uint32_t MCU_ControlRegisterRead(uint32_t reg, uint32_t siz)
         }
         ret &= 0xff;
     }
-    return 0;
+    return ret;
+}
+
+inline void MCU_SetStatus(uint32_t condition, uint32_t mask)
+{
+    if (condition)
+        mcu.sr |= mask;
+    else
+        mcu.sr &= ~mask;
 }
