@@ -90,10 +90,9 @@ void MCU_Write16(uint32_t address, uint16_t value)
 
 void MCU_ReadInstruction(void)
 {
-    uint8_t prefix = MCU_ReadCodeAdvance();
-    mcu.pc++;
+    uint8_t operand = MCU_ReadCodeAdvance();
 
-    MCU_Opcode_Table[prefix](prefix);
+    MCU_Operand_Table[operand](operand);
 
     mcu.cycles++;
 }
@@ -116,7 +115,7 @@ void MCU_Reset(void)
 
     mcu.pc = 0;
 
-    mcu.sr = 0x70;
+    mcu.sr = 0x700;
 
     mcu.cp = 0;
     mcu.dp = 0;
@@ -124,7 +123,7 @@ void MCU_Reset(void)
     mcu.tp = 0;
     mcu.br = 0;
 
-    uint32_t reset_address = MCU_Read32(VECTOR_RESET * 4);
+    uint32_t reset_address = MCU_GetVectorAddress(VECTOR_RESET);
     mcu.cp = (reset_address >> 16) & 0xff;
     mcu.pc = reset_address & 0xffff;
 }

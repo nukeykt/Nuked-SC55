@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+const uint16_t sr_mask = 0x870f;
+
 
 enum {
     VECTOR_RESET = 0,
@@ -98,4 +100,109 @@ inline uint8_t MCU_ReadCodeAdvance(void) {
 inline void MCU_SetRegisterByte(uint8_t reg, uint8_t val)
 {
     mcu.r[reg] = val;
+}
+
+inline uint32_t MCU_GetVectorAddress(uint32_t vector)
+{
+    return MCU_Read32(vector * 4);
+}
+
+inline uint32_t MCU_GetPageForRegister(uint32_t reg)
+{
+    if (reg >= 6)
+        return mcu.tp;
+    else if (reg >= 4)
+        return mcu.ep;
+    return mcu.dp;
+}
+
+inline void MCU_ControlRegisterWrite(uint32_t reg, uint32_t siz, uint32_t data)
+{
+    if (siz)
+    {
+        if (reg == 0)
+        {
+            mcu.sr = data;
+            mcu.sr &= sr_mask;
+        }
+        else
+        {
+            MCU_ErrorTrap();
+        }
+    }
+    else
+    {
+        if (reg == 1)
+        {
+            mcu.sr &= ~0xff;
+            mcu.sr |= data & 0xff;
+            mcu.sr &= sr_mask;
+        }
+        else if (reg == 3)
+        {
+            mcu.br = data;
+        }
+        else if (reg == 4)
+        {
+            mcu.ep = data;
+        }
+        else if (reg == 5)
+        {
+            mcu.dp = data;
+        }
+        else if (reg == 7)
+        {
+            mcu.tp = data;
+        }
+        else
+        {
+            MCU_ErrorTrap();
+        }
+    }
+}
+
+inline uint32_t MCU_ControlRegisterRead(uint32_t reg, uint32_t siz)
+{
+    uint32_t ret = 0;
+    if (siz)
+    {
+        if (reg == 0)
+        {
+            ret = mcu.sr & sr_mask;
+        }
+        else
+        {
+            MCU_ErrorTrap();
+        }
+        ret &= 0xffff;
+    }
+    else
+    {
+        if (reg == 1)
+        {
+            ret = mcu.sr & sr_mask;
+        }
+        else if (reg == 3)
+        {
+            ret = mcu.br;
+        }
+        else if (reg == 4)
+        {
+            ret = mcu.ep;
+        }
+        else if (reg == 5)
+        {
+            ret = mcu.dp;
+        }
+        else if (reg == 7)
+        {
+            ret = mcu.tp;
+        }
+        else
+        {
+            MCU_ErrorTrap();
+        }
+        ret &= 0xff;
+    }
+    return 0;
 }
