@@ -1,9 +1,11 @@
 #pragma once
 
 #include <stdint.h>
+#include "mcu_interrupt.h"
 
 const uint16_t sr_mask = 0x870f;
 enum {
+    STATUS_T = 0x8000,
     STATUS_N = 0x08,
     STATUS_Z = 0x04,
     STATUS_V = 0x02,
@@ -88,6 +90,7 @@ struct mcu_t {
     uint8_t exmode;
     uint8_t ex_ignore;
     uint8_t interrupt_pending[INTERRUPT_SOURCE_MAX];
+    uint8_t trapa_pending[16];
     uint32_t cycles;
 };
 
@@ -188,6 +191,10 @@ inline uint32_t MCU_ControlRegisterRead(uint32_t reg, uint32_t siz)
         {
             ret = mcu.sr & sr_mask;
         }
+        else if (reg == 5) // FIXME: undocumented
+        {
+            ret = mcu.dp;
+        }
         else
         {
             MCU_ErrorTrap();
@@ -231,4 +238,22 @@ inline void MCU_SetStatus(uint32_t condition, uint32_t mask)
         mcu.sr |= mask;
     else
         mcu.sr &= ~mask;
+}
+
+inline void MCU_PushStack(uint16_t data)
+{
+    if (mcu.r[7] & 1)
+        MCU_Interrupt_Request(INTERRUPT_SOURCE_ADDRESS_ERROR);
+    mcu.r[7] -= 2;
+    MCU_Write16(mcu.r[7], data);
+}
+
+inline uint16_t MCU_PopStack(void)
+{
+    uint16_t ret;
+    if (mcu.r[7] & 1)
+        MCU_Interrupt_Request(INTERRUPT_SOURCE_ADDRESS_ERROR);
+    ret = MCU_Read16(mcu.r[7]);
+    mcu.r[7] += 2;
+    return ret;
 }

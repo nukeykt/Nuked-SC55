@@ -3,6 +3,7 @@
 #include "mcu.h"
 #include "mcu_opcodes.h"
 #include "mcu_interrupt.h"
+#include "mcu_dsp.h"
 
 const int ROM1_SIZE = 0x8000;
 const int ROM2_SIZE = 0x80000;
@@ -32,7 +33,12 @@ uint8_t MCU_Read(uint32_t address)
             ret = rom1[address & 0x7fff];
         else
         {
-            ret = ram[address & 0x7fff];
+            if (address >= 0xe000 && address <= 0xe03f)
+            {
+                ret = DSP_Read(address & 0x3f);
+            }
+            else
+                ret = ram[address & 0x7fff];
         }
         break;
     case 3:
@@ -73,9 +79,9 @@ void MCU_Write(uint32_t address, uint8_t value)
         return;
     if (address & 0x8000)
     {
-        if (0)
+        if (address >= 0xe000 && address <= 0xe03f)
         {
-
+            DSP_Write(address & 0x3f, value);
         }
         else
             ram[address & 0x7fff] = value;
@@ -93,7 +99,7 @@ void MCU_ReadInstruction(void)
 {
     uint8_t operand = MCU_ReadCodeAdvance();
 
-    if (mcu.cycles == 3)
+    if (mcu.cycles == 0x45)
     {
         mcu.cycles += 0;
     }
@@ -145,6 +151,12 @@ void MCU_Update(int32_t cycles)
     }
 }
 
+void MCU_PatchROM(void)
+{
+    rom2[0x1333] = 0x11;
+    rom2[0x1334] = 0x19;
+}
+
 int main()
 {
     FILE *r1 = fopen("rom1.bin", "rb");
@@ -160,8 +172,9 @@ int main()
         return 0;
 
     MCU_Init();
+    MCU_PatchROM();
     MCU_Reset();
-    MCU_Update(10000);
+    MCU_Update(100000000);
 
     fclose(r1);
     fclose(r2);
