@@ -11,6 +11,10 @@ void MCU_Interrupt_Start(void)
 
 void MCU_Interrupt_Request(uint32_t interrupt)
 {
+    if (interrupt == INTERRUPT_SOURCE_IRQ0 && (dev_register[DEV_P1CR] & 0x20) == 0)
+        return;
+    if (interrupt == INTERRUPT_SOURCE_IRQ1 && (dev_register[DEV_P1CR] & 0x40) == 0)
+        return;
     mcu.interrupt_pending[interrupt] = 1;
 }
 
@@ -30,8 +34,6 @@ void MCU_Interrupt_StartVector(uint32_t vector)
 void MCU_Interrupt_Handle(void)
 {
     uint32_t i;
-    if (mcu.exmode)
-        return;
     for (i = 0; i < 16; i++)
     {
         if (mcu.trapa_pending[i])
@@ -41,7 +43,10 @@ void MCU_Interrupt_Handle(void)
             return;
         }
     }
+    if (mcu.interrupt_pending[INTERRUPT_SOURCE_NMI])
+    {
+        mcu.interrupt_pending[INTERRUPT_SOURCE_NMI] = 0;
+        MCU_Interrupt_StartVector(VECTOR_NMI);
+        return;
+    }
 }
-
-
-

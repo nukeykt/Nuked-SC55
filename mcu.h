@@ -3,6 +3,27 @@
 #include <stdint.h>
 #include "mcu_interrupt.h"
 
+enum {
+    DEV_P1DDR = 0x00,
+    DEV_P5DDR = 0x08,
+    DEV_P6DDR = 0x09,
+    DEV_P7DDR = 0x0c,
+    DEV_SMR = 0x58,
+    DEV_BRR = 0x59,
+    DEV_SCR = 0x5a,
+    DEV_RDR = 0x5d,
+    DEV_IPRD = 0x74,
+    DEV_DTEB = 0x75,
+    DEV_DTEC = 0x76,
+    DEV_DTED = 0x77,
+    DEV_WCR = 0x78,
+    DEV_RAME = 0x79,
+    DEV_P1CR = 0x7c,
+    DEV_P9DDR = 0x7e,
+};
+
+extern uint8_t dev_register[0x80];
+
 const uint16_t sr_mask = 0x870f;
 enum {
     STATUS_T = 0x8000,
@@ -72,22 +93,13 @@ enum {
     VECTOR_INTERNAL_INTERRUPT_E0, // ADI
 };
 
-enum {
-    INTERRUPT_SOURCE_NMI = 0,
-    INTERRUPT_SOURCE_IRQ0,
-    INTERRUPT_SOURCE_IRQ1,
-    INTERRUPT_SOURCE_ADDRESS_ERROR,
-    INTERRUPT_SOURCE_INVALID_INSTRUCTION,
-    INTERRUPT_SOURCE_MAX
-};
-
 
 struct mcu_t {
     uint16_t r[8];
     uint16_t pc;
     uint16_t sr;
     uint8_t cp, dp, ep, tp, br;
-    uint8_t exmode;
+    uint8_t sleep;
     uint8_t ex_ignore;
     uint8_t interrupt_pending[INTERRUPT_SOURCE_MAX];
     uint8_t trapa_pending[16];
@@ -194,6 +206,14 @@ inline uint32_t MCU_ControlRegisterRead(uint32_t reg, uint32_t siz)
         else if (reg == 5) // FIXME: undocumented
         {
             ret = mcu.dp;
+        }
+        else if (reg == 4) // FIXME: undocumented
+        {
+            ret = mcu.ep;
+        }
+        else if (reg == 3) // FIXME: undocumented
+        {
+            ret = mcu.br;
         }
         else
         {

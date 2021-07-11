@@ -4,6 +4,7 @@
 #include "mcu_opcodes.h"
 #include "mcu_interrupt.h"
 #include "mcu_dsp.h"
+#include "mcu_uart.h"
 
 const int ROM1_SIZE = 0x8000;
 const int ROM2_SIZE = 0x80000;
@@ -13,6 +14,69 @@ const int RAM_SIZE = 0x8000;
 void MCU_ErrorTrap(void)
 {
     printf("%.2x %.4x\n", mcu.cp, mcu.pc);
+}
+
+uint8_t dev_register[0x80];
+
+void MCU_DeviceWrite(uint32_t address, uint8_t data)
+{
+    address &= 0x7f;
+    dev_register[address] = data;
+    switch (address)
+    {
+    case DEV_P1DDR: // P1DDR
+        break;
+    case DEV_P5DDR:
+        break;
+    case DEV_P6DDR:
+        break;
+    case DEV_P7DDR:
+        break;
+    case DEV_SCR:
+        break;
+    case DEV_WCR:
+        break;
+    case DEV_P9DDR:
+        break;
+    case DEV_RAME: // RAME
+        break;
+    case DEV_P1CR: // P1CR
+        break;
+    case DEV_IPRD:
+        break;
+    case DEV_DTEB:
+        break;
+    case DEV_DTEC:
+        break;
+    case DEV_DTED:
+        break;
+    case DEV_SMR:
+        break;
+    case DEV_BRR:
+        break;
+    default:
+        address += 0;
+        break;
+    }
+}
+
+uint8_t MCU_DeviceRead(uint32_t address)
+{
+    address &= 0x7f;
+    switch (address)
+    {
+    case DEV_RDR:
+        return 0x00;
+    case 0x00:
+        return 0xff;
+    }
+    return dev_register[address];
+}
+
+void MCU_DeviceReset(void)
+{
+    // dev_register[0x00] = 0x03;
+    // dev_register[0x7c] = 0x87;
 }
 
 mcu_t mcu;
@@ -33,9 +97,17 @@ uint8_t MCU_Read(uint32_t address)
             ret = rom1[address & 0x7fff];
         else
         {
-            if (address >= 0xe000 && address <= 0xe03f)
+            if (address >= 0xe000 && address < 0xe400)
             {
                 ret = DSP_Read(address & 0x3f);
+            }
+            else if (address >= 0xec00 && address < 0xf000)
+            {
+                ret = UART_Read(address & 0xff);
+            }
+            else if (address >= 0xff80)
+            {
+                ret = MCU_DeviceRead(address & 0x7f);
             }
             else
                 ret = ram[address & 0x7fff];
@@ -79,9 +151,17 @@ void MCU_Write(uint32_t address, uint8_t value)
         return;
     if (address & 0x8000)
     {
-        if (address >= 0xe000 && address <= 0xe03f)
+        if (address >= 0xe000 && address < 0xe400)
         {
             DSP_Write(address & 0x3f, value);
+        }
+        else if (address >= 0xec00 && address < 0xf000)
+        {
+            UART_Write(address & 0xff, value);
+        }
+        else if (address >= 0xff80)
+        {
+            MCU_DeviceWrite(address & 0x7f, value);
         }
         else
             ram[address & 0x7fff] = value;
@@ -97,6 +177,10 @@ void MCU_Write16(uint32_t address, uint16_t value)
 
 void MCU_ReadInstruction(void)
 {
+    if (mcu.pc == 0x41d)
+    {
+        mcu.pc += 0;
+    }
     uint8_t operand = MCU_ReadCodeAdvance();
 
     if (mcu.cycles == 0x45)
@@ -105,6 +189,11 @@ void MCU_ReadInstruction(void)
     }
 
     MCU_Operand_Table[operand](operand);
+
+    if (mcu.sr & STATUS_T)
+    {
+        MCU_Interrupt_Request(INTERRUPT_SOURCE_TRACE);
+    }
 }
 
 void MCU_Init(void)
@@ -146,7 +235,8 @@ void MCU_Update(int32_t cycles)
             MCU_Interrupt_Handle();
         else
             mcu.ex_ignore = 0;
-        MCU_ReadInstruction();
+        if (!mcu.sleep)
+            MCU_ReadInstruction();
         mcu.cycles++;
     }
 }
