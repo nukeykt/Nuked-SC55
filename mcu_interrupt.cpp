@@ -7,6 +7,7 @@ void MCU_Interrupt_Start(void)
     MCU_PushStack(mcu.cp);
     MCU_PushStack(mcu.sr);
     mcu.sr &= ~STATUS_T;
+    mcu.sleep = 0;
 }
 
 void MCU_Interrupt_Request(uint32_t interrupt)
@@ -33,6 +34,16 @@ void MCU_Interrupt_StartVector(uint32_t vector)
 
 void MCU_Interrupt_Handle(void)
 {
+    if (mcu.cycles % 200 == 0 && mcu.sleep)
+    {
+        MCU_Interrupt_StartVector(VECTOR_INTERNAL_INTERRUPT_94);
+        return;
+    }
+    if (mcu.cycles % 200 == 100 && mcu.sleep)
+    {
+        MCU_Interrupt_StartVector(VECTOR_INTERNAL_INTERRUPT_A4);
+        return;
+    }
     uint32_t i;
     for (i = 0; i < 16; i++)
     {
