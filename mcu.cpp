@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <string.h>
+#include "SDL.h"
 #include "mcu.h"
 #include "mcu_opcodes.h"
 #include "mcu_interrupt.h"
 #include "mcu_dsp.h"
 #include "mcu_uart.h"
+#include "lcd.h"
 
 const int ROM1_SIZE = 0x8000;
 const int ROM2_SIZE = 0x80000;
@@ -153,15 +155,6 @@ void MCU_DeviceReset(void)
 {
     // dev_register[0x00] = 0x03;
     // dev_register[0x7c] = 0x87;
-}
-
-void LCD_Write(uint32_t address, uint8_t data)
-{
-    //printf("%i %.2x ", address, data);
-    if (data >= 0x20 && data <= 'z')
-        printf("%c\n", data);
-    //else
-    //    printf("\n");
 }
 
 mcu_t mcu;
@@ -329,6 +322,8 @@ void MCU_Update(int32_t cycles)
 {
     while (mcu.cycles < cycles)
     {
+        if (mcu.cycles % 1000 == 0)
+            LCD_Update();
         if (!mcu.ex_ignore)
             MCU_Interrupt_Handle();
         else
@@ -346,7 +341,7 @@ void MCU_PatchROM(void)
     rom1[0x622d] = 0x19;
 }
 
-int main()
+int main(int argc, char *args[])
 {
     FILE *r1 = fopen("rom1.bin", "rb");
     FILE *r2 = fopen("rom2.bin", "rb");
@@ -360,6 +355,14 @@ int main()
     if (fread(rom2, 1, ROM2_SIZE, r2) != ROM2_SIZE)
         return 0;
 
+    if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0)
+    {
+        fclose(r1);
+        fclose(r2);
+        return 0;
+    }
+
+    LCD_Init();
     MCU_Init();
     MCU_PatchROM();
     MCU_Reset();
@@ -367,5 +370,7 @@ int main()
 
     fclose(r1);
     fclose(r2);
+
+    SDL_Quit();
     return 0;
 }
