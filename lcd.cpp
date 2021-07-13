@@ -188,6 +188,39 @@ void LCD_FontRenderStandard(int32_t x, int32_t y, uint8_t ch)
     }
 }
 
+void LCD_FontRenderLevel(int32_t x, int32_t y, uint8_t ch, uint8_t width = 5)
+{
+    uint8_t* f;
+    if (ch >= 16)
+        f = &lcd_font[ch - 16][0];
+    else
+        f = &LCD_CG[(ch & 7) * 8];
+    for (int i = 0; i < 8; i++)
+    {
+        for (int j = 0; j < width; j++)
+        {
+            uint32_t col;
+            if (f[i] & (1<<(4-j)))
+            {
+                col = lcd_col1;
+            }
+            else
+            {
+                col = lcd_col2;
+            }
+            int xx = x + i * 11;
+            int yy = y + j * 26;
+            for (int ii = 0; ii < 9; ii++)
+            {
+                for (int jj = 0; jj < 24; jj++)
+                {
+                    lcd_buffer[xx+ii][yy+jj] = col;
+                }
+            }
+        }
+    }
+}
+
 void LCD_Update(void)
 {
     if (!lcd_init)
@@ -195,12 +228,67 @@ void LCD_Update(void)
 
     memcpy(lcd_buffer, lcd_background, sizeof(lcd_buffer));
 
-    for (int i = 0; i < 4; i++)
+    if (0)
     {
-        for (int j = 0; j < 20; j++)
+        for (int i = 0; i < 4; i++)
         {
-            uint8_t ch = LCD_Data[i * 20 + j];
-            LCD_FontRenderStandard(i* 50, j * 34, ch);
+            for (int j = 0; j < 20; j++)
+            {
+                uint8_t ch = LCD_Data[i * 20 + j];
+                LCD_FontRenderStandard(i * 50, j * 34, ch);
+            }
+        }
+    }
+    else
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            uint8_t ch = LCD_Data[0 + i];
+            LCD_FontRenderStandard(11, 34 + i * 35, ch);
+        }
+        for (int i = 0; i < 16; i++)
+        {
+            uint8_t ch = LCD_Data[3 + i];
+            LCD_FontRenderStandard(11, 153 + i * 35, ch);
+        }
+        for (int i = 0; i < 3; i++)
+        {
+            uint8_t ch = LCD_Data[0 + i];
+            LCD_FontRenderStandard(75, 34 + i * 35, ch);
+        }
+        for (int i = 0; i < 3; i++)
+        {
+            uint8_t ch = LCD_Data[0 + i];
+            LCD_FontRenderStandard(75, 153 + i * 35, ch);
+        }
+        for (int i = 0; i < 3; i++)
+        {
+            uint8_t ch = LCD_Data[0 + i];
+            LCD_FontRenderStandard(139, 34 + i * 35, ch);
+        }
+        for (int i = 0; i < 3; i++)
+        {
+            uint8_t ch = LCD_Data[0 + i];
+            LCD_FontRenderStandard(139, 153 + i * 35, ch);
+        }
+        for (int i = 0; i < 3; i++)
+        {
+            uint8_t ch = LCD_Data[0 + i];
+            LCD_FontRenderStandard(203, 34 + i * 35, ch);
+        }
+        for (int i = 0; i < 3; i++)
+        {
+            uint8_t ch = LCD_Data[0 + i];
+            LCD_FontRenderStandard(203, 153 + i * 35, ch);
+        }
+
+        for (int i = 0; i < 2; i++)
+        {
+            for (int j = 0; j < 4; j++)
+            {
+                uint8_t ch = LCD_Data[20 + j + i * 40];
+                LCD_FontRenderLevel(71 + i * 88, 293 + j * 130, ch, j == 3 ? 1 : 5);
+            }
         }
     }
 
