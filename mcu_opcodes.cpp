@@ -20,7 +20,8 @@ int32_t MCU_SUB_Common(int32_t t1, int32_t t2, int32_t c_bit, uint32_t siz)
         N = (t1 & 0x8000) != 0;
         Z = t1 == 0;
 
-        st1 += st2;
+        st1 -= st2;
+        st1 -= c_bit;
         if (st1 < INT16_MIN || st1 > INT16_MAX)
             V = 1;
     }
@@ -38,7 +39,8 @@ int32_t MCU_SUB_Common(int32_t t1, int32_t t2, int32_t c_bit, uint32_t siz)
         N = (t1 & 0x80) != 0;
         Z = t1 == 0;
 
-        st1 += st2;
+        st1 -= st2;
+        st1 -= c_bit;
         if (st1 < INT8_MIN || st1 > INT8_MAX)
             V = 1;
     }
@@ -69,6 +71,7 @@ int32_t MCU_ADD_Common(int32_t t1, int32_t t2, int32_t c_bit, uint32_t siz)
         Z = t1 == 0;
 
         st1 += st2;
+        st1 += c_bit;
         if (st1 < INT16_MIN || st1 > INT16_MAX)
             V = 1;
     }
@@ -87,6 +90,7 @@ int32_t MCU_ADD_Common(int32_t t1, int32_t t2, int32_t c_bit, uint32_t siz)
         Z = t1 == 0;
 
         st1 += st2;
+        st1 += c_bit;
         if (st1 < INT8_MIN || st1 > INT8_MAX)
             V = 1;
     }
