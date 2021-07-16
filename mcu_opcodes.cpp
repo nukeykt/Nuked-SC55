@@ -202,7 +202,7 @@ void MCU_Jump_JSR(uint8_t operand)
 void MCU_Jump_RTE(uint8_t operand)
 {
     mcu.sr = MCU_PopStack();
-    mcu.cp = MCU_PopStack();
+    mcu.cp = (uint8_t)MCU_PopStack();
     mcu.pc = MCU_PopStack();
     mcu.ex_ignore = 1;
 }
@@ -301,7 +301,7 @@ void MCU_Jump_JMP(uint8_t operand)
         uint8_t opcode_l = opcode & 0x07;
         if (opcode == 0x19)
         {
-            mcu.cp = MCU_PopStack();
+            mcu.cp = (uint8_t)MCU_PopStack();
             mcu.pc = MCU_PopStack();
         }
         else if (opcode_h == 0x1a)
@@ -1121,7 +1121,6 @@ void MCU_Opcode_DIVXU(uint8_t opcode, uint8_t opcode_reg)
 {
     uint32_t t1 = MCU_Operand_Read();
     uint32_t t2;
-    uint32_t N, Z;
     uint32_t R, Q;
 
     if (!t1)

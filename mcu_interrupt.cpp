@@ -34,14 +34,19 @@ void MCU_Interrupt_StartVector(uint32_t vector)
 
 void MCU_Interrupt_Handle(void)
 {
-    if (mcu.cycles % 200 == 0 && mcu.sleep)
+    if (mcu.cycles % 2000 == 0 && mcu.sleep)
     {
         MCU_Interrupt_StartVector(VECTOR_INTERNAL_INTERRUPT_94);
         return;
     }
-    if (mcu.cycles % 200 == 100 && mcu.sleep)
+    if (mcu.cycles % 2000 == 1000 && mcu.sleep)
     {
         MCU_Interrupt_StartVector(VECTOR_INTERNAL_INTERRUPT_A4);
+        return;
+    }
+    if (mcu.cycles % 2000 == 1500 && mcu.sleep)
+    {
+        MCU_Interrupt_StartVector(VECTOR_INTERNAL_INTERRUPT_B4);
         return;
     }
     uint32_t i;

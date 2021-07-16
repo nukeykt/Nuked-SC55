@@ -20,6 +20,66 @@ void MCU_ErrorTrap(void)
 
 uint8_t dev_register[0x80];
 
+uint16_t ad_val[4];
+uint8_t ad_nibble;
+uint8_t sw_pos = 0;
+uint8_t io_sd;
+
+uint8_t RCU_Read(void)
+{
+    return 0;
+}
+
+enum {
+    ANALOG_LEVEL_RCU_LOW = 0,
+    ANALOG_LEVEL_RCU_HIGH = 0,
+    ANALOG_LEVEL_SW_0 = 0,
+    ANALOG_LEVEL_SW_1 = 0,
+    ANALOG_LEVEL_SW_2 = 0,
+    ANALOG_LEVEL_SW_3 = 0,
+    ANALOG_LEVEL_BATTERY = 0,
+};
+
+uint16_t MCU_AnalogReadPin(uint32_t pin)
+{
+    uint8_t rcu;
+    if (pin == 7)
+    {
+        switch ((io_sd >> 2) & 3)
+        {
+        case 0: // Battery voltage
+            return ANALOG_LEVEL_BATTERY;
+        case 1: // NC
+            return 0;
+        case 2: // SW
+            switch (sw_pos)
+            {
+            case 0:
+            default:
+                return ANALOG_LEVEL_SW_0;
+            case 1:
+                return ANALOG_LEVEL_SW_1;
+            case 2:
+                return ANALOG_LEVEL_SW_2;
+            case 3:
+                return ANALOG_LEVEL_SW_3;
+            }
+        case 3: // RCU
+            break;
+        }
+    }
+    rcu = RCU_Read();
+    if (rcu & (1 << pin))
+        return ANALOG_LEVEL_RCU_HIGH;
+    else
+        return ANALOG_LEVEL_RCU_LOW;
+}
+
+void MCU_AnalogSample(void)
+{
+
+}
+
 void MCU_DeviceWrite(uint32_t address, uint8_t data)
 {
     address &= 0x7f;
@@ -146,6 +206,14 @@ uint8_t MCU_DeviceRead(uint32_t address)
     case DEV_DTEC:
     case DEV_DTED:
     case DEV_ADCSR:
+    case DEV_FRT2_TCSR:
+    case DEV_FRT1_TCSR:
+    case DEV_FRT1_TCR:
+    case DEV_FRT1_FRCH:
+    case DEV_FRT1_FRCL:
+    case DEV_FRT3_TCSR:
+    case DEV_FRT3_OCRAH:
+    case DEV_FRT3_OCRAL:
         return dev_register[address];
     }
     return dev_register[address];
