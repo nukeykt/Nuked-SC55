@@ -9,3 +9,7 @@ Attempt to emulate SC-55mkII
 - Mitsubishi M37450M2 MCU
 
 MCUs will be emulated using info from their datasheets. PCM chip info will be derived from analyzing decapped chip.
+
+### PCM chip tracing progress
+
+![pcm_tracing.jpg](pcm_tracing.jpg)
