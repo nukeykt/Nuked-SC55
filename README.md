@@ -13,3 +13,9 @@ MCUs will be emulated using info from their datasheets. PCM chip info will be de
 ### PCM chip tracing progress
 
 ![pcm_tracing.jpg](pcm_tracing.jpg)
+
+### MCU emulation progress
+
+![mcu1.png](mcu1.png)
+
+![mcu2.png](mcu2.png)
