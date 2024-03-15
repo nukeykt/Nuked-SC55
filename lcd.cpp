@@ -177,10 +177,6 @@ void LCD_Init(void)
     fread(lcd_background, 1, sizeof(lcd_background), raw);
     fclose(raw);
 
-    raw = fopen("fonts.data", "rb");
-    if (!raw)
-        return;
-
     lcd_init = 1;
 }
 
