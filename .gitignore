@@ -1,0 +1,84 @@
+# This file is used to ignore files which are generated
+# ----------------------------------------------------------------------------
+
+*~
+*.autosave
+*.a
+*.core
+*.moc
+*.o
+*.obj
+*.orig
+*.rej
+*.so
+*.so.*
+*_pch.h.cpp
+*_resource.rc
+*.qm
+.#*
+*.*#
+core
+!core/
+tags
+.DS_Store
+.directory
+*.debug
+Makefile*
+*.prl
+*.app
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+Thumbs.db
+*.res
+/.qmake.cache
+/.qmake.stash
+
+# qtcreator generated files
+*.pro.user*
+*.txt.user*
+
+# xemacs temporary files
+*.flc
+
+# Vim temporary files
+.*.swp
+
+# Visual Studio generated files
+*.ib_pdb_index
+*.idb
+*.ilk
+*.pdb
+*.sln
+*.suo
+*.vcproj
+*vcproj.*.*.user
+*.ncb
+*.sdf
+*.opensdf
+*.vcxproj
+*vcxproj.*
+
+build-*
+
+build/
+
+# MinGW generated files
+*.Debug
+*.Release
+
+# Binaries
+# --------
+*.dll
+*.exe
+
+# CLion and like environments
+.idea/*
+cmake-build-*/*
+
+.vscode/*
+.vs/*
+CMakeSettings.json
+
+# Vendored assets packages shouldn't appear at the GIT history
+/assets/
