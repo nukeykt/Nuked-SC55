@@ -4,12 +4,21 @@
 #include "SDL.h"
 #include "lcd.h"
 #include "lcd_font.h"
+#include "mcu.h"
+#include "submcu.h"
 
 uint32_t LCD_DL, LCD_N, LCD_F, LCD_D, LCD_C, LCD_B, LCD_ID, LCD_S;
 uint32_t LCD_DD_RAM, LCD_AC, LCD_CG_RAM;
 uint32_t LCD_RAM_MODE = 0;
 uint8_t LCD_Data[80];
 uint8_t LCD_CG[64];
+
+uint8_t lcd_enable;
+
+void LCD_Enable(uint32_t enable)
+{
+    lcd_enable = enable;
+}
 
 void LCD_Write(uint32_t address, uint8_t data)
 {
@@ -121,11 +130,34 @@ uint32_t lcd_background[lcd_height][lcd_width];
 
 uint32_t lcd_init;
 
+int button_map[][2] = {
+    SDL_SCANCODE_Q, MCU_BUTTON_POWER,
+    SDL_SCANCODE_W, MCU_BUTTON_INST_ALL,
+    SDL_SCANCODE_E, MCU_BUTTON_INST_MUTE,
+    SDL_SCANCODE_R, MCU_BUTTON_PART_L,
+    SDL_SCANCODE_T, MCU_BUTTON_PART_R,
+    SDL_SCANCODE_Y, MCU_BUTTON_INST_L,
+    SDL_SCANCODE_U, MCU_BUTTON_INST_R,
+    SDL_SCANCODE_I, MCU_BUTTON_KEY_SHIFT_L,
+    SDL_SCANCODE_O, MCU_BUTTON_KEY_SHIFT_R,
+    SDL_SCANCODE_P, MCU_BUTTON_LEVEL_L,
+    SDL_SCANCODE_LEFTBRACKET, MCU_BUTTON_LEVEL_R,
+    SDL_SCANCODE_A, MCU_BUTTON_MIDI_CH_L,
+    SDL_SCANCODE_S, MCU_BUTTON_MIDI_CH_R,
+    SDL_SCANCODE_D, MCU_BUTTON_PAN_L,
+    SDL_SCANCODE_F, MCU_BUTTON_PAN_R,
+    SDL_SCANCODE_G, MCU_BUTTON_REVERB_L,
+    SDL_SCANCODE_H, MCU_BUTTON_REVERB_R,
+    SDL_SCANCODE_J, MCU_BUTTON_CHORUS_L,
+    SDL_SCANCODE_K, MCU_BUTTON_CHORUS_R,
+};
+
+
 void LCD_Init(void)
 {
     FILE *raw;
 
-    window = SDL_CreateWindow("mcuemu", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, lcd_width, lcd_height, SDL_WINDOW_SHOWN);
+    window = SDL_CreateWindow("SC-55mkII", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, lcd_width, lcd_height, SDL_WINDOW_SHOWN);
     if (!window)
         return;
 
@@ -226,68 +258,75 @@ void LCD_Update(void)
     if (!lcd_init)
         return;
 
-    memcpy(lcd_buffer, lcd_background, sizeof(lcd_buffer));
-
-    if (0)
+    if (!lcd_enable)
     {
-        for (int i = 0; i < 4; i++)
-        {
-            for (int j = 0; j < 20; j++)
-            {
-                uint8_t ch = LCD_Data[i * 20 + j];
-                LCD_FontRenderStandard(i * 50, j * 34, ch);
-            }
-        }
+        memset(lcd_buffer, 0, sizeof(lcd_buffer));
     }
     else
     {
-        for (int i = 0; i < 3; i++)
-        {
-            uint8_t ch = LCD_Data[0 + i];
-            LCD_FontRenderStandard(11, 34 + i * 35, ch);
-        }
-        for (int i = 0; i < 16; i++)
-        {
-            uint8_t ch = LCD_Data[3 + i];
-            LCD_FontRenderStandard(11, 153 + i * 35, ch);
-        }
-        for (int i = 0; i < 3; i++)
-        {
-            uint8_t ch = LCD_Data[0 + i];
-            LCD_FontRenderStandard(75, 34 + i * 35, ch);
-        }
-        for (int i = 0; i < 3; i++)
-        {
-            uint8_t ch = LCD_Data[0 + i];
-            LCD_FontRenderStandard(75, 153 + i * 35, ch);
-        }
-        for (int i = 0; i < 3; i++)
-        {
-            uint8_t ch = LCD_Data[0 + i];
-            LCD_FontRenderStandard(139, 34 + i * 35, ch);
-        }
-        for (int i = 0; i < 3; i++)
-        {
-            uint8_t ch = LCD_Data[0 + i];
-            LCD_FontRenderStandard(139, 153 + i * 35, ch);
-        }
-        for (int i = 0; i < 3; i++)
-        {
-            uint8_t ch = LCD_Data[0 + i];
-            LCD_FontRenderStandard(203, 34 + i * 35, ch);
-        }
-        for (int i = 0; i < 3; i++)
-        {
-            uint8_t ch = LCD_Data[0 + i];
-            LCD_FontRenderStandard(203, 153 + i * 35, ch);
-        }
+        memcpy(lcd_buffer, lcd_background, sizeof(lcd_buffer));
 
-        for (int i = 0; i < 2; i++)
+        if (0)
         {
-            for (int j = 0; j < 4; j++)
+            for (int i = 0; i < 4; i++)
             {
-                uint8_t ch = LCD_Data[20 + j + i * 40];
-                LCD_FontRenderLevel(71 + i * 88, 293 + j * 130, ch, j == 3 ? 1 : 5);
+                for (int j = 0; j < 20; j++)
+                {
+                    uint8_t ch = LCD_Data[i * 20 + j];
+                    LCD_FontRenderStandard(i * 50, j * 34, ch);
+                }
+            }
+        }
+        else
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                uint8_t ch = LCD_Data[0 + i];
+                LCD_FontRenderStandard(11, 34 + i * 35, ch);
+            }
+            for (int i = 0; i < 16; i++)
+            {
+                uint8_t ch = LCD_Data[3 + i];
+                LCD_FontRenderStandard(11, 153 + i * 35, ch);
+            }
+            for (int i = 0; i < 3; i++)
+            {
+                uint8_t ch = LCD_Data[40 + i];
+                LCD_FontRenderStandard(75, 34 + i * 35, ch);
+            }
+            for (int i = 0; i < 3; i++)
+            {
+                uint8_t ch = LCD_Data[43 + i];
+                LCD_FontRenderStandard(75, 153 + i * 35, ch);
+            }
+            for (int i = 0; i < 3; i++)
+            {
+                uint8_t ch = LCD_Data[49 + i];
+                LCD_FontRenderStandard(139, 34 + i * 35, ch);
+            }
+            for (int i = 0; i < 3; i++)
+            {
+                uint8_t ch = LCD_Data[46 + i];
+                LCD_FontRenderStandard(139, 153 + i * 35, ch);
+            }
+            for (int i = 0; i < 3; i++)
+            {
+                uint8_t ch = LCD_Data[52 + i];
+                LCD_FontRenderStandard(203, 34 + i * 35, ch);
+            }
+            for (int i = 0; i < 3; i++)
+            {
+                uint8_t ch = LCD_Data[55 + i];
+                LCD_FontRenderStandard(203, 153 + i * 35, ch);
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                for (int j = 0; j < 4; j++)
+                {
+                    uint8_t ch = LCD_Data[20 + j + i * 40];
+                    LCD_FontRenderLevel(71 + i * 88, 293 + j * 130, ch, j == 3 ? 1 : 5);
+                }
             }
         }
     }
@@ -303,8 +342,117 @@ void LCD_Update(void)
     {
         switch (sdl_event.type)
         {
-        default:
-            break;
+            case SDL_KEYDOWN:
+            case SDL_KEYUP:
+            {
+                if (sdl_event.key.repeat)
+                    continue;
+                int mask = 0;
+                for (int i = 0; i < sizeof(button_map) / sizeof(button_map[0]); i++)
+                {
+                    if (button_map[i][0] == sdl_event.key.keysym.scancode)
+                        mask |= 1<<button_map[i][1];
+                }
+                if (sdl_event.type == SDL_KEYDOWN)
+                    mcu_button_pressed |= mask;
+                else
+                    mcu_button_pressed &= ~mask;
+
+                if (sdl_event.key.keysym.scancode >= SDL_SCANCODE_1 && sdl_event.key.keysym.scancode < SDL_SCANCODE_0)
+                {
+#if 0
+                    int kk = sdl_event.key.keysym.scancode - SDL_SCANCODE_1;
+                    if (sdl_event.type == SDL_KEYDOWN)
+                    {
+                        SM_PostUART(0xc0);
+                        SM_PostUART(118);
+                        SM_PostUART(0x90);
+                        SM_PostUART(0x30 + kk);
+                        SM_PostUART(0x7f);
+                    }
+                    else
+                    {
+                        SM_PostUART(0x90);
+                        SM_PostUART(0x30 + kk);
+                        SM_PostUART(0);
+                    }
+#endif
+                    int kk = sdl_event.key.keysym.scancode - SDL_SCANCODE_1;
+                    const int patch = 47;
+                    if (sdl_event.type == SDL_KEYDOWN)
+                    {
+                        static int bend = 0x2000;
+                        if (kk == 4)
+                        {
+                            SM_PostUART(0x99);
+                            SM_PostUART(0x32);
+                            SM_PostUART(0x7f);
+                        }
+                        else if (kk == 3)
+                        {
+                            bend += 0x100;
+                            if (bend > 0x3fff)
+                                bend = 0x3fff;
+                            SM_PostUART(0xe1);
+                            SM_PostUART(bend & 127);
+                            SM_PostUART((bend >> 7) & 127);
+                        }
+                        else if (kk == 2)
+                        {
+                            bend -= 0x100;
+                            if (bend < 0)
+                                bend = 0;
+                            SM_PostUART(0xe1);
+                            SM_PostUART(bend & 127);
+                            SM_PostUART((bend >> 7) & 127);
+                        }
+                        else if (kk)
+                        {
+                            SM_PostUART(0xc1);
+                            SM_PostUART(patch);
+                            SM_PostUART(0xe1);
+                            SM_PostUART(bend & 127);
+                            SM_PostUART((bend >> 7) & 127);
+                            SM_PostUART(0x91);
+                            SM_PostUART(0x32);
+                            SM_PostUART(0x7f);
+                        }
+                        else if (kk == 0)
+                        {
+                            SM_PostUART(0xc0);
+                            SM_PostUART(patch);
+                            SM_PostUART(0xe0);
+                            SM_PostUART(0x00);
+                            SM_PostUART(0x40);
+                            SM_PostUART(0x90);
+                            SM_PostUART(0x34);
+                            SM_PostUART(0x7f);
+                        }
+                    }
+                    else
+                    {
+                        if (kk == 1)
+                        {
+                            SM_PostUART(0x91);
+                            SM_PostUART(0x32);
+                            SM_PostUART(0);
+                        }
+                        else if (kk == 0)
+                        {
+                            SM_PostUART(0x90);
+                            SM_PostUART(0x34);
+                            SM_PostUART(0);
+                        }
+                        else if (kk == 4)
+                        {
+                            SM_PostUART(0x99);
+                            SM_PostUART(0x32);
+                            SM_PostUART(0);
+                        }
+                    }
+                }
+                break;
+            }
         }
     }
 }

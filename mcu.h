@@ -36,11 +36,20 @@ enum {
     DEV_TMR_TCR = 0x50,
     DEV_TMR_TCSR = 0x51,
     DEV_TMR_TCORA = 0x52,
+    DEV_TMR_TCORB = 0x53,
     DEV_TMR_TCNT = 0x54,
     DEV_SMR = 0x58,
     DEV_BRR = 0x59,
     DEV_SCR = 0x5a,
     DEV_RDR = 0x5d,
+    DEV_ADDRAH = 0x60,
+    DEV_ADDRAL = 0x61,
+    DEV_ADDRBH = 0x62,
+    DEV_ADDRBL = 0x63,
+    DEV_ADDRCH = 0x64,
+    DEV_ADDRCL = 0x65,
+    DEV_ADDRDH = 0x66,
+    DEV_ADDRDL = 0x67,
     DEV_ADCSR = 0x68,
     DEV_IPRA = 0x70,
     DEV_IPRB = 0x71,
@@ -66,6 +75,7 @@ enum {
     STATUS_Z = 0x04,
     STATUS_V = 0x02,
     STATUS_C = 0x01,
+    STATUS_INT_MASK = 0x700
 };
 
 enum {
@@ -136,9 +146,10 @@ struct mcu_t {
     uint8_t cp, dp, ep, tp, br;
     uint8_t sleep;
     uint8_t ex_ignore;
+    int32_t exception_pending;
     uint8_t interrupt_pending[INTERRUPT_SOURCE_MAX];
     uint8_t trapa_pending[16];
-    uint32_t cycles;
+    uint64_t cycles;
 };
 
 extern mcu_t mcu;
@@ -193,6 +204,18 @@ inline void MCU_ControlRegisterWrite(uint32_t reg, uint32_t siz, uint32_t data)
             mcu.sr = data;
             mcu.sr &= sr_mask;
         }
+        else if (reg == 5) // FIXME: undocumented
+        {
+            mcu.dp = data & 0xff;
+        }
+        else if (reg == 4) // FIXME: undocumented
+        {
+            mcu.ep = data & 0xff;
+        }
+        else if (reg == 3) // FIXME: undocumented
+        {
+            mcu.br = data & 0xff;
+        }
         else
         {
             MCU_ErrorTrap();
@@ -240,15 +263,15 @@ inline uint32_t MCU_ControlRegisterRead(uint32_t reg, uint32_t siz)
         }
         else if (reg == 5) // FIXME: undocumented
         {
-            ret = mcu.dp;
+            ret = mcu.dp | (mcu.dp << 8);
         }
         else if (reg == 4) // FIXME: undocumented
         {
-            ret = mcu.ep;
+            ret = mcu.ep | (mcu.ep << 8);
         }
         else if (reg == 3) // FIXME: undocumented
         {
-            ret = mcu.br;
+            ret = mcu.br | (mcu.br << 8);;
         }
         else
         {
@@ -298,7 +321,7 @@ inline void MCU_SetStatus(uint32_t condition, uint32_t mask)
 inline void MCU_PushStack(uint16_t data)
 {
     if (mcu.r[7] & 1)
-        MCU_Interrupt_Request(INTERRUPT_SOURCE_ADDRESS_ERROR);
+        MCU_Interrupt_Exception(EXCEPTION_SOURCE_ADDRESS_ERROR);
     mcu.r[7] -= 2;
     MCU_Write16(mcu.r[7], data);
 }
@@ -307,8 +330,40 @@ inline uint16_t MCU_PopStack(void)
 {
     uint16_t ret;
     if (mcu.r[7] & 1)
-        MCU_Interrupt_Request(INTERRUPT_SOURCE_ADDRESS_ERROR);
+        MCU_Interrupt_Exception(EXCEPTION_SOURCE_ADDRESS_ERROR);
     ret = MCU_Read16(mcu.r[7]);
     mcu.r[7] += 2;
     return ret;
 }
+
+enum {
+    MCU_BUTTON_POWER = 0,
+    MCU_BUTTON_INST_L = 3,
+    MCU_BUTTON_INST_R = 4,
+    MCU_BUTTON_INST_MUTE = 5,
+    MCU_BUTTON_INST_ALL = 6,
+    MCU_BUTTON_MIDI_CH_L = 7,
+    MCU_BUTTON_MIDI_CH_R = 8,
+    MCU_BUTTON_CHORUS_L = 9,
+    MCU_BUTTON_CHORUS_R = 10,
+    MCU_BUTTON_PAN_L = 11,
+    MCU_BUTTON_PAN_R = 12,
+    MCU_BUTTON_PART_R = 13,
+    MCU_BUTTON_KEY_SHIFT_L = 14,
+    MCU_BUTTON_KEY_SHIFT_R = 15,
+    MCU_BUTTON_REVERB_L = 16,
+    MCU_BUTTON_REVERB_R = 17,
+    MCU_BUTTON_LEVEL_L = 18,
+    MCU_BUTTON_LEVEL_R = 19,
+    MCU_BUTTON_PART_L = 20
+};
+
+extern uint32_t mcu_button_pressed;
+
+uint8_t MCU_ReadP0(void);
+uint8_t MCU_ReadP1(void);
+void MCU_WriteP0(uint8_t data);
+void MCU_WriteP1(uint8_t data);
+void MCU_GA_SetGAInt(int line, int value);
+
+void MCU_PostSample(int *sample);
