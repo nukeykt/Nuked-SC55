@@ -809,7 +809,7 @@ static void closeAllR()
     }
 }
 
-int main(int argc, char **argv)
+int main(int argc, char *argv[])
 {
     (void)argc;
     std::string basePath;
