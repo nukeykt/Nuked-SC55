@@ -227,6 +227,11 @@ if(USE_RTMIDI)
     endif()
 endif()
 
+if(WIN32)
+    target_link_libraries(nuked-sc55 PRIVATE shlwapi winmm)
+endif()
+
+
 set(SC55_INSTALL_FILES)
 
 # Copy ROM files into runtime directory

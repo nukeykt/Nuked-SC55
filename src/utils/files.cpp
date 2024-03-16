@@ -29,6 +29,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <shlwapi.h>
+#include <algorithm>
 
 static std::wstring Str2WStr(const std::string &path)
 {
@@ -37,6 +38,15 @@ static std::wstring Str2WStr(const std::string &path)
     int newlen = MultiByteToWideChar(CP_UTF8, 0, path.c_str(), static_cast<int>(path.length()), &wpath[0], static_cast<int>(path.length()));
     wpath.resize(newlen);
     return wpath;
+}
+
+static std::string WStr2Str(const std::wstring &wstr)
+{
+    std::string dest;
+    dest.resize((wstr.size() * 2));
+    int newlen = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), static_cast<int>(wstr.length()), &dest[0], static_cast<int>(dest.size()), NULL, NULL);
+    dest.resize(newlen);
+    return dest;
 }
 #else
 #if defined(__ANDROID__)
