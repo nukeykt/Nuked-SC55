@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#define SDL_MAIN_HANDLED
 #include "SDL.h"
 #include "mcu.h"
 #include "mcu_opcodes.h"
