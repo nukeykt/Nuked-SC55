@@ -11,7 +11,7 @@ struct frt_t {
     uint8_t status_rd;
 };
 
-struct timer_t {
+struct mcu_timer_t {
     uint8_t tcr;
     uint8_t tcsr;
     uint8_t tcora;

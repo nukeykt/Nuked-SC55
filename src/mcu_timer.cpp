@@ -7,7 +7,7 @@ uint64_t timer_cycles;
 uint8_t timer_tempreg;
 
 frt_t frt[3];
-timer_t timer;
+mcu_timer_t timer;
 
 enum {
 	REG_TCR = 0x00,
