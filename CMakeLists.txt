@@ -161,6 +161,8 @@ endfunction()
 
 #===========================================================================================
 
+include(3rdparty/Utf8Main/utf8main.cmake)
+
 if(NOT WIN32 AND PKG_CONFIG_FOUND)
     set(USE_RTMIDI TRUE)
     option(USE_SYSTEM_RTMIDI "Use system libraries for RtMidi" OFF)
@@ -196,7 +198,7 @@ elseif(WIN32)
     list(APPEND SC55_SRC src/midi_win32.cpp)
 endif()
 
-add_executable(virtual_sc55 ${SC55_SRC})
+add_executable(virtual_sc55 ${SC55_SRC} ${UTF8MAIN_SRCS})
 set_nopie(virtual_sc55)
 
 if(TARGET SDL2::SDL2)

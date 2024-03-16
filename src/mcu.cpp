@@ -9,12 +9,15 @@
 #include "lcd.h"
 #include "submcu.h"
 #include "midi.h"
+#include "utf8main.h"
 #include "utils/files.h"
+
 #ifdef _WIN32
 #include <windows.h>
 #else
 #include <dirent.h>
 #endif
+
 
 static const int ROM1_SIZE = 0x8000;
 static const int ROM2_SIZE = 0x80000;
