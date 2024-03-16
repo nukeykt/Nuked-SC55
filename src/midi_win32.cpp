@@ -4,6 +4,7 @@
 #include <mmsystem.h>
 #include "mcu.h"
 #include "submcu.h"
+#include "midi.h"
 
 HMIDIIN midi_handle;
 MIDIHDR midi_buffer;
