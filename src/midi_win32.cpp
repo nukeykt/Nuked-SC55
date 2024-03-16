@@ -105,7 +105,7 @@ int MIDI_Init(void)
 
 void MIDI_Quit()
 {
-    if (!midi_handle)
+    if (midi_handle)
     {
         midiInClose(midi_handle);
         midi_handle = 0;
