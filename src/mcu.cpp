@@ -541,9 +541,8 @@ void MCU_Reset(void)
     MCU_DeviceReset();
 }
 
-void MCU_Update(int32_t cycles)
+static void MCU_Run()
 {
-    SDL_Event event = {};
     bool working = true;
 
     while (working)
@@ -845,7 +844,7 @@ int main(int argc, char *args[])
     MCU_Reset();
     SM_Reset();
     PCM_Reset();
-    MCU_Update(100000000);
+    MCU_Run();
 
     MIDI_Quit();
 
