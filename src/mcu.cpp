@@ -566,8 +566,8 @@ void MCU_Update(int32_t cycles)
         if (mcu.cycles % 1200000 == 0)
             LCD_Update();
 
-        if (mcu.cycles % 24000000 == 0)
-            printf("seconds: %i\n", (int)(mcu.cycles / 24000000));
+        // if (mcu.cycles % 24000000 == 0)
+        //     printf("seconds: %i\n", (int)(mcu.cycles / 24000000));
 
         PCM_Update(mcu.cycles);
 
