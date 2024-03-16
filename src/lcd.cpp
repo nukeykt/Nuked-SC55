@@ -7,17 +7,23 @@
 #include "mcu.h"
 #include "submcu.h"
 
-uint32_t LCD_DL, LCD_N, LCD_F, LCD_D, LCD_C, LCD_B, LCD_ID, LCD_S;
-uint32_t LCD_DD_RAM, LCD_AC, LCD_CG_RAM;
-uint32_t LCD_RAM_MODE = 0;
-uint8_t LCD_Data[80];
-uint8_t LCD_CG[64];
+static uint32_t LCD_DL, LCD_N, LCD_F, LCD_D, LCD_C, LCD_B, LCD_ID, LCD_S;
+static uint32_t LCD_DD_RAM, LCD_AC, LCD_CG_RAM;
+static uint32_t LCD_RAM_MODE = 0;
+static uint8_t LCD_Data[80];
+static uint8_t LCD_CG[64];
 
-uint8_t lcd_enable;
+static uint8_t lcd_enable;
+static bool lcd_quit_requested = false;
 
 void LCD_Enable(uint32_t enable)
 {
     lcd_enable = enable;
+}
+
+bool LCD_QuitRequested()
+{
+    return lcd_quit_requested;
 }
 
 void LCD_Write(uint32_t address, uint8_t data)
@@ -156,6 +162,8 @@ int button_map[][2] = {
 void LCD_Init(void)
 {
     FILE *raw;
+
+    lcd_quit_requested = false;
 
     window = SDL_CreateWindow("SC-55mkII", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, lcd_width, lcd_height, SDL_WINDOW_SHOWN);
     if (!window)
@@ -338,13 +346,17 @@ void LCD_Update(void)
     {
         switch (sdl_event.type)
         {
+            case SDL_QUIT:
+                lcd_quit_requested = true;
+                break;
+
             case SDL_KEYDOWN:
             case SDL_KEYUP:
             {
                 if (sdl_event.key.repeat)
                     continue;
                 int mask = 0;
-                for (int i = 0; i < sizeof(button_map) / sizeof(button_map[0]); i++)
+                for (size_t i = 0; i < sizeof(button_map) / sizeof(button_map[0]); i++)
                 {
                     if (button_map[i][0] == sdl_event.key.keysym.scancode)
                         mask |= 1<<button_map[i][1];

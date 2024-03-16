@@ -542,17 +542,8 @@ void MCU_Update(int32_t cycles)
         while (sample_read_ptr == sample_write_ptr)
             SDL_Delay(1);
 
-        while(SDL_PollEvent(&event))
-        {
-            switch(event.type)
-            {
-            case SDL_QUIT:
-                working = false;
-                break;
-            default:
-                break;
-            }
-        }
+        if(LCD_QuitRequested())
+            working = false;
 
         if (!mcu.ex_ignore)
             MCU_Interrupt_Handle();
