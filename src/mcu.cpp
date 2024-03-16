@@ -711,8 +711,6 @@ int MCU_OpenAudio(void)
     sample_read_ptr = 0;
     sample_write_ptr = 0;
 
-    SDL_PauseAudioDevice(sdl_audio, 0);
-
     return 1;
 }
 
@@ -892,6 +890,8 @@ int main(int argc, char *args[])
     MCU_Reset();
     SM_Reset();
     PCM_Reset();
+
+    SDL_PauseAudioDevice(sdl_audio, 0);
 
     MCU_Run();
 
