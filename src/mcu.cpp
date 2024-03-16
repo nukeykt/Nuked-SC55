@@ -540,22 +540,37 @@ void MCU_Reset(void)
     MCU_DeviceReset();
 }
 
-static void MCU_Run()
+static bool work_thread_run = false;
+
+static SDL_mutex *work_thread_lock;
+
+void MCU_WorkThread_Lock(void)
 {
-    bool working = true;
+    SDL_LockMutex(work_thread_lock);
+}
 
-    while (working)
+void MCU_WorkThread_Unlock(void)
+{
+    SDL_UnlockMutex(work_thread_lock);
+}
+
+int SDLCALL work_thread(void* data)
+{
+    work_thread_lock = SDL_CreateMutex();
+
+    MCU_WorkThread_Lock();
+    while (work_thread_run)
     {
-#if 0
-        while (sample_read_ptr == sample_write_ptr)
-            SDL_Delay(1);
-#endif
-        if(LCD_QuitRequested())
-            working = false;
+        if (sample_read_ptr == sample_write_ptr)
+        {
+            MCU_WorkThread_Unlock();
+            while (sample_read_ptr == sample_write_ptr)
+            {
+                SDL_Delay(1);
+            }
+            MCU_WorkThread_Lock();
+        }
 
-        LCD_Update();
-        SDL_Delay(15);
-#if 0
         if (!mcu.ex_ignore)
             MCU_Interrupt_Handle();
         else
@@ -565,9 +580,6 @@ static void MCU_Run()
             MCU_ReadInstruction();
 
         mcu.cycles += 12; // FIXME: assume 12 cycles per instruction
-
-        if (mcu.cycles % 1200000 == 0)
-            LCD_Update();
 
         // if (mcu.cycles % 24000000 == 0)
         //     printf("seconds: %i\n", (int)(mcu.cycles / 24000000));
@@ -579,8 +591,32 @@ static void MCU_Run()
         SM_Update(mcu.cycles);
 
         MCU_UpdateAnalog(mcu.cycles);
-#endif
     }
+    MCU_WorkThread_Unlock();
+
+    SDL_DestroyMutex(work_thread_lock);
+
+    return 0;
+}
+
+static void MCU_Run()
+{
+    bool working = true;
+
+    work_thread_run = true;
+    SDL_Thread *thread = SDL_CreateThread(work_thread, "work thread", 0);
+
+    while (working)
+    {
+        if(LCD_QuitRequested())
+            working = false;
+
+        LCD_Update();
+        SDL_Delay(15);
+    }
+
+    work_thread_run = false;
+    SDL_WaitThread(thread, 0);
 }
 
 void MCU_PatchROM(void)
@@ -656,33 +692,6 @@ void unscramble(uint8_t *src, uint8_t *dst, int len)
 
 void audio_callback(void* userdata, Uint8* stream, int len)
 {
-    while(sample_read_ptr != sample_write_ptr)
-    {
-        if (!mcu.ex_ignore)
-            MCU_Interrupt_Handle();
-        else
-            mcu.ex_ignore = 0;
-
-        if (!mcu.sleep)
-            MCU_ReadInstruction();
-
-        mcu.cycles += 12; // FIXME: assume 12 cycles per instruction
-
-        if (mcu.cycles % 1200000 == 0)
-            LCD_Sync();
-
-        // if (mcu.cycles % 24000000 == 0)
-        //     printf("seconds: %i\n", (int)(mcu.cycles / 24000000));
-
-        PCM_Update(mcu.cycles);
-
-        TIMER_Clock(mcu.cycles);
-
-        SM_Update(mcu.cycles);
-
-        MCU_UpdateAnalog(mcu.cycles);
-    }
-
     len /= 2;
     memcpy(stream, &sample_buffer[sample_read_ptr], len * 2);
     memset(&sample_buffer[sample_read_ptr], 0, len * 2);
@@ -709,6 +718,8 @@ int MCU_OpenAudio(void)
 
     sample_read_ptr = 0;
     sample_write_ptr = 0;
+
+    SDL_PauseAudioDevice(sdl_audio, 0);
 
     return 1;
 }
@@ -890,8 +901,6 @@ int main(int argc, char **argv)
     MCU_Reset();
     SM_Reset();
     PCM_Reset();
-
-    SDL_PauseAudioDevice(sdl_audio, 0);
 
     MCU_Run();
 

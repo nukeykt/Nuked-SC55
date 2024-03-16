@@ -368,3 +368,6 @@ void MCU_WriteP1(uint8_t data);
 void MCU_GA_SetGAInt(int line, int value);
 
 void MCU_PostSample(int *sample);
+
+void MCU_WorkThread_Lock(void);
+void MCU_WorkThread_Unlock(void);

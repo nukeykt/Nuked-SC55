@@ -9,7 +9,7 @@
 static HMIDIIN midi_handle;
 static MIDIHDR midi_buffer;
 
-    static char midi_in_buffer[1024];
+static char midi_in_buffer[1024];
 
 void CALLBACK MIDI_Callback(
     HMIDIIN   hMidiIn,

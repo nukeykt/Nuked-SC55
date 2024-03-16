@@ -133,7 +133,6 @@ static const int lcd_height = 268;
 static SDL_Window *window;
 static SDL_Renderer *renderer;
 static SDL_Texture *texture;
-static SDL_mutex *m_lcd_mutex = nullptr;
 
 static std::string m_back_path = "back.data";
 
@@ -200,8 +199,6 @@ void LCD_Init(void)
     fread(lcd_background, 1, sizeof(lcd_background), raw);
     fclose(raw);
 
-    m_lcd_mutex = SDL_CreateMutex();
-
     lcd_init = 1;
 }
 
@@ -209,9 +206,6 @@ void LCD_UnInit(void)
 {
     if(!lcd_init)
         return;
-
-    SDL_DestroyMutex(m_lcd_mutex);
-    m_lcd_mutex = nullptr;
 }
 
 uint32_t lcd_col1 = 0x000000;
@@ -283,12 +277,12 @@ void LCD_FontRenderLevel(int32_t x, int32_t y, uint8_t ch, uint8_t width = 5)
     }
 }
 
-void LCD_Sync(void)
+void LCD_Update(void)
 {
     if (!lcd_init)
         return;
 
-    SDL_LockMutex(m_lcd_mutex);
+    MCU_WorkThread_Lock();
 
     if (!lcd_enable)
     {
@@ -363,16 +357,11 @@ void LCD_Sync(void)
         }
     }
 
-    SDL_UnlockMutex(m_lcd_mutex);
-}
+    MCU_WorkThread_Unlock();
 
-void LCD_Update(void)
-{
-    SDL_LockMutex(m_lcd_mutex);
     SDL_UpdateTexture(texture, NULL, lcd_buffer, lcd_width * 4);
     SDL_RenderCopy(renderer, texture, NULL, NULL);
     SDL_RenderPresent(renderer);
-    SDL_UnlockMutex(m_lcd_mutex);
 
     SDL_Event sdl_event;
     while (SDL_PollEvent(&sdl_event))
@@ -502,7 +491,5 @@ void LCD_Update(void)
             }
         }
     }
-
-    SDL_UnlockAudio();
 }
 
