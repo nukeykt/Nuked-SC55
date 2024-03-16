@@ -186,3 +186,22 @@ else()
     target_include_directories(virtual_sc55 PRIVATE ${SDL2_INCLUDE_DIRS})
     target_link_libraries(virtual_sc55 PRIVATE ${SDL2_LIBRARIES})
 endif()
+
+# Copy ROM files into runtime directory
+macro(copy_rom_target TargetName TargetFile)
+    add_custom_target(sc55_copy_${TargetName} ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/${TargetFile}")
+    add_custom_command(
+        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${TargetFile}"
+        COMMAND ${CMAKE_COMMAND} -E copy
+                "${CMAKE_CURRENT_SOURCE_DIR}/data/${TargetFile}"
+                "${CMAKE_CURRENT_BINARY_DIR}/${TargetFile}"
+        DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/data/${TargetFile}"
+    )
+endmacro()
+
+copy_rom_target(back_data back.data)
+copy_rom_target(rom1 rom1.bin)
+copy_rom_target(rom2 rom2.bin)
+copy_rom_target(rom_sm rom_sm.bin)
+copy_rom_target(waverom1 waverom1.bin)
+copy_rom_target(waverom2 waverom2.bin)
