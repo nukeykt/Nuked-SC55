@@ -286,7 +286,7 @@ static const int interp_lut[3][128] = {
 
 void PCM_Update(uint64_t cycles)
 {
-    int slots = (pcm.config_reg_3d & 31) + 1;
+    int reg_slots = (pcm.config_reg_3d & 31) + 1;
     int voice_active = pcm.voice_mask & pcm.voice_mask_pending;
     while (pcm.cycles < cycles)
     {
@@ -318,7 +318,7 @@ void PCM_Update(uint64_t cycles)
         pcm.ram1[31][1] = 0;
         pcm.ram1[31][3] = 0;
 
-        for (int slot = 0; slot < slots; slot++)
+        for (int slot = 0; slot < reg_slots; slot++)
         {
             uint32_t *ram1 = pcm.ram1[slot];
             uint16_t *ram2 = pcm.ram2[slot];
@@ -1120,6 +1120,6 @@ void PCM_Update(uint64_t cycles)
 
         pcm.nfs = 1;
 
-        pcm.cycles += (slots + 1) * 25;
+        pcm.cycles += (reg_slots + 1) * 25;
     }
 }
