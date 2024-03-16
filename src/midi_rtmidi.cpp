@@ -5,14 +5,18 @@
 #include <RtMidi.h>
 
 static RtMidiIn *s_midi_in = nullptr;
-static char midi_in_buffer[1024];
 
-static void MidiOnReceive(double timeStamp, std::vector<uint8_t> *message, void *userData)
+
+static void MidiOnReceive(double, std::vector<uint8_t> *message, void *)
 {
+    uint8_t *beg = message->data();
+    uint8_t *end = message->data() + message->size();
 
+    while(beg < end)
+        SM_PostUART(*beg++);
 }
 
-static void MidiOnError(RtMidiError::Type type, const std::string &errorText, void *userData)
+static void MidiOnError(RtMidiError::Type, const std::string &errorText, void *)
 {
     fprintf(stderr, "RtMidi: Error has occured: %s\n", errorText.c_str());
     fflush(stderr);
