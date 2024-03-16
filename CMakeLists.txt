@@ -149,8 +149,8 @@ endfunction()
 
 find_package(SDL2 REQUIRED)
 
-if(PKG_CONFIG_FOUND)
-    pkg_check_modules(RTMIDI rtmidi)
+if(PKG_CONFIG_FOUND AND NOT WIN32)
+    pkg_check_modules(SYSTEM_RTMIDI rtmidi REQUIRED)
 endif()
 
 set(SC55_SRC
@@ -174,9 +174,9 @@ add_executable(virtual_sc55 ${SC55_SRC})
 set_nopie(virtual_sc55)
 
 if(RTMIDI_FOUND)
-    target_compile_options(virtual_sc55 PUBLIC ${RTMIDI_CFLAGS})
-    target_include_directories(virtual_sc55 PUBLIC ${RTMIDI_INCLUDE_DIRS})
-    target_link_libraries(virtual_sc55 PUBLIC ${RTMIDI_LDFLAGS})
+    target_compile_options(virtual_sc55 PRIVATE ${SYSTEM_RTMIDI_CFLAGS})
+    target_include_directories(virtual_sc55 PRIVATE ${SYSTEM_RTMIDI_INCLUDE_DIRS})
+    target_link_libraries(virtual_sc55 PRIVATE ${SYSTEM_RTMIDI_LIBRARIES})
 endif()
 
 if(TARGET SDL2::SDL2)

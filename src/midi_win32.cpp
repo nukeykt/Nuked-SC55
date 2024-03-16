@@ -6,10 +6,10 @@
 #include "submcu.h"
 #include "midi.h"
 
-HMIDIIN midi_handle;
-MIDIHDR midi_buffer;
+static HMIDIIN midi_handle;
+static MIDIHDR midi_buffer;
 
-char midi_in_buffer[1024];
+    static char midi_in_buffer[1024];
 
 void CALLBACK MIDI_Callback(
     HMIDIIN   hMidiIn,
@@ -101,4 +101,13 @@ int MIDI_Init(void)
     auto r3 = midiInStart(midi_handle);
 
     return 1;
+}
+
+void MIDI_Quit()
+{
+    if (!midi_handle)
+    {
+        midiInClose(midi_handle);
+        midi_handle = 0;
+    }
 }

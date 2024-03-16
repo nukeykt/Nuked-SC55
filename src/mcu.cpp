@@ -10,22 +10,22 @@
 #include "submcu.h"
 #include "midi.h"
 
-const int ROM1_SIZE = 0x8000;
-const int ROM2_SIZE = 0x80000;
-const int RAM_SIZE = 0x400;
-const int SRAM_SIZE = 0x8000;
-const int ROMSM_SIZE = 0x1000;
+static const int ROM1_SIZE = 0x8000;
+static const int ROM2_SIZE = 0x80000;
+static const int RAM_SIZE = 0x400;
+static const int SRAM_SIZE = 0x8000;
+static const int ROMSM_SIZE = 0x1000;
 
 
 static const int audio_buffer_size = 8192;
 static const int audio_page_size = 256;
 
-short sample_buffer[audio_buffer_size];
+static short sample_buffer[audio_buffer_size];
 
-int sample_read_ptr;
-int sample_write_ptr;
+static int sample_read_ptr;
+static int sample_write_ptr;
 
-SDL_AudioDeviceID sdl_audio;
+static SDL_AudioDeviceID sdl_audio;
 
 void MCU_ErrorTrap(void)
 {
@@ -33,17 +33,17 @@ void MCU_ErrorTrap(void)
 }
 
 
-int ga_int[8];
-int ga_int_enable;
-int ga_int_trigger;
+static int ga_int[8];
+static int ga_int_enable;
+static int ga_int_trigger;
 
 
 uint8_t dev_register[0x80];
 
-uint16_t ad_val[4];
-uint8_t ad_nibble;
-uint8_t sw_pos = 0;
-uint8_t io_sd;
+static uint16_t ad_val[4];
+static uint8_t ad_nibble;
+static uint8_t sw_pos = 0;
+static uint8_t io_sd;
 
 uint8_t RCU_Read(void)
 {
@@ -741,6 +741,8 @@ int main(int argc, char *args[])
     SM_Reset();
     PCM_Reset();
     MCU_Update(100000000);
+
+    MIDI_Quit();
 
     fclose(r1);
     fclose(r2);
