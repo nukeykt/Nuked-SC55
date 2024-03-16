@@ -690,13 +690,41 @@ void unscramble(uint8_t *src, uint8_t *dst, int len)
     }
 }
 
-void audio_callback(void* userdata, Uint8* stream, int len)
+void audio_callback(void* /*userdata*/, Uint8* stream, int len)
 {
     len /= 2;
     memcpy(stream, &sample_buffer[sample_read_ptr], len * 2);
     memset(&sample_buffer[sample_read_ptr], 0, len * 2);
     sample_read_ptr += len;
     sample_read_ptr %= audio_buffer_size;
+}
+
+static const char* audio_format_to_str(int format)
+{
+    switch(format)
+    {
+    case AUDIO_S8:
+        return "S8";
+    case AUDIO_U8:
+        return "U8";
+    case AUDIO_S16MSB:
+        return "S16MSB";
+    case AUDIO_S16LSB:
+        return "S16LSB";
+    case AUDIO_U16MSB:
+        return "U16MSB";
+    case AUDIO_U16LSB:
+        return "U16LSB";
+    case AUDIO_S32MSB:
+        return "S32MSB";
+    case AUDIO_S32LSB:
+        return "S32LSB";
+    case AUDIO_F32MSB:
+        return "F32MSB";
+    case AUDIO_F32LSB:
+        return "F32LSB";
+    }
+    return "UNK";
 }
 
 int MCU_OpenAudio(void)
@@ -715,6 +743,19 @@ int MCU_OpenAudio(void)
     {
         return 0;
     }
+
+    printf("Audio Requested: F=%s, C=%d, R=%d, B=%d\n",
+           audio_format_to_str(spec.format),
+           spec.channels,
+           spec.freq,
+           spec.samples);
+
+    printf("Audio Actual: F=%s, C=%d, R=%d, B=%d\n",
+           audio_format_to_str(spec_actual.format),
+           spec_actual.channels,
+           spec_actual.freq,
+           spec_actual.samples);
+    fflush(stdout);
 
     sample_read_ptr = 0;
     sample_write_ptr = 0;
