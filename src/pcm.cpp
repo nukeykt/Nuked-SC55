@@ -314,6 +314,10 @@ void PCM_Update(uint64_t cycles)
             pcm.tv_counter &= 0x3fff;
         }
 
+        // accummulator
+        pcm.ram1[31][1] = 0;
+        pcm.ram1[31][3] = 0;
+
         for (int slot = 0; slot < slots; slot++)
         {
             uint32_t *ram1 = pcm.ram1[slot];
@@ -690,6 +694,7 @@ void PCM_Update(uint64_t cycles)
             }
 #endif
 
+#if 0
             //int ss1 = (int)(ram1[5] << 12) >> 8;
             //int ss1 = (int)(test << 12) >> 8;
             int ss1 = (int)(((ram2[6] & 2) == 0 ? ram1[3] : v3) << 12) >> 8;
@@ -707,12 +712,12 @@ void PCM_Update(uint64_t cycles)
                 tt[0] += (ss * l)>> 4;
                 tt[1] += (ss * r) >> 4;
             }
+#endif
 
-            // update active flag
-            ram2[7] &= ~0x20;
-            ram2[7] |= key << 5;
+            int volmul1 = 0;
+            int volmul2 = 0;
 #if 1
-            for (int e = 2; e >= 0; e--)
+            for (int e = 0; e < 3; e++)
             {
                 int adjust = ram2[3+e];
                 int levelcur = ram2[9+e] & 0x7fff;
@@ -820,6 +825,7 @@ void PCM_Update(uint64_t cycles)
                     int sum1 = (target << 11); // 5
                     if (e != 2 || active)
                         sum1 -= (levelcur << 4); // 6
+                    int neg = (sum1 & 0x80000) != 0;
 
                     int preshift = sum1;
 
@@ -829,6 +835,15 @@ void PCM_Update(uint64_t cycles)
                     int sum2 = (target << 11) + addlow + shifted;
                     if (write)
                         ram2[9 + e] = (sum2 >> 4) & 0x7fff;
+
+                    if (e == 0)
+                    {
+                        volmul1 = (sum2 >> 4) & 0x7ffe;
+                    }
+                    else if (e == 1)
+                    {
+                        volmul2 = (sum2 >> 4) & 0x7ffe;
+                    }
                 }
                 else
                 {
@@ -870,19 +885,27 @@ void PCM_Update(uint64_t cycles)
                     int sum3 = (target << 11) - (sum2_l << 4);
 
                     int neg2 = (sum3 & 0x80000) != 0;
+                    int xnor = !(neg2 ^ neg);
 
                     if (write)
                     {
-                        int xnor = !(neg2 ^ neg);
                         if (xnor)
                             ram2[9 + e] = sum2_l & 0x7fff;
                         else
                             ram2[9 + e] = target << 7;
-                        int diff = ram2[9 + e] - levelcur;
-                        //if (diff > 1000)
-                        //    printf("s%i %i->%i\n", speed, levelcur, ram2[9 + e]);
                     }
 
+                    if (e == 0)
+                    {
+                        volmul1 = sum2_l & 0x7ffe;
+                    }
+                    else if (e == 1)
+                    {
+                        if (xnor)
+                            volmul2 = sum2_l & 0x7ffe;
+                        else
+                            volmul2 = target << 7;
+                    }
                 }
                 //if (e == 1 && levelcur)
                 //    printf("slot%i s%i t%i %i->%i\n", slot, speed, target << 7, levelcur, ram2[9 + e]);
@@ -1033,6 +1056,36 @@ void PCM_Update(uint64_t cycles)
                     ram2[9 + e]--;
             }
 #endif
+            int sample = (ram2[6] & 2) == 0 ? ram1[3] : v3;
+
+            int multiv1 = multi(sample, volmul1 >> 8);
+            int multiv2 = multi(sample, (volmul1 >> 1) & 127);
+
+            int sample2 = addclip20(multiv1 >> 6, multiv2 >> 13, ((multiv2 >> 12) | (multiv1 >> 5)) & 1);
+
+            int multiv3 = multi(sample2, volmul2 >> 8);
+            int multiv4 = multi(sample2, (volmul2 >> 1) & 127);
+
+            int sample3 = addclip20(multiv3 >> 6, multiv4 >> 13, ((multiv4 >> 12) | (multiv3 >> 5)) & 1);
+
+            int pan = active ? ram2[1] : 0;
+            int rc = active ? ram2[2] : 0;
+
+            int sampl = multi(sample3, (pan >> 8) & 255);
+            int sampr = multi(sample3, (pan >> 0) & 255);
+
+            int rc1 = multi(sample3, (rc >> 8) & 255);
+            int rc2 = multi(sample3, (rc >> 0) & 255);
+
+            rc1 = addclip20(rc1 >> 6, rc1 >> 6, (rc1 >> 5) & 1);
+            rc2 = addclip20(rc2 >> 6, rc2 >> 6, (rc2 >> 5) & 1);
+
+            pcm.ram1[31][1] = addclip20(pcm.ram1[31][1], sampl >> 6, (sampl >> 5) & 1);
+            pcm.ram1[31][3] = addclip20(pcm.ram1[31][3], sampr >> 6, (sampr >> 5) & 1);
+
+            // update key
+            ram2[7] &= ~0x20;
+            ram2[7] |= key << 5;
 
             if (!active)
             {
@@ -1048,6 +1101,20 @@ void PCM_Update(uint64_t cycles)
                 ram2[10] = 0;
             }
         }
+
+        tt[0] = (int)(pcm.ram1[31][1] << 12) >> 16;
+        tt[1] = (int)(pcm.ram1[31][3] << 12) >> 16;
+
+        tt[0] <<= 2;
+        if (tt[0] > INT16_MAX)
+            tt[0] = INT16_MAX;
+        else if (tt[0] < INT16_MIN)
+            tt[0] = INT16_MIN;
+        tt[1] <<= 2;
+        if (tt[1] > INT16_MAX)
+            tt[1] = INT16_MAX;
+        else if (tt[1] < INT16_MIN)
+            tt[1] = INT16_MIN;
 
         MCU_PostSample(tt);
 
