@@ -534,12 +534,26 @@ void MCU_Reset(void)
 
 void MCU_Update(int32_t cycles)
 {
-    while (mcu.cycles < cycles || 1)
+    SDL_Event event = {};
+    bool working = true;
+
+    while (working)
     {
         while (sample_read_ptr == sample_write_ptr)
-        {
             SDL_Delay(1);
+
+        while(SDL_PollEvent(&event))
+        {
+            switch(event.type)
+            {
+            case SDL_QUIT:
+                working = false;
+                break;
+            default:
+                break;
+            }
         }
+
         if (!mcu.ex_ignore)
             MCU_Interrupt_Handle();
         else
