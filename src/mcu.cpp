@@ -742,8 +742,8 @@ int main(int argc, char *args[])
     (void)argc;
     std::string basePath = Files::dirname(args[0]);
 
-    if(dirExists(basePath + "/../share/virtual_sc55"))
-        basePath += "/../share/virtual_sc55";
+    if(dirExists(basePath + "/../share/nuked-sc55"))
+        basePath += "/../share/nuked-sc55";
 
     std::string rpaths[5] =
     {
@@ -814,11 +814,13 @@ int main(int argc, char *args[])
 
     unscramble(tempbuf, waverom2, 0x100000);
 
+    // Close all files as they no longer needed being open
+    closeAllR();
+
     if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0)
     {
         fprintf(stderr, "FATAL ERROR: Failed to initialize the SDL2: %s.\n", SDL_GetError());
         fflush(stderr);
-        closeAllR();
         return 2;
     }
 
@@ -826,7 +828,6 @@ int main(int argc, char *args[])
     {
         fprintf(stderr, "FATAL ERROR: Failed to open the audio stream.\n");
         fflush(stderr);
-        closeAllR();
         return 2;
     }
 
@@ -834,7 +835,6 @@ int main(int argc, char *args[])
     {
         fprintf(stderr, "FATAL ERROR: Failed to initialize the MIDI Input.\n");
         fflush(stderr);
-        closeAllR();
         return 3;
     }
 
@@ -847,8 +847,7 @@ int main(int argc, char *args[])
     MCU_Run();
 
     MIDI_Quit();
-
-    closeAllR();
     SDL_Quit();
+
     return 0;
 }

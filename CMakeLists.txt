@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.2...3.5)
-project (virtual_sc55 VERSION 1.0.0 LANGUAGES CXX)
+project (NukedSC55 VERSION 1.0.0 LANGUAGES CXX)
 
 include(FindPkgConfig)
 include(GNUInstallDirs)
@@ -136,7 +136,7 @@ if(NOT WIN32 AND NOT NINTENDO_SWITCH AND (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPI
     check_cxx_compiler_flag("-no-pie" HAS_NO_PIE)
 endif()
 
-function(virtual_sc55_set_nopie _target)
+function(nuked-sc55_set_nopie _target)
     set_target_properties(${_target} PROPERTIES
         POSITION_INDEPENDENT_CODE False
     )
@@ -145,7 +145,7 @@ function(virtual_sc55_set_nopie _target)
     endif()
 endfunction()
 
-function(virtual_sc55_find_SDL2)
+function(nuked-sc55_find_SDL2)
     if(NOT TARGET ADLMIDI_SDL2)
         find_package(SDL2 REQUIRED)
         add_library(ADLMIDI_SDL2 INTERFACE)
@@ -198,24 +198,24 @@ elseif(WIN32)
     list(APPEND SC55_SRC src/midi_win32.cpp)
 endif()
 
-add_executable(virtual_sc55 ${SC55_SRC} ${UTF8MAIN_SRCS})
-set_nopie(virtual_sc55)
+add_executable(nuked-sc55 ${SC55_SRC} ${UTF8MAIN_SRCS})
+set_nopie(nuked-sc55)
 
 if(TARGET SDL2::SDL2)
-    target_link_libraries(virtual_sc55 PRIVATE SDL2::SDL2)
+    target_link_libraries(nuked-sc55 PRIVATE SDL2::SDL2)
 else()
     string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES)
-    target_include_directories(virtual_sc55 PRIVATE ${SDL2_INCLUDE_DIRS})
-    target_link_libraries(virtual_sc55 PRIVATE ${SDL2_LIBRARIES})
+    target_include_directories(nuked-sc55 PRIVATE ${SDL2_INCLUDE_DIRS})
+    target_link_libraries(nuked-sc55 PRIVATE ${SDL2_LIBRARIES})
 endif()
 
 if(USE_RTMIDI)
     if(USE_SYSTEM_RTMIDI)
-        target_compile_options(virtual_sc55 PRIVATE ${SYSTEM_RTMIDI_CFLAGS})
-        target_include_directories(virtual_sc55 PRIVATE ${SYSTEM_RTMIDI_INCLUDE_DIRS})
-        target_link_libraries(virtual_sc55 PRIVATE ${SYSTEM_RTMIDI_LIBRARIES})
+        target_compile_options(nuked-sc55 PRIVATE ${SYSTEM_RTMIDI_CFLAGS})
+        target_include_directories(nuked-sc55 PRIVATE ${SYSTEM_RTMIDI_INCLUDE_DIRS})
+        target_link_libraries(nuked-sc55 PRIVATE ${SYSTEM_RTMIDI_LIBRARIES})
     else()
-        target_link_libraries(virtual_sc55 PRIVATE RtMidi)
+        target_link_libraries(nuked-sc55 PRIVATE RtMidi)
     endif()
 endif()
 
@@ -241,11 +241,11 @@ copy_rom_target(rom_sm rom_sm.bin)
 copy_rom_target(waverom1 waverom1.bin)
 copy_rom_target(waverom2 waverom2.bin)
 
-install(TARGETS virtual_sc55
-        EXPORT virtual_sc55StaticTargets
+install(TARGETS nuked-sc55
+        EXPORT NukedSC55StaticTargets
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}")
 
 install(FILES ${SC55_INSTALL_FILES}
-        DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/virtual_sc55")
+        DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/nuked-sc55")
