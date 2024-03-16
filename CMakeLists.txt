@@ -6,7 +6,7 @@ include(GNUInstallDirs)
 include(CheckCXXCompilerFlag)
 
 # Prefer C++98 standard
-set(CMAKE_CXX_STANDARD 98)
+set(CMAKE_CXX_STANDARD 11)
 
 #===========================================================================================
 # Strip garbage
