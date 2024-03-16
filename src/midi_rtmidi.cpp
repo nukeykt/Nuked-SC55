@@ -26,8 +26,8 @@ int MIDI_Init(void)
         return 0; // Already running
     }
 
-    s_midi_in = new RtMidiIn(RtMidi::LINUX_ALSA, "Virtual SC55", 1024);
-    // s_midi_in->setCallback(&MidiOnReceive, nullptr); // FIXME: (local bug) Fix the linking error
+    s_midi_in = new RtMidiIn(RtMidi::UNSPECIFIED, "Virtual SC55", 1024);
+    s_midi_in->setCallback(&MidiOnReceive, nullptr); // FIXME: (local bug) Fix the linking error
     s_midi_in->setErrorCallback(&MidiOnError, nullptr);
 
     unsigned count = s_midi_in->getPortCount();

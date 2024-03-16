@@ -1,0 +1,3 @@
+[submodule "3rdparty/rtmidi"]
+	path = 3rdparty/rtmidi
+	url = https://github.com/Wohlstand/rtmidi.git

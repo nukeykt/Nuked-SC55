@@ -5,7 +5,9 @@ include(FindPkgConfig)
 include(GNUInstallDirs)
 include(CheckCXXCompilerFlag)
 
-# Prefer C++98 standard
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+# Prefer C++11 standard
 set(CMAKE_CXX_STANDARD 11)
 
 #===========================================================================================
@@ -147,11 +149,22 @@ function(virtual_sc55_find_SDL2)
     endif()
 endfunction()
 
+
+if(NOT WIN32 AND PKG_CONFIG_FOUND)
+    set(USE_RTMIDI TRUE)
+    option(USE_SYSTEM_RTMIDI "Use system libraries for RtMidi" OFF)
+endif()
+
 find_package(SDL2 REQUIRED)
 
-if(PKG_CONFIG_FOUND AND NOT WIN32)
-    pkg_check_modules(SYSTEM_RTMIDI rtmidi REQUIRED)
+if(USE_RTMIDI)
+    if(USE_SYSTEM_RTMIDI)
+        pkg_check_modules(SYSTEM_RTMIDI rtmidi REQUIRED)
+    else()
+        include(RtMidi)
+    endif()
 endif()
+
 
 set(SC55_SRC
     src/mcu.cpp src/mcu.h # main() is here!
@@ -164,7 +177,7 @@ set(SC55_SRC
     src/submcu.cpp src/submcu.h
 )
 
-if(RTMIDI_FOUND)
+if(USE_RTMIDI)
     list(APPEND SC55_SRC src/midi_rtmidi.cpp)
 elseif(WIN32)
     list(APPEND SC55_SRC src/midi_win32.cpp)
@@ -173,18 +186,22 @@ endif()
 add_executable(virtual_sc55 ${SC55_SRC})
 set_nopie(virtual_sc55)
 
-if(RTMIDI_FOUND)
-    target_compile_options(virtual_sc55 PRIVATE ${SYSTEM_RTMIDI_CFLAGS})
-    target_include_directories(virtual_sc55 PRIVATE ${SYSTEM_RTMIDI_INCLUDE_DIRS})
-    target_link_libraries(virtual_sc55 PRIVATE ${SYSTEM_RTMIDI_LIBRARIES})
-endif()
-
 if(TARGET SDL2::SDL2)
     target_link_libraries(virtual_sc55 PRIVATE SDL2::SDL2)
 else()
     string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES)
     target_include_directories(virtual_sc55 PRIVATE ${SDL2_INCLUDE_DIRS})
     target_link_libraries(virtual_sc55 PRIVATE ${SDL2_LIBRARIES})
+endif()
+
+if(USE_RTMIDI)
+    if(USE_SYSTEM_RTMIDI)
+        target_compile_options(virtual_sc55 PRIVATE ${SYSTEM_RTMIDI_CFLAGS})
+        target_include_directories(virtual_sc55 PRIVATE ${SYSTEM_RTMIDI_INCLUDE_DIRS})
+        target_link_libraries(virtual_sc55 PRIVATE ${SYSTEM_RTMIDI_LIBRARIES})
+    else()
+        target_link_libraries(virtual_sc55 PRIVATE RtMidi)
+    endif()
 endif()
 
 # Copy ROM files into runtime directory
