@@ -4,6 +4,7 @@ project (NukedSC55 VERSION 1.0.0 LANGUAGES CXX)
 include(FindPkgConfig)
 include(GNUInstallDirs)
 include(CheckCXXCompilerFlag)
+include(CheckFunctionExists)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -160,6 +161,13 @@ function(nuked-sc55_find_SDL2)
 endfunction()
 
 #===========================================================================================
+
+if(NOT WIN32)
+    check_function_exists(fstatat FILES_HAS_REALPATH)
+    if(FILES_HAS_REALPATH)
+        add_definitions(-DFILES_HAS_REALPATH)
+    endif()
+endif()
 
 include(3rdparty/Utf8Main/utf8main.cmake)
 

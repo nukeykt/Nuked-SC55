@@ -48,6 +48,7 @@ static std::wstring Str2WStr(const std::string &path)
 #include <sys/stat.h>      // fstat
 #include <sys/types.h>     // fstat
 #include <cstdio>          // BUFSIZ
+#include <dirent.h>        // opendir
 #endif
 
 #if defined(__CYGWIN__) || defined(__DJGPP__) || defined(__MINGW32__)
@@ -206,6 +207,27 @@ bool Files::fileExists(const std::string &path)
 #endif
 }
 
+bool Files::dirExists(const std::string& dirPath)
+{
+#if _WIN32
+    DWORD ftyp = GetFileAttributesW(Str2WStr(dirPath).c_str());
+    if(ftyp == INVALID_FILE_ATTRIBUTES)
+        return false;   //something is wrong with your path!
+    if(ftyp & FILE_ATTRIBUTE_DIRECTORY)
+        return true;    // this is a directory!
+    return false;       // this is not a directory!
+#else
+    DIR *dir = opendir(dirPath.c_str());
+    if(dir)
+    {
+        closedir(dir);
+        return true;
+    }
+    else
+        return false;
+#endif
+}
+
 bool Files::deleteFile(const std::string &path)
 {
 #ifdef _WIN32
@@ -279,6 +301,46 @@ std::string Files::dirname(std::string path)
     path = d;
     free(p);
     return path;
+}
+
+#if _WIN32
+template<class CHAR>
+static inline void delEnd(std::basic_string<CHAR> &dirPath, CHAR ch)
+{
+    if(!dirPath.empty())
+    {
+        CHAR last = dirPath[dirPath.size() - 1];
+        if(last == ch)
+            dirPath.resize(dirPath.size() - 1);
+    }
+}
+#endif
+
+std::string Files::real_dirname(std::string path)
+{
+#if _WIN32
+    std::wstring pathw = Str2WStr(path);
+    wchar_t fullPath[MAX_PATH];
+    GetFullPathNameW(pathw.c_str(), MAX_PATH, fullPath, NULL);
+    pathw = fullPath;
+    //Force UNIX paths
+    std::replace(pathw.begin(), pathw.end(), L'\\', L'/');
+    path = WStr2Str(pathw);
+    delEnd(path, '/');
+#else
+#   ifdef FILES_HAS_REALPATH
+    char rp[PATH_MAX];
+    memset(rp, 0, PATH_MAX);
+    char* realPath = realpath(path.c_str(), rp);
+    (void)realPath;
+
+    if(strlen(rp) > 0)
+        path = rp;
+    // If failed, keep as-is
+#   endif
+#endif
+
+    return Files::dirname(path);
 }
 
 std::string Files::basename(std::string path)

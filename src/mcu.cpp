@@ -12,10 +12,9 @@
 #include "utf8main.h"
 #include "utils/files.h"
 
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <dirent.h>
+#if __linux__
+#include <unistd.h>
+#include <limits.h>
 #endif
 
 
@@ -736,27 +735,6 @@ void MCU_GA_SetGAInt(int line, int value)
     MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ1, ga_int_trigger != 0);
 }
 
-static bool dirExists(const std::string &dirPath)
-{
-#if _WIN32
-    DWORD ftyp = GetFileAttributesW(Str2WStr(dirPath).c_str());
-    if(ftyp == INVALID_FILE_ATTRIBUTES)
-        return false;   //something is wrong with your path!
-    if(ftyp & FILE_ATTRIBUTE_DIRECTORY)
-        return true;    // this is a directory!
-    return false;       // this is not a directory!
-#else
-    DIR *dir = opendir(dirPath.c_str());
-    if(dir)
-    {
-        closedir(dir);
-        return true;
-    }
-    else
-        return false;
-#endif
-}
-
 
 static const size_t rf_num = 5;
 static FILE *s_rf[rf_num] =
@@ -778,12 +756,26 @@ static void closeAllR()
     }
 }
 
-int main(int argc, char *args[])
+int main(int argc, char **argv)
 {
     (void)argc;
-    std::string basePath = Files::dirname(args[0]);
+    std::string basePath;
 
-    if(dirExists(basePath + "/../share/nuked-sc55"))
+#if __linux__
+    char self_path[PATH_MAX];
+    memset(&self_path[0], 0, PATH_MAX);
+
+    if(readlink("/proc/self/exe", self_path, PATH_MAX) == -1)
+        basePath = Files::real_dirname(argv[0]);
+    else
+        basePath = Files::dirname(self_path);
+#else
+    basePath = Files::real_dirname(argv[0]);
+#endif
+
+    printf("Base path is: %s\n", argv[0]);
+
+    if(Files::dirExists(basePath + "/../share/nuked-sc55"))
         basePath += "/../share/nuked-sc55";
 
     std::string rpaths[5] =
@@ -796,16 +788,24 @@ int main(int argc, char *args[])
     };
 
     bool r_ok = true;
+    std::string errors_list;
 
     for(size_t i = 0; i < 5; ++i)
     {
         s_rf[i] = Files::utf8_fopen(rpaths[i].c_str(), "rb");
         r_ok &= (s_rf[i] != nullptr);
+        if(!s_rf[i])
+        {
+            if(!errors_list.empty())
+                errors_list.append(", ");
+
+            errors_list.append(rpaths[i]);
+        }
     }
 
     if (!r_ok)
     {
-        fprintf(stderr, "FATAL ERROR: One of required data ROM files is missing.\n");
+        fprintf(stderr, "FATAL ERROR: One of required data ROM files is missing: %s.\n", errors_list.c_str());
         fflush(stderr);
         closeAllR();
         return 1;

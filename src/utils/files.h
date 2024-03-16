@@ -41,6 +41,7 @@ namespace Files
 
     int skipBom(FILE *file, const char **charset = nullptr);
     bool fileExists(const std::string &path);
+    bool dirExists(const std::string &dirPath);
     bool deleteFile(const std::string &path);
     bool copyFile(const std::string &to, const std::string &from, bool override = false);
     bool moveFile(const std::string &to, const std::string &from, bool override = false);
@@ -48,6 +49,7 @@ namespace Files
     std::string basename(std::string path);
     std::string basenameNoSuffix(std::string path);
     std::string dirname(std::string path);
+    std::string real_dirname(std::string path);
     std::string changeSuffix(std::string path, const std::string& suffix);
     bool hasSuffix(const std::string &path, const std::string &suffix);
     //Appends "m" into basename of the file name before last dot
