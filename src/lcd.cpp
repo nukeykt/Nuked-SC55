@@ -2,10 +2,13 @@
 #include <stdio.h>
 #include <string.h>
 #include "SDL.h"
+#include "SDL_mutex.h"
 #include "lcd.h"
 #include "lcd_font.h"
 #include "mcu.h"
 #include "submcu.h"
+#include "utils/files.h"
+
 
 static uint32_t LCD_DL, LCD_N, LCD_F, LCD_D, LCD_C, LCD_B, LCD_ID, LCD_S;
 static uint32_t LCD_DD_RAM, LCD_AC, LCD_CG_RAM;
@@ -125,18 +128,22 @@ void LCD_Write(uint32_t address, uint8_t data)
     //    printf("\n");
 }
 
-const int lcd_width = 741;
-const int lcd_height = 268;
-SDL_Window *window;
-SDL_Renderer *renderer;
-SDL_Texture *texture;
+static const int lcd_width = 741;
+static const int lcd_height = 268;
+static SDL_Window *window;
+static SDL_Renderer *renderer;
+static SDL_Texture *texture;
+static SDL_mutex *m_lcd_mutex = nullptr;
 
-uint32_t lcd_buffer[lcd_height][lcd_width];
-uint32_t lcd_background[lcd_height][lcd_width];
+static std::string m_back_path = "back.data";
 
-uint32_t lcd_init;
+static uint32_t lcd_buffer[lcd_height][lcd_width];
+static uint32_t lcd_background[lcd_height][lcd_width];
 
-int button_map[][2] = {
+static uint32_t lcd_init = 0;
+
+const int button_map[][2] =
+{
     SDL_SCANCODE_Q, MCU_BUTTON_POWER,
     SDL_SCANCODE_W, MCU_BUTTON_INST_ALL,
     SDL_SCANCODE_E, MCU_BUTTON_INST_MUTE,
@@ -159,9 +166,17 @@ int button_map[][2] = {
 };
 
 
+void LCD_SetBackPath(const std::string &path)
+{
+    m_back_path = path;
+}
+
 void LCD_Init(void)
 {
     FILE *raw;
+
+    if(lcd_init)
+        return;
 
     lcd_quit_requested = false;
 
@@ -178,14 +193,25 @@ void LCD_Init(void)
     if (!texture)
         return;
 
-    raw = fopen("back.data", "rb");
+    raw = Files::utf8_fopen(m_back_path.c_str(), "rb");
     if (!raw)
         return;
 
     fread(lcd_background, 1, sizeof(lcd_background), raw);
     fclose(raw);
 
+    m_lcd_mutex = SDL_CreateMutex();
+
     lcd_init = 1;
+}
+
+void LCD_UnInit(void)
+{
+    if(!lcd_init)
+        return;
+
+    SDL_DestroyMutex(m_lcd_mutex);
+    m_lcd_mutex = nullptr;
 }
 
 uint32_t lcd_col1 = 0x000000;
@@ -257,10 +283,12 @@ void LCD_FontRenderLevel(int32_t x, int32_t y, uint8_t ch, uint8_t width = 5)
     }
 }
 
-void LCD_Update(void)
+void LCD_Sync(void)
 {
     if (!lcd_init)
         return;
+
+    SDL_LockMutex(m_lcd_mutex);
 
     if (!lcd_enable)
     {
@@ -335,11 +363,16 @@ void LCD_Update(void)
         }
     }
 
+    SDL_UnlockMutex(m_lcd_mutex);
+}
+
+void LCD_Update(void)
+{
+    SDL_LockMutex(m_lcd_mutex);
     SDL_UpdateTexture(texture, NULL, lcd_buffer, lcd_width * 4);
-
     SDL_RenderCopy(renderer, texture, NULL, NULL);
-
     SDL_RenderPresent(renderer);
+    SDL_UnlockMutex(m_lcd_mutex);
 
     SDL_Event sdl_event;
     while (SDL_PollEvent(&sdl_event))
@@ -355,16 +388,22 @@ void LCD_Update(void)
             {
                 if (sdl_event.key.repeat)
                     continue;
+
                 int mask = 0;
+                uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
+
                 for (size_t i = 0; i < sizeof(button_map) / sizeof(button_map[0]); i++)
                 {
                     if (button_map[i][0] == sdl_event.key.keysym.scancode)
-                        mask |= 1<<button_map[i][1];
+                        mask |= (1 << button_map[i][1]);
                 }
+
                 if (sdl_event.type == SDL_KEYDOWN)
-                    mcu_button_pressed |= mask;
+                    button_pressed |= mask;
                 else
-                    mcu_button_pressed &= ~mask;
+                    button_pressed &= ~mask;
+
+                SDL_AtomicSet(&mcu_button_pressed, (int)button_pressed);
 
                 if (sdl_event.key.keysym.scancode >= SDL_SCANCODE_1 && sdl_event.key.keysym.scancode < SDL_SCANCODE_0)
                 {
@@ -463,5 +502,7 @@ void LCD_Update(void)
             }
         }
     }
+
+    SDL_UnlockAudio();
 }
 

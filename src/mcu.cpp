@@ -43,16 +43,16 @@ void MCU_ErrorTrap(void)
 
 
 static int ga_int[8];
-static int ga_int_enable;
-static int ga_int_trigger;
+static int ga_int_enable = 0;
+static int ga_int_trigger = 0;
 
 
 uint8_t dev_register[0x80];
 
 static uint16_t ad_val[4];
-static uint8_t ad_nibble;
+static uint8_t ad_nibble = 0x00;
 static uint8_t sw_pos = 0;
-static uint8_t io_sd;
+static uint8_t io_sd = 0x00;
 
 uint8_t RCU_Read(void)
 {
@@ -547,16 +547,21 @@ static void MCU_Run()
 
     while (working)
     {
+#if 0
         while (sample_read_ptr == sample_write_ptr)
             SDL_Delay(1);
-
+#endif
         if(LCD_QuitRequested())
             working = false;
 
+        LCD_Update();
+        SDL_Delay(15);
+#if 0
         if (!mcu.ex_ignore)
             MCU_Interrupt_Handle();
         else
             mcu.ex_ignore = 0;
+
         if (!mcu.sleep)
             MCU_ReadInstruction();
 
@@ -575,6 +580,7 @@ static void MCU_Run()
         SM_Update(mcu.cycles);
 
         MCU_UpdateAnalog(mcu.cycles);
+#endif
     }
 }
 
@@ -585,9 +591,10 @@ void MCU_PatchROM(void)
     //rom1[0x622d] = 0x19;
 }
 
-uint32_t mcu_button_pressed;
+SDL_atomic_t mcu_button_pressed = {0};
 
-uint8_t mcu_p0_data;
+uint8_t mcu_p0_data = 0x00;
+uint8_t mcu_p1_data = 0x00;
 
 uint8_t MCU_ReadP0(void)
 {
@@ -597,12 +604,15 @@ uint8_t MCU_ReadP0(void)
 uint8_t MCU_ReadP1(void)
 {
     uint8_t data = 0xff;
+    uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
+
     if ((mcu_p0_data & 1) == 0)
-        data &= 0x80 | (((mcu_button_pressed >> 0) & 127) ^ 127);
+        data &= 0x80 | (((button_pressed >> 0) & 127) ^ 127);
     if ((mcu_p0_data & 2) == 0)
-        data &= 0x80 | (((mcu_button_pressed >> 7) & 127) ^ 127);
+        data &= 0x80 | (((button_pressed >> 7) & 127) ^ 127);
     if ((mcu_p0_data & 4) == 0)
-        data &= 0x80 | (((mcu_button_pressed >> 14) & 127) ^ 127);
+        data &= 0x80 | (((button_pressed >> 14) & 127) ^ 127);
+
     return data;
 }
 
@@ -613,6 +623,7 @@ void MCU_WriteP0(uint8_t data)
 
 void MCU_WriteP1(uint8_t data)
 {
+    mcu_p1_data = data;
 }
 
 uint8_t tempbuf[0x200000];
@@ -646,6 +657,33 @@ void unscramble(uint8_t *src, uint8_t *dst, int len)
 
 void audio_callback(void* userdata, Uint8* stream, int len)
 {
+    while(sample_read_ptr != sample_write_ptr)
+    {
+        if (!mcu.ex_ignore)
+            MCU_Interrupt_Handle();
+        else
+            mcu.ex_ignore = 0;
+
+        if (!mcu.sleep)
+            MCU_ReadInstruction();
+
+        mcu.cycles += 12; // FIXME: assume 12 cycles per instruction
+
+        if (mcu.cycles % 1200000 == 0)
+            LCD_Sync();
+
+        // if (mcu.cycles % 24000000 == 0)
+        //     printf("seconds: %i\n", (int)(mcu.cycles / 24000000));
+
+        PCM_Update(mcu.cycles);
+
+        TIMER_Clock(mcu.cycles);
+
+        SM_Update(mcu.cycles);
+
+        MCU_UpdateAnalog(mcu.cycles);
+    }
+
     len /= 2;
     memcpy(stream, &sample_buffer[sample_read_ptr], len * 2);
     memset(&sample_buffer[sample_read_ptr], 0, len * 2);
@@ -676,6 +714,11 @@ int MCU_OpenAudio(void)
     SDL_PauseAudioDevice(sdl_audio, 0);
 
     return 1;
+}
+
+void MCU_CloseAudio(void)
+{
+    SDL_CloseAudio();
 }
 
 void MCU_PostSample(int *sample)
@@ -770,6 +813,11 @@ int main(int argc, char *args[])
         return 1;
     }
 
+    LCD_SetBackPath(basePath + "/back.data");
+
+    memset(&mcu, 0, sizeof(mcu_t));
+
+
     if (fread(rom1, 1, ROM1_SIZE, s_rf[0]) != ROM1_SIZE)
     {
         fprintf(stderr, "FATAL ERROR: Failed to read the ROM1.\n");
@@ -847,7 +895,9 @@ int main(int argc, char *args[])
 
     MCU_Run();
 
+    MCU_CloseAudio();
     MIDI_Quit();
+    LCD_UnInit();
     SDL_Quit();
 
     return 0;

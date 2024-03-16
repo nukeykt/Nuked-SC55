@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include "mcu_interrupt.h"
+#include "SDL_atomic.h"
 
 enum {
     DEV_P1DDR = 0x00,
@@ -358,7 +359,7 @@ enum {
     MCU_BUTTON_PART_L = 20
 };
 
-extern uint32_t mcu_button_pressed;
+extern SDL_atomic_t mcu_button_pressed;
 
 uint8_t MCU_ReadP0(void);
 uint8_t MCU_ReadP1(void);
