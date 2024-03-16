@@ -10,6 +10,16 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 # Prefer C++11 standard
 set(CMAKE_CXX_STANDARD 11)
 
+if(NOT CMAKE_RUNTIME_OUTPUT_DIRECTORY)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+endif()
+if(NOT CMAKE_LIBRARY_OUTPUT_DIRECTORY)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+endif()
+if(NOT CMAKE_ARCHIVE_OUTPUT_DIRECTORY)
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+endif()
+
 #===========================================================================================
 # Strip garbage
 if(APPLE)
@@ -149,6 +159,7 @@ function(virtual_sc55_find_SDL2)
     endif()
 endfunction()
 
+#===========================================================================================
 
 if(NOT WIN32 AND PKG_CONFIG_FOUND)
     set(USE_RTMIDI TRUE)
@@ -175,6 +186,8 @@ set(SC55_SRC
     src/midi.h
     src/pcm.cpp src/pcm.h
     src/submcu.cpp src/submcu.h
+
+    src/utils/files.cpp src/utils/files.h
 )
 
 if(USE_RTMIDI)
@@ -204,6 +217,8 @@ if(USE_RTMIDI)
     endif()
 endif()
 
+set(SC55_INSTALL_FILES)
+
 # Copy ROM files into runtime directory
 macro(copy_rom_target TargetName TargetFile)
     add_custom_target(sc55_copy_${TargetName} ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/${TargetFile}")
@@ -214,6 +229,7 @@ macro(copy_rom_target TargetName TargetFile)
                 "${CMAKE_CURRENT_BINARY_DIR}/${TargetFile}"
         DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/data/${TargetFile}"
     )
+    list(APPEND SC55_INSTALL_FILES ${CMAKE_CURRENT_BINARY_DIR}/${TargetFile})
 endmacro()
 
 copy_rom_target(back_data back.data)
@@ -222,3 +238,12 @@ copy_rom_target(rom2 rom2.bin)
 copy_rom_target(rom_sm rom_sm.bin)
 copy_rom_target(waverom1 waverom1.bin)
 copy_rom_target(waverom2 waverom2.bin)
+
+install(TARGETS virtual_sc55
+        EXPORT virtual_sc55StaticTargets
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+
+install(FILES ${SC55_INSTALL_FILES}
+        DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/virtual_sc55")

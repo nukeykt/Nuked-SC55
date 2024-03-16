@@ -9,6 +9,12 @@
 #include "lcd.h"
 #include "submcu.h"
 #include "midi.h"
+#include "utils/files.h"
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <dirent.h>
+#endif
 
 static const int ROM1_SIZE = 0x8000;
 static const int ROM2_SIZE = 0x80000;
@@ -687,52 +693,148 @@ void MCU_GA_SetGAInt(int line, int value)
     MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ1, ga_int_trigger != 0);
 }
 
+static bool dirExists(const std::string &dirPath)
+{
+#if _WIN32
+    DWORD ftyp = GetFileAttributesW(Str2WStr(dirPath).c_str());
+    if(ftyp == INVALID_FILE_ATTRIBUTES)
+        return false;   //something is wrong with your path!
+    if(ftyp & FILE_ATTRIBUTE_DIRECTORY)
+        return true;    // this is a directory!
+    return false;       // this is not a directory!
+#else
+    DIR *dir = opendir(dirPath.c_str());
+    if(dir)
+    {
+        closedir(dir);
+        return true;
+    }
+    else
+        return false;
+#endif
+}
+
+
+static const size_t rf_num = 5;
+static FILE *s_rf[rf_num] =
+{
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr
+};
+
+static void closeAllR()
+{
+    for(size_t i = 0; i < rf_num; ++i)
+    {
+        if(s_rf[i])
+            fclose(s_rf[i]);
+        s_rf[i] = nullptr;
+    }
+}
+
 int main(int argc, char *args[])
 {
-    FILE *r1 = fopen("rom1.bin", "rb");
-    FILE *r2 = fopen("rom2.bin", "rb");
-    FILE* r3 = fopen("rom_sm.bin", "rb");
-    FILE* r4 = fopen("waverom1.bin", "rb");
-    FILE* r5 = fopen("waverom2.bin", "rb");
+    (void)argc;
+    std::string basePath = Files::dirname(args[0]);
 
-    if (!r1 || !r2 || !r3 || !r4 || !r5)
-        return 0;
+    if(dirExists(basePath + "/../share/virtual_sc55"))
+        basePath += "/../share/virtual_sc55";
 
-    if (fread(rom1, 1, ROM1_SIZE, r1) != ROM1_SIZE)
-        return 0;
+    std::string rpaths[5] =
+    {
+        basePath + "/rom1.bin",
+        basePath + "/rom2.bin",
+        basePath + "/rom_sm.bin",
+        basePath + "/waverom1.bin",
+        basePath + "/waverom2.bin"
+    };
 
-    if (fread(rom2, 1, ROM2_SIZE, r2) != ROM2_SIZE)
-        return 0;
+    bool r_ok = true;
 
-    if (fread(sm_rom, 1, ROMSM_SIZE, r3) != ROMSM_SIZE)
-        return 0;
+    for(size_t i = 0; i < 5; ++i)
+    {
+        s_rf[i] = Files::utf8_fopen(rpaths[i].c_str(), "rb");
+        r_ok &= (s_rf[i] != nullptr);
+    }
 
-    if (fread(tempbuf, 1, 0x200000, r4) != 0x200000)
-        return 0;
+    if (!r_ok)
+    {
+        fprintf(stderr, "FATAL ERROR: One of required data ROM files is missing.\n");
+        fflush(stderr);
+        closeAllR();
+        return 1;
+    }
+
+    if (fread(rom1, 1, ROM1_SIZE, s_rf[0]) != ROM1_SIZE)
+    {
+        fprintf(stderr, "FATAL ERROR: Failed to read the ROM1.\n");
+        fflush(stderr);
+        closeAllR();
+        return 1;
+    }
+
+    if (fread(rom2, 1, ROM2_SIZE, s_rf[1]) != ROM2_SIZE)
+    {
+        fprintf(stderr, "FATAL ERROR: Failed to read the ROM2.\n");
+        fflush(stderr);
+        closeAllR();
+        return 1;
+    }
+
+    if (fread(sm_rom, 1, ROMSM_SIZE, s_rf[2]) != ROMSM_SIZE)
+    {
+        fprintf(stderr, "FATAL ERROR: Failed to read the SM_ROM.\n");
+        fflush(stderr);
+        closeAllR();
+        return 1;
+    }
+
+    if (fread(tempbuf, 1, 0x200000, s_rf[3]) != 0x200000)
+    {
+        fprintf(stderr, "FATAL ERROR: WaveRom1 file seens corrupted.\n");
+        fflush(stderr);
+        closeAllR();
+        return 1;
+    }
 
     unscramble(tempbuf, waverom1, 0x200000);
 
-    if (fread(tempbuf, 1, 0x100000, r5) != 0x100000)
-        return 0;
+    if (fread(tempbuf, 1, 0x100000, s_rf[4]) != 0x100000)
+    {
+        fprintf(stderr, "FATAL ERROR: WaveRom2 file seens corrupted.\n");
+        fflush(stderr);
+        closeAllR();
+        return 1;
+    }
 
     unscramble(tempbuf, waverom2, 0x100000);
 
     if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0)
     {
-        fclose(r1);
-        fclose(r2);
-        fclose(r3);
-        fclose(r4);
-        fclose(r5);
-        return 0;
+        fprintf(stderr, "FATAL ERROR: Failed to initialize the SDL2: %s.\n", SDL_GetError());
+        fflush(stderr);
+        closeAllR();
+        return 2;
     }
 
     if (!MCU_OpenAudio())
     {
-        return 0;
+        fprintf(stderr, "FATAL ERROR: Failed to open the audio stream.\n");
+        fflush(stderr);
+        closeAllR();
+        return 2;
     }
 
-    MIDI_Init();
+    if(!MIDI_Init())
+    {
+        fprintf(stderr, "FATAL ERROR: Failed to initialize the MIDI Input.\n");
+        fflush(stderr);
+        closeAllR();
+        return 3;
+    }
 
     LCD_Init();
     MCU_Init();
@@ -744,12 +846,7 @@ int main(int argc, char *args[])
 
     MIDI_Quit();
 
-    fclose(r1);
-    fclose(r2);
-    fclose(r3);
-    fclose(r4);
-    fclose(r5);
-
+    closeAllR();
     SDL_Quit();
     return 0;
 }
