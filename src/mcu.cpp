@@ -844,6 +844,7 @@ int main(int argc, char *args[])
     MCU_Reset();
     SM_Reset();
     PCM_Reset();
+
     MCU_Run();
 
     MIDI_Quit();
