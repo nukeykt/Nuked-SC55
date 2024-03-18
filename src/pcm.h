@@ -22,6 +22,9 @@ struct pcm_t {
     uint32_t tv_counter;
 
     uint64_t cycles;
+
+    int accum_l;
+    int accum_r;
 };
 
 extern uint8_t waverom1[];

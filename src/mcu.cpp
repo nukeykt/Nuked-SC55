@@ -26,8 +26,8 @@ static const int SRAM_SIZE = 0x8000;
 static const int ROMSM_SIZE = 0x1000;
 
 
-static const int audio_buffer_size = 8192;
-static const int audio_page_size = 256;
+static const int audio_buffer_size = 16384;
+static const int audio_page_size = 512;
 
 static short sample_buffer[audio_buffer_size];
 
@@ -734,7 +734,7 @@ int MCU_OpenAudio(void)
     SDL_AudioSpec spec_actual = {};
 
     spec.format = AUDIO_S16SYS;
-    spec.freq = 33103;
+    spec.freq = 66207;
     spec.channels = 2;
     spec.callback = audio_callback;
     spec.samples = audio_page_size / 4;
@@ -773,6 +773,16 @@ void MCU_CloseAudio(void)
 
 void MCU_PostSample(int *sample)
 {
+    sample[0] >>= 14;
+    if (sample[0] > INT16_MAX)
+        sample[0] = INT16_MAX;
+    else if (sample[0] < INT16_MIN)
+        sample[0] = INT16_MIN;
+    sample[1] >>= 14;
+    if (sample[1] > INT16_MAX)
+        sample[1] = INT16_MAX;
+    else if (sample[1] < INT16_MIN)
+        sample[1] = INT16_MIN;
     sample_buffer[sample_write_ptr + 0] = sample[0];
     sample_buffer[sample_write_ptr + 1] = sample[1];
     sample_write_ptr = (sample_write_ptr + 2) % audio_buffer_size;

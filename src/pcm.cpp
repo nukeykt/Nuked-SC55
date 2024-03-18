@@ -31,7 +31,6 @@ uint8_t PCM_ReadROM(uint32_t address)
 void PCM_Write(uint32_t address, uint8_t data)
 {
     address &= 0x3f;
-    //printf("PCM Write: %.2x %.2x\n", address, data);
     if (address < 0x4) // voice enable
     {
         switch (address & 3)
@@ -135,11 +134,6 @@ void PCM_Write(uint32_t address, uint8_t data)
             if (address & 32)
                 ix |= 8;
 
-            //if (ix == 0)
-            //    printf("pitch %i %x\n", pcm.select_channel, pcm.write_latch & 0xffff);
-            // if (ix == 5)
-            //     printf("tv3 %i %x\n", pcm.select_channel, pcm.write_latch & 0xffff);
-
             pcm.ram2[pcm.select_channel][ix] = pcm.write_latch;
         }
     }
@@ -199,14 +193,6 @@ uint8_t PCM_Read(uint32_t address)
                 ix |= 8;
 
             pcm.read_latch = pcm.ram2[pcm.select_channel][ix];
-            // if (pcm.select_channel >= 30)
-            //     printf("read common %i %i\n", pcm.select_channel, ix);
-
-            // hack
-            //if (ix == 7)
-            //    pcm.read_latch |= 0x20;
-            // if (ix == 7 && ((pcm.voice_mask & pcm.voice_mask_pending) & (1<< pcm.select_channel)) != 0)
-            //     pcm.read_latch |= 0x20;
         }
     }
     else if (address >= 0x39 && address <= 0x3b)
@@ -292,16 +278,112 @@ void PCM_Update(uint64_t cycles)
     {
         int tt[2] = {};
 
-        { //?
+        { // final mixing
+            int noise_mask = 0;
+            int orval = 0;
+            int write_mask = 0;
+            int dac_mask = 0;
+            if ((pcm.config_reg_3c & 0x30) != 0)
+            {
+                switch ((pcm.config_reg_3c >> 2) & 3)
+                {
+                    case 1:
+                        noise_mask = 3;
+                        break;
+                    case 2:
+                        noise_mask = 7;
+                        break;
+                    case 3:
+                        noise_mask = 15;
+                        break;
+                }
+                switch (pcm.config_reg_3c & 3)
+                {
+                    case 1:
+                        orval |= 1 << 8;
+                        break;
+                    case 2:
+                        orval |= 1 << 10;
+                        break;
+                }
+                write_mask = 15;
+                dac_mask = ~15;
+            }
+            else
+            {
+                switch ((pcm.config_reg_3c >> 2) & 3)
+                {
+                    case 2:
+                        noise_mask = 1;
+                        break;
+                    case 3:
+                        noise_mask = 3;
+                        break;
+                }
+                switch (pcm.config_reg_3c & 3)
+                {
+                    case 1:
+                        orval |= 1 << 6;
+                        break;
+                    case 2:
+                        orval |= 1 << 8;
+                        break;
+                }
+                write_mask = 3;
+                dac_mask = ~3;
+            }
+            if ((pcm.config_reg_3c & 0x80) == 0)
+                write_mask = 0;
+            if ((pcm.config_reg_3c & 0x30) == 0x30)
+                orval |= 1 << 12;
+
+
             int shifter = pcm.ram2[30][10];
             int xr = ((shifter >> 0) ^ (shifter >> 1) ^ (shifter >> 7) ^ (shifter >> 12)) & 1;
             shifter = (shifter >> 1) | (xr << 15);
             pcm.ram2[30][10] = shifter;
-            if (pcm.config_reg_3c & 0x40)
+
+            pcm.accum_l = addclip20(pcm.accum_l, pcm.ram1[30][0], 0);
+            pcm.accum_r = addclip20(pcm.accum_r, pcm.ram1[30][1], 0);
+
+            pcm.ram1[30][2] = addclip20(pcm.accum_l,
+                orval | (shifter & noise_mask), 0);
+
+            pcm.ram1[30][3] = addclip20(pcm.accum_r,
+                orval | (shifter & noise_mask), 0);
+
+            pcm.ram1[30][0] = pcm.accum_l & write_mask;
+            pcm.ram1[30][1] = pcm.accum_r & write_mask;
+            
+
+            tt[0] = (int)((pcm.ram1[30][2] & ~write_mask) << 12);
+            tt[1] = (int)((pcm.ram1[30][3] & ~write_mask) << 12);
+
+            MCU_PostSample(tt);
+
+            if (pcm.config_reg_3c & 0x40) // oversampling
             {
                 xr = ((shifter >> 0) ^ (shifter >> 1) ^ (shifter >> 7) ^ (shifter >> 12)) & 1;
                 shifter = (shifter >> 1) | (xr << 15);
                 pcm.ram2[30][10] = shifter;
+
+                pcm.accum_l = addclip20(pcm.accum_l, pcm.ram1[30][0], 0);
+                pcm.accum_r = addclip20(pcm.accum_r, pcm.ram1[30][1], 0);
+
+                pcm.ram1[30][4] = addclip20(pcm.accum_l,
+                    orval | (shifter & noise_mask), 0);
+
+                pcm.ram1[30][5] = addclip20(pcm.accum_r,
+                    orval | (shifter & noise_mask), 0);
+
+                pcm.ram1[30][0] = pcm.accum_l & write_mask;
+                pcm.ram1[30][1] = pcm.accum_r & write_mask;
+
+
+                tt[0] = (int)((pcm.ram1[30][4] & ~write_mask) << 12);
+                tt[1] = (int)((pcm.ram1[30][5] & ~write_mask) << 12);
+
+                MCU_PostSample(tt);
             }
         }
 
@@ -314,9 +396,12 @@ void PCM_Update(uint64_t cycles)
             pcm.tv_counter &= 0x3fff;
         }
 
-        // accummulator
-        pcm.ram1[31][1] = 0;
-        pcm.ram1[31][3] = 0;
+        // reverb/chorus
+        {
+            // TODO:
+            pcm.ram1[31][1] = 0;
+            pcm.ram1[31][3] = 0;
+        }
 
         for (int slot = 0; slot < reg_slots; slot++)
         {
@@ -324,9 +409,6 @@ void PCM_Update(uint64_t cycles)
             uint16_t *ram2 = pcm.ram2[slot];
             int okey = (ram2[7] & 0x20) != 0;
             int key = (voice_active >> slot) & 1;
-
-            //if (key && !okey)
-            //    printf("KON %i\n", slot);
 
             int active = okey && key;
             int kon = key && !okey;
@@ -338,8 +420,6 @@ void PCM_Update(uint64_t cycles)
             int b7 = (ram2[7] & 0x80) != 0; // 1
             int hiaddr = (ram2[7] >> 8) & 15; // 1
             int old_nibble = (ram2[7] >> 12) & 15; // 1
-            //b6 = 0;
-            //b7 = 0;
 
             int address = ram1[4]; // 0
             int address_end = ram1[0]; // 1 or 2
@@ -357,9 +437,6 @@ void PCM_Update(uint64_t cycles)
                 irq_flag = ((address + ((-address_loop) & 0xfffff)) & 0x100000) != 0;
             irq_flag ^= b7;
 
-            //int nibble_address = (kon || (!b6 && nibble_cmp1)) ?
-            //    ((!b6 && nibble_cmp1) ? address_loop : address) :
-            //    address;
             int nibble_address = (!b6 && nibble_cmp1) ? address_loop : address; // 3
             int address_b4 = (nibble_address & 0x10) != 0;
             int wave_address = nibble_address >> 5;
@@ -382,8 +459,11 @@ void PCM_Update(uint64_t cycles)
             int interp_ratio = (sub_phase >> 7) & 127;
             sub_phase += pcm.ram2[ram2[7] & 31][0]; // 5
             int sub_phase_of = (sub_phase >> 14) & 7;
-            ram2[8] &= ~0x3fff;
-            ram2[8] |= sub_phase & 0x3fff;
+            if (pcm.nfs)
+            {
+                ram2[8] &= ~0x3fff;
+                ram2[8] |= sub_phase & 0x3fff;
+            }
 
 
             // address 0
@@ -515,8 +595,11 @@ void PCM_Update(uint64_t cycles)
             if (active && pcm.nfs)
                 ram1[4] = next_address;
 
-            ram2[8] &= ~0x8000;
-            ram2[8] |= next_b15 << 15;
+            if (pcm.nfs)
+            {
+                ram2[8] &= ~0x8000;
+                ram2[8] |= next_b15 << 15;
+            }
 
             // dpcm
 
@@ -531,23 +614,7 @@ void PCM_Update(uint64_t cycles)
             int shifted = (preshift << 1) >> shift;
 
             if (sub_phase_of >= 1)
-            {
-
-                //int sampt = (int8_t)PCM_ReadROM((hiaddr << 20) | address); // 20
-                //int sampt2 = (int8_t)PCM_ReadROM((hiaddr << 20) | (address >> 5)); // 20
-                //if (address & 0x10)
-                //    sampt2 = (sampt2 >> 4) & 15;
-                //else
-                //    sampt2 = (sampt2 >> 0) & 15;
-                //printf("samp %i %i\n", samp0, select_nibble);
-                //printf("should %i %i\n", sampt, sampt2);
-                //if ((sampt2 != select_nibble || samp0 != sampt) && active)
-                //    printf("hmm");
                 reference = addclip20(reference, shifted >> 1, shifted & 1);
-            }
-
-            //if (ram2[0])
-            //    printf("%i %i\n", address, old_nibble);
 
             preshift = samp1 << 10;
             select_nibble = nibble_cmp3 ? old_nibble : newnibble;
@@ -556,20 +623,7 @@ void PCM_Update(uint64_t cycles)
             shifted = (preshift << 1) >> shift;
 
             if (sub_phase_of >= 2)
-            {
-
-                //int sampt = (int8_t)PCM_ReadROM((hiaddr << 20) | (address + 1)); // 20
-                //int sampt2 = (int8_t)PCM_ReadROM((hiaddr << 20) | ((address + 1) >> 5)); // 20
-                //if ((address + 1) & 0x10)
-                //    sampt2 = (sampt2 >> 4) & 15;
-                //else
-                //    sampt2 = (sampt2 >> 0) & 15;
-                //printf("samp %i %i\n", samp0, select_nibble);
-                //printf("should %i %i\n", sampt, sampt2);
-                //if ((sampt2 != select_nibble || samp1 != sampt) && active)
-                //    printf("hmm");
                 reference = addclip20(reference, shifted >> 1, shifted & 1);
-            }
 
             preshift = samp2 << 10;
             select_nibble = nibble_cmp4 ? old_nibble : newnibble;
@@ -641,82 +695,19 @@ void PCM_Update(uint64_t cycles)
             ram1[5] = reference;
             ram1[1] = v5;
 
-            ram2[7] &= ~0xf000;
-
-            ram2[7] |= ((usenew || kon) ? newnibble : old_nibble) << 12;
-
-#if 0
-            int sub_cnt = ram2[8] & 0x3fff;
-            sub_cnt += (pcm.ram2[ram2[7] & 31][0])&0xffff;
-            int sub_cnt_of = (sub_cnt >> 14) & 7;
-
-            // check irq
-            int irq_condition = ram1[4] >= ram1[2]; // HACK
-            irq_condition = 0;
-
-            ram2[8] &= ~0x3fff;
-            ram2[8] |= sub_cnt & 0x3fff;
-#endif
-
             if (active && (ram2[6] & 1) != 0 && (ram2[8] & 0x4000) == 0 && !pcm.irq_assert && irq_flag)
             {
                 //printf("irq voice %i\n", slot);
-                ram2[8] |= 0x4000;
+                if (pcm.nfs)
+                    ram2[8] |= 0x4000;
                 pcm.irq_assert = 1;
                 pcm.irq_channel = slot;
                 MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ0, 1);
             }
 
-#if 0
-            for (int j = 0; j < sub_cnt_of; j++)
-            {
-                if (ram1[4] >= ram1[0])
-                    continue;
-                int bank = (ram2[7] & 0xf00) << 12;
-                int sh = PCM_ReadROM(bank | (ram1[4] >> 5));
-                int nibble = (ram1[4] & 16) != 0 ? (sh >> 4) : sh & 15;
-                int samp = PCM_ReadROM(bank | ram1[4]);
-                int shift = (10 - nibble) & 15;
-                int diff = ((int8_t)samp << 11) >> shift;
-
-                ram1[5] = addclip20(ram1[5], diff);
-
-                ram1[4]++;
-                if (ram1[4] > ram1[0])
-                    ram1[4] = ram1[0];
-                if (ram1[4] == ram1[2])
-                    ram1[7] = ram1[5];
-                if (ram1[4] == ram1[0])
-                {
-                    ram1[4] = ram1[2];
-                    ram1[5] = ram1[7];
-                }
-            }
-#endif
-
-#if 0
-            //int ss1 = (int)(ram1[5] << 12) >> 8;
-            //int ss1 = (int)(test << 12) >> 8;
-            int ss1 = (int)(((ram2[6] & 2) == 0 ? ram1[3] : v3) << 12) >> 8;
-            int ss = ss1;
-            ss *= (ram2[10] >> 8);
-            ss >>= 7;
-            //
-            ss *= (ram2[9] >> 8);
-            ss >>= 6;
-
-            {
-                ss >>= 8;
-                int r = (ram2[1] & 0xff);
-                int l = (ram2[1] >> 8) & 0xff;
-                tt[0] += (ss * l)>> 4;
-                tt[1] += (ss * r) >> 4;
-            }
-#endif
-
             int volmul1 = 0;
             int volmul2 = 0;
-#if 1
+
             for (int e = 0; e < 3; e++)
             {
                 int adjust = ram2[3+e];
@@ -724,26 +715,11 @@ void PCM_Update(uint64_t cycles)
                 int speed = adjust & 0xff;
                 int target = (adjust >> 8) & 0xff;
 
-                // speed 0-175: tick always
-                // speed 176-192:
-                // speed 192-255: tick slow
-                //
-                //
-
                 
                 int w1 = (speed & 0xf0) == 0;
                 int w2 = w1 || (speed & 0x10) != 0;
                 int w3 = pcm.nfs &&
                     ((speed & 0x80) == 0 || ((speed & 0x40) == 0 && (!w2 || (speed & 0x20) == 0)));
-
-                // w3 = speed < 160;
-                // 
-                // int b4 = w2;
-                // int b5 = (speed & 0x20) != 0;
-                // int b6 = (speed & 0x40) != 0;
-                // int b7 = (speed & 0x80) != 0;
-                // 
-                // w3 = !(((b4 && b5) || b6) && b7);
 
                 int type = w2 | (w3 << 3);
                 if (speed & 0x20)
@@ -833,7 +809,7 @@ void PCM_Update(uint64_t cycles)
                     shifted -= sum1;
 
                     int sum2 = (target << 11) + addlow + shifted;
-                    if (write)
+                    if (write && pcm.nfs)
                         ram2[9 + e] = (sum2 >> 4) & 0x7fff;
 
                     if (e == 0)
@@ -860,20 +836,6 @@ void PCM_Update(uint64_t cycles)
                         preshift |= 0x2000;
                     if (neg)
                         preshift ^= ~0x3f;
-#if 0
-                    int preshift = neg ? ~0x3e3f0 : 0;
-
-                    if (neg ^ (speed & 1))
-                        preshift |= 0x200;
-                    if (neg ^ ((speed & 2) != 0))
-                        preshift |= 0x400;
-                    if (neg ^ ((speed & 4) != 0))
-                        preshift |= 0x800;
-                    if (neg ^ ((speed & 8) != 0))
-                        preshift |= 0x1000;
-                    if ((neg ^ w1) == 0)
-                        preshift |= 0x2000;
-#endif
 
                     int shifted = preshift >> shift;
                     int sum2 = shifted;
@@ -887,7 +849,7 @@ void PCM_Update(uint64_t cycles)
                     int neg2 = (sum3 & 0x80000) != 0;
                     int xnor = !(neg2 ^ neg);
 
-                    if (write)
+                    if (write && pcm.nfs)
                     {
                         if (xnor)
                             ram2[9 + e] = sum2_l & 0x7fff;
@@ -907,155 +869,8 @@ void PCM_Update(uint64_t cycles)
                             volmul2 = target << 7;
                     }
                 }
-                //if (e == 1 && levelcur)
-                //    printf("slot%i s%i t%i %i->%i\n", slot, speed, target << 7, levelcur, ram2[9 + e]);
-
-#if 0
-                int update = (type >> 2) & 1;
-                switch (type & 3)
-                {
-                    case 0:
-                        update = (pcm.tv_counter & 3) == 0;
-                        break;
-                    case 1:
-                        update = (pcm.tv_counter & 15) == 0;
-                        break;
-                    case 2:
-                        update = (pcm.tv_counter & 63) == 0;
-                        break;
-                    case 3:
-                        update = (pcm.tv_counter & 127) == 0;
-                        break;
-                }
-
-                shift = (10 - shift) & 15;
-
-                int addlow = 0;
-                if (type & 4)
-                {
-                    if (pcm.tv_counter & 8)
-                        addlow |= 1;
-                    if (pcm.tv_counter & 4)
-                        addlow |= 2;
-                    if (pcm.tv_counter & 2)
-                        addlow |= 4;
-                    if (pcm.tv_counter & 1)
-                        addlow |= 8;
-                }
-                else
-                {
-                    switch (type & 3)
-                    {
-                    case 0:
-                        if (pcm.tv_counter & 0x20)
-                            addlow |= 1;
-                        if (pcm.tv_counter & 0x10)
-                            addlow |= 2;
-                        if (pcm.tv_counter & 8)
-                            addlow |= 4;
-                        if (pcm.tv_counter & 4)
-                            addlow |= 8;
-                        break;
-                    case 1:
-                        if (pcm.tv_counter & 0x80)
-                            addlow |= 1;
-                        if (pcm.tv_counter & 0x40)
-                            addlow |= 2;
-                        if (pcm.tv_counter & 0x20)
-                            addlow |= 4;
-                        if (pcm.tv_counter & 0x10)
-                            addlow |= 8;
-                        break;
-                    case 2:
-                        if (pcm.tv_counter & 0x200)
-                            addlow |= 1;
-                        if (pcm.tv_counter & 0x100)
-                            addlow |= 2;
-                        if (pcm.tv_counter & 0x80)
-                            addlow |= 4;
-                        if (pcm.tv_counter & 0x40)
-                            addlow |= 8;
-                        break;
-                    case 3:
-                        if (pcm.tv_counter & 0x800)
-                            addlow |= 1;
-                        if (pcm.tv_counter & 0x400)
-                            addlow |= 2;
-                        if (pcm.tv_counter & 0x200)
-                            addlow |= 4;
-                        if (pcm.tv_counter & 0x100)
-                            addlow |= 8;
-                        break;
-                    }
-                }
-
-                int cnt = ram2[9 + e] << 4;
-                int sum = (target << 11) - ((active || e != 2) ? cnt : 0);
-                int sum2 = 0;
-                int flag = 0;
-                if (type & 8)
-                {
-                    int neg = (sum >> 19) & 1;
-                    int preshift = neg ? 0xfc1c0 : 0;
-
-                    if (neg ^ (speed & 1))
-                        preshift |= 0x200;
-                    if (neg ^ ((speed & 2) != 0))
-                        preshift |= 0x400;
-                    if (neg ^ ((speed & 4) != 0))
-                        preshift |= 0x800;
-                    if (neg ^ ((speed & 8) != 0))
-                        preshift |= 0x1000;
-                    if ((neg ^ w1) == 0)
-                        preshift |= 0x2000;
-
-                    int shifted = (preshift << 1) >> shift;
-
-                    sum2 = ((shifted >> 1) & 0xffff0) + ((active || e != 2) ? cnt : 0);
-
-                    sum2 += (target << 11);
-
-                    flag = (sum2 & 0x80000) == (sum & 0x80000);
-
-                    sum2 >>= 4;
-                }
-                else
-                {
-                    sum += addlow;
-
-                    int preshift = sum;
-
-                    int shifted = (preshift << 1) >> shift;
-
-                    sum2 = ((shifted >> 1) & 0xffff0) - sum;
-
-                    int add = (target << 11);
-
-                    sum2 = (sum2 + add) >> 4;
-                }
-
-                if (!active || update)
-                {
-                    int val;
-                    if ((type & 8) == 0 || flag)
-                        val = sum2;
-                    else
-                        val = target << 7;
-
-                    ram2[9+e] = val & 0x7fff;
-                }
-#endif
             }
-#else
-            for (int e = 0; e < 3; e++)
-            {
-                int dst = (ram2[3 + e] >> 1) & 0x7f80;
-                if (ram2[9 + e] < dst)
-                    ram2[9 + e]++;
-                else if (ram2[9 + e] > dst)
-                    ram2[9 + e]--;
-            }
-#endif
+
             int sample = (ram2[6] & 2) == 0 ? ram1[3] : v3;
 
             int multiv1 = multi(sample, volmul1 >> 8);
@@ -1080,12 +895,28 @@ void PCM_Update(uint64_t cycles)
             rc1 = addclip20(rc1 >> 6, rc1 >> 6, (rc1 >> 5) & 1);
             rc2 = addclip20(rc2 >> 6, rc2 >> 6, (rc2 >> 5) & 1);
 
-            pcm.ram1[31][1] = addclip20(pcm.ram1[31][1], sampl >> 6, (sampl >> 5) & 1);
-            pcm.ram1[31][3] = addclip20(pcm.ram1[31][3], sampr >> 6, (sampr >> 5) & 1);
+            int suml = addclip20(pcm.ram1[31][1], sampl >> 6, (sampl >> 5) & 1);
+            int sumr = addclip20(pcm.ram1[31][3], sampr >> 6, (sampr >> 5) & 1);
 
-            // update key
-            ram2[7] &= ~0x20;
-            ram2[7] |= key << 5;
+            if (slot != reg_slots - 1)
+            {
+                pcm.ram1[31][1] = suml;
+                pcm.ram1[31][3] = sumr;
+            }
+            else
+            {
+                pcm.accum_l = suml;
+                pcm.accum_r = sumr;
+            }
+
+            if (key && pcm.nfs)
+            {
+                ram2[7] &= ~0xf020;
+                ram2[7] |= ((usenew || kon) ? newnibble : old_nibble) << 12;
+
+                // update key
+                ram2[7] |= key << 5;
+            }
 
             if (!active)
             {
@@ -1101,22 +932,6 @@ void PCM_Update(uint64_t cycles)
                 ram2[10] = 0;
             }
         }
-
-        tt[0] = (int)(pcm.ram1[31][1] << 12) >> 16;
-        tt[1] = (int)(pcm.ram1[31][3] << 12) >> 16;
-
-        tt[0] <<= 2;
-        if (tt[0] > INT16_MAX)
-            tt[0] = INT16_MAX;
-        else if (tt[0] < INT16_MIN)
-            tt[0] = INT16_MIN;
-        tt[1] <<= 2;
-        if (tt[1] > INT16_MAX)
-            tt[1] = INT16_MAX;
-        else if (tt[1] < INT16_MIN)
-            tt[1] = INT16_MIN;
-
-        MCU_PostSample(tt);
 
         pcm.nfs = 1;
 
