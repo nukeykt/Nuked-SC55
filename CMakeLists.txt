@@ -231,6 +231,11 @@ if(WIN32)
     target_link_libraries(nuked-sc55 PRIVATE shlwapi winmm)
 endif()
 
+if(APPLE)
+    find_library(LIBCoreAudio CoreAudio)
+    target_link_libraries(nuked-sc55 PRIVATE ${LIBCoreAudio})
+endif()
+
 
 set(SC55_INSTALL_FILES)
 
