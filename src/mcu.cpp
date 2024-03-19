@@ -942,9 +942,8 @@ int main(int argc, char *argv[])
 
     if(!MIDI_Init())
     {
-        fprintf(stderr, "FATAL ERROR: Failed to initialize the MIDI Input.\n");
+        fprintf(stderr, "ERROR: Failed to initialize the MIDI Input.\nWARNING: Continuing without MIDI Input...\n");
         fflush(stderr);
-        return 3;
     }
 
     LCD_Init();
