@@ -23,8 +23,11 @@ struct pcm_t {
 
     uint64_t cycles;
 
+    uint16_t eram[0x4000];
+
     int accum_l;
     int accum_r;
+    int rcsum[2];
 };
 
 extern uint8_t waverom1[];

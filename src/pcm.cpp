@@ -270,6 +270,214 @@ static const int interp_lut[3][128] = {
     484, 497, 510, 523, 536, 549, 563, 577, 591, 605, 619, 634, 648, 663, 679, 694,
 };
 
+inline void calc_tv(int e, int adjust, uint16_t *levelcur, int active, int *volmul)
+{
+    // int adjust = ram2[3+e];
+    // int levelcur = ram2[9+e] & 0x7fff;
+    *levelcur &= 0x7fff;
+    int speed = adjust & 0xff;
+    int target = (adjust >> 8) & 0xff;
+
+                
+    int w1 = (speed & 0xf0) == 0;
+    int w2 = w1 || (speed & 0x10) != 0;
+    int w3 = pcm.nfs &&
+        ((speed & 0x80) == 0 || ((speed & 0x40) == 0 && (!w2 || (speed & 0x20) == 0)));
+
+    int type = w2 | (w3 << 3);
+    if (speed & 0x20)
+        type |= 2;
+    if ((speed & 0x80) == 0 || (speed & 0x40) == 0)
+        type |= 4;
+
+
+    int write = !active;
+    int addlow = 0;
+    if (type & 4)
+    {
+        if (pcm.tv_counter & 8)
+            addlow |= 1;
+        if (pcm.tv_counter & 4)
+            addlow |= 2;
+        if (pcm.tv_counter & 2)
+            addlow |= 4;
+        if (pcm.tv_counter & 1)
+            addlow |= 8;
+        write |= 1;
+    }
+    else
+    {
+        switch (type & 3)
+        {
+        case 0:
+            if (pcm.tv_counter & 0x20)
+                addlow |= 1;
+            if (pcm.tv_counter & 0x10)
+                addlow |= 2;
+            if (pcm.tv_counter & 8)
+                addlow |= 4;
+            if (pcm.tv_counter & 4)
+                addlow |= 8;
+            write |= (pcm.tv_counter & 3) == 0;
+            break;
+        case 1:
+            if (pcm.tv_counter & 0x80)
+                addlow |= 1;
+            if (pcm.tv_counter & 0x40)
+                addlow |= 2;
+            if (pcm.tv_counter & 0x20)
+                addlow |= 4;
+            if (pcm.tv_counter & 0x10)
+                addlow |= 8;
+            write |= (pcm.tv_counter & 15) == 0;
+            break;
+        case 2:
+            if (pcm.tv_counter & 0x200)
+                addlow |= 1;
+            if (pcm.tv_counter & 0x100)
+                addlow |= 2;
+            if (pcm.tv_counter & 0x80)
+                addlow |= 4;
+            if (pcm.tv_counter & 0x40)
+                addlow |= 8;
+            write |= (pcm.tv_counter & 63) == 0;
+            break;
+        case 3:
+            if (pcm.tv_counter & 0x800)
+                addlow |= 1;
+            if (pcm.tv_counter & 0x400)
+                addlow |= 2;
+            if (pcm.tv_counter & 0x200)
+                addlow |= 4;
+            if (pcm.tv_counter & 0x100)
+                addlow |= 8;
+            write |= (pcm.tv_counter & 127) == 0;
+            break;
+        }
+    }
+
+    if ((type & 8) == 0)
+    {
+        int shift = speed & 15;
+        shift = (10 - shift) & 15;
+
+        int sum1 = (target << 11); // 5
+        if (e != 2 || active)
+            sum1 -= (*levelcur << 4); // 6
+        int neg = (sum1 & 0x80000) != 0;
+
+        int preshift = sum1;
+
+        int shifted = preshift >> shift;
+        shifted -= sum1;
+
+        int sum2 = (target << 11) + addlow + shifted;
+        if (write && pcm.nfs)
+            *levelcur = (sum2 >> 4) & 0x7fff;
+
+        if (e == 0)
+        {
+            *volmul = (sum2 >> 4) & 0x7ffe;
+        }
+        else if (e == 1)
+        {
+            *volmul = (sum2 >> 4) & 0x7ffe;
+        }
+    }
+    else
+    {
+        int shift = (speed >> 4) & 14;
+        shift |= w2;
+        shift = (10 - shift) & 15;
+
+        int sum1 = target << 11; // 5
+        if (e != 2 || active)
+            sum1 -= (*levelcur << 4); // 6
+        int neg = (sum1 & 0x80000) != 0;
+        int preshift = (speed & 15) << 9;
+        if (!w1)
+            preshift |= 0x2000;
+        if (neg)
+            preshift ^= ~0x3f;
+
+        int shifted = preshift >> shift;
+        int sum2 = shifted;
+        if (e != 2 || active)
+            sum2 += (*levelcur << 4) | addlow;
+
+        int sum2_l = (sum2 >> 4);
+
+        int sum3 = (target << 11) - (sum2_l << 4);
+
+        int neg2 = (sum3 & 0x80000) != 0;
+        int xnor = !(neg2 ^ neg);
+
+        if (write && pcm.nfs)
+        {
+            if (xnor)
+                *levelcur = sum2_l & 0x7fff;
+            else
+                *levelcur = target << 7;
+        }
+
+        if (e == 0)
+        {
+            *volmul = sum2_l & 0x7ffe;
+        }
+        else if (e == 1)
+        {
+            if (xnor)
+                *volmul = sum2_l & 0x7ffe;
+            else
+                *volmul = target << 7;
+        }
+    }
+}
+
+inline int eram_unpack(int addr)
+{
+    addr &= 0x3fff;
+    int data = pcm.eram[addr];
+    int val = data & 0x3fff;
+    int sh = (data >> 14) & 3;
+
+    val <<= 18;
+    return val >> (18 - sh * 2);
+}
+
+inline void eram_pack(int addr, int val)
+{
+    addr &= 0x3fff;
+    int sh = 0;
+    int top = (val >> 13) & 0x7f;
+    if ((top & 0x40) == 0)
+    {
+        if (top >= 48)
+            sh = 3;
+        else if (top >= 12)
+            sh = 2;
+        else if (top >= 3)
+            sh = 1;
+        else
+            sh = 0;
+    }
+    else
+    {
+        if (top <= 79)
+            sh = 3;
+        else if (top <= 115)
+            sh = 2;
+        else if (top <= 124)
+            sh = 1;
+        else
+            sh = 0;
+    }
+
+    int data = (val >> (sh * 2)) & 0x3fff;
+    data |= sh << 14;
+    pcm.eram[addr] = data;
+}
+
 void PCM_Update(uint64_t cycles)
 {
     int reg_slots = (pcm.config_reg_3d & 31) + 1;
@@ -349,7 +557,7 @@ void PCM_Update(uint64_t cycles)
             pcm.ram1[30][2] = addclip20(pcm.accum_l,
                 orval | (shifter & noise_mask), 0);
 
-            pcm.ram1[30][3] = addclip20(pcm.accum_r,
+            pcm.ram1[30][4] = addclip20(pcm.accum_r,
                 orval | (shifter & noise_mask), 0);
 
             pcm.ram1[30][0] = pcm.accum_l & write_mask;
@@ -357,30 +565,31 @@ void PCM_Update(uint64_t cycles)
             
 
             tt[0] = (int)((pcm.ram1[30][2] & ~write_mask) << 12);
-            tt[1] = (int)((pcm.ram1[30][3] & ~write_mask) << 12);
+            tt[1] = (int)((pcm.ram1[30][4] & ~write_mask) << 12);
 
             MCU_PostSample(tt);
 
+            xr = ((shifter >> 0) ^ (shifter >> 1) ^ (shifter >> 7) ^ (shifter >> 12)) & 1;
+            shifter = (shifter >> 1) | (xr << 15);
+
+            pcm.accum_l = addclip20(pcm.accum_l, pcm.ram1[30][0], 0);
+            pcm.accum_r = addclip20(pcm.accum_r, pcm.ram1[30][1], 0);
+
+            pcm.ram1[30][3] = addclip20(pcm.accum_l,
+                orval | (shifter & noise_mask), 0);
+
+            pcm.ram1[30][5] = addclip20(pcm.accum_r,
+                orval | (shifter & noise_mask), 0);
+
             if (pcm.config_reg_3c & 0x40) // oversampling
             {
-                xr = ((shifter >> 0) ^ (shifter >> 1) ^ (shifter >> 7) ^ (shifter >> 12)) & 1;
-                shifter = (shifter >> 1) | (xr << 15);
                 pcm.ram2[30][10] = shifter;
-
-                pcm.accum_l = addclip20(pcm.accum_l, pcm.ram1[30][0], 0);
-                pcm.accum_r = addclip20(pcm.accum_r, pcm.ram1[30][1], 0);
-
-                pcm.ram1[30][4] = addclip20(pcm.accum_l,
-                    orval | (shifter & noise_mask), 0);
-
-                pcm.ram1[30][5] = addclip20(pcm.accum_r,
-                    orval | (shifter & noise_mask), 0);
 
                 pcm.ram1[30][0] = pcm.accum_l & write_mask;
                 pcm.ram1[30][1] = pcm.accum_r & write_mask;
 
 
-                tt[0] = (int)((pcm.ram1[30][4] & ~write_mask) << 12);
+                tt[0] = (int)((pcm.ram1[30][3] & ~write_mask) << 12);
                 tt[1] = (int)((pcm.ram1[30][5] & ~write_mask) << 12);
 
                 MCU_PostSample(tt);
@@ -396,12 +605,372 @@ void PCM_Update(uint64_t cycles)
             pcm.tv_counter &= 0x3fff;
         }
 
-        // reverb/chorus
-        {
-            // TODO:
-            pcm.ram1[31][1] = 0;
-            pcm.ram1[31][3] = 0;
+        // chorus/reverb
+
+        { // fixme
+            if (pcm.ram2[31][8] & 0x8000)
+                pcm.ram2[31][9] = pcm.ram2[31][8];
+            else
+                pcm.ram2[31][10] = pcm.ram2[31][8];
+
+            if ((0x4000 - pcm.ram2[31][8]) & 0x8000)
+                pcm.ram2[31][10] = 0x4000 - pcm.ram2[31][8];
+            else
+                pcm.ram2[31][9] = 0x4000 - pcm.ram2[31][8];
         }
+
+        {
+            int v1 = pcm.ram2[31][1];
+
+            int m1 = multi(pcm.ram1[29][1], v1 >> 8) >> 5; // 14
+            int m2 = multi(pcm.rcsum[1], v1 & 255) >> 5; // 15
+
+            pcm.ram1[29][1] = addclip20(m1 >> 1, m2 >> 1, (m1 | m2) & 1); // 16
+        }
+
+        {
+            int okey = (pcm.ram2[31][7] & 0x20) != 0;
+            int key = 1;
+            int active = okey && key;
+            int u = 0;
+            calc_tv(1, pcm.ram2[30][0], &pcm.ram2[30][9], active, &u);
+        }
+
+        {
+            int v1 = pcm.ram2[30][1];
+            int m1 = multi(pcm.ram1[29][0], v1 >> 8) >> 5; // 17
+            int m2 = multi(pcm.rcsum[0], v1 & 255) >> 5; // 18
+
+            pcm.ram1[29][0] = addclip20(m1 >> 1, m2 >> 1, (m1 | m2) & 1); // 19
+        }
+
+        int rcadd[6] = {};
+        int rcadd2[6] = {};
+
+        {
+            {
+                // 1
+                int v1 = pcm.ram2[30][4];
+                int m1 = multi(pcm.ram1[29][0], (v1 >> 8)) >> 6;
+                int v2 = 0;
+                int s1 = eram_unpack(pcm.ram2[28][1] + pcm.tv_counter);
+                if ((v1 & 0x30) != 0)
+                {
+                    v2 = s1;
+                }
+                int v3 = addclip20(m1, v2 ^ 0xfffff, 1);
+                pcm.ram1[29][4] = v3;
+                int m2 = multi(v3, v1 & 255) >> 5;
+                pcm.ram1[29][5] = addclip20(m2 >> 1, s1, m2 & 1);
+            }
+            {
+                // 2
+                int v1 = pcm.ram2[30][4];
+                int v2 = 0;
+                int s1 = eram_unpack(pcm.ram2[28][2] + pcm.tv_counter);
+                if ((v1 & 0x30) != 0)
+                {
+                    v2 = s1;
+                }
+                int v3 = addclip20(pcm.ram1[29][5], v2 ^ 0xfffff, 1);
+                pcm.ram1[29][5] = v3;
+                int m2 = multi(v3, v1 & 255) >> 5;
+                pcm.ram1[28][0] = addclip20(m2 >> 1, s1, m2 & 1);
+            }
+            {
+                // 3
+                int v1 = pcm.ram2[30][4];
+                int v2 = 0;
+                int s1 = eram_unpack(pcm.ram2[28][3] + pcm.tv_counter);
+                if ((v1 & 0x30) != 0)
+                {
+                    v2 = s1;
+                }
+                int v3 = addclip20(pcm.ram1[28][0], v2 ^ 0xfffff, 1);
+                pcm.ram1[28][0] = v3;
+                int m2 = multi(v3, v1 & 255) >> 5;
+                pcm.ram1[28][1] = addclip20(m2 >> 1, s1, m2 & 1);
+
+
+                pcm.ram1[28][2] = eram_unpack(pcm.ram2[28][5] + pcm.tv_counter);
+            }
+            {
+                // 4
+                int v1 = pcm.ram2[30][5];
+                int v2 = 0;
+                int s1 = eram_unpack(pcm.ram2[28][4] + pcm.tv_counter);
+                if ((v1 & 0x30) != 0)
+                {
+                    v2 = s1;
+                }
+                int v3 = addclip20(pcm.ram1[28][1], v2 ^ 0xfffff, 1);
+                pcm.ram1[28][1] = v3;
+                int m2 = multi(v3, v1 & 255) >> 5;
+                pcm.ram1[28][3] = addclip20(m2 >> 1, s1, m2 & 1);
+
+
+                pcm.ram1[28][4] = eram_unpack(pcm.ram2[29][1] + pcm.tv_counter);
+            }
+            {
+                // 5
+
+                int v1 = pcm.ram2[30][7];
+                int m1 = multi(pcm.ram1[29][2], (v1 >> 8)) >> 5;
+                int s1 = eram_unpack(pcm.ram2[29][0] + pcm.tv_counter);
+                int m2 = multi(s1, v1 & 255) >> 5;
+                pcm.ram1[29][2] = addclip20(m1 >> 1, m2 >> 1, (m1 | m2) & 1);
+
+                eram_pack(pcm.ram2[28][0] + pcm.tv_counter, pcm.ram1[29][4]);
+            }
+            {
+                // 6
+
+                int v1 = pcm.ram2[30][8];
+                int m1 = multi(pcm.ram1[29][3], (v1 >> 8)) >> 5;
+                int s1 = eram_unpack(pcm.ram2[29][8] + pcm.tv_counter);
+                int m2 = multi(s1, v1 & 255) >> 5;
+                pcm.ram1[29][3] = addclip20(m1 >> 1, m2 >> 1, (m1 | m2) & 1);
+
+                eram_pack(pcm.ram2[28][1] + pcm.tv_counter, pcm.ram1[29][5]);
+
+                eram_pack(pcm.ram2[28][2] + pcm.tv_counter, pcm.ram1[28][0]);
+            }
+            {
+                // 7
+
+                int v1 = pcm.ram2[30][9];
+                int v2 = pcm.ram1[28][3];
+                int m1 = multi(pcm.ram1[29][2], (v1 >> 8)) >> 5;
+                int m2 = multi(pcm.ram1[29][3], (v1 >> 8)) >> 5;
+                pcm.ram1[28][3] = addclip20(v2, m1 >> 1, m1 & 1);
+                pcm.ram1[28][5] = addclip20(v2, m2 >> 1, m2 & 1);
+
+                eram_pack(pcm.ram2[28][3] + pcm.tv_counter, pcm.ram1[28][1]);
+            }
+            {
+                // 8
+
+                int v1 = pcm.ram2[30][6];
+                int m1 = multi(pcm.ram1[28][2], v1 >> 8) >> 5;
+
+                int v2 = addclip20(pcm.ram1[28][3], m1 >> 1, m1 & 1);
+                pcm.ram1[28][3] = v2;
+                int m2 = multi(v2, v1 & 255) >> 5;
+                pcm.ram1[28][2] = addclip20(pcm.ram1[28][2], m2 >> 1, m2 & 1);
+
+
+                pcm.ram1[28][1] = eram_unpack(pcm.ram2[28][9] + pcm.tv_counter);
+            }
+            {
+                // 9
+
+                int v1 = pcm.ram2[30][6];
+                int m1 = multi(pcm.ram1[28][4], v1 >> 8) >> 5;
+
+                int v2 = addclip20(pcm.ram1[28][5], m1 >> 1, m1 & 1);
+                pcm.ram1[28][5] = v2;
+                int m2 = multi(v2, v1 & 255) >> 5;
+                pcm.ram1[28][4] = addclip20(pcm.ram1[28][4], m2 >> 1, m2 & 1);
+
+
+                pcm.ram1[29][4] = eram_unpack(pcm.ram2[29][5] + pcm.tv_counter);
+            }
+            {
+                // 10
+
+                int v1 = pcm.ram2[30][6];
+                int v2 = pcm.ram1[28][1];
+                int m1 = multi(v2, v1 >> 8) >> 5;
+                int s1 = eram_unpack(pcm.ram2[28][8] + pcm.tv_counter);
+                int v3 = addclip20(m1 >> 1, s1, m1 & 1);
+                pcm.ram1[28][1] = v3;
+                int m2 = multi(v3, v1 & 255) >> 5;
+                pcm.ram1[29][5] = addclip20(m2 >> 1, v2, m2 & 1);
+
+                eram_pack(pcm.ram2[28][4] + pcm.tv_counter, pcm.ram1[28][3]);
+            }
+            {
+                // 11
+
+                int v1 = pcm.ram2[30][6];
+                int v2 = pcm.ram1[29][4];
+                int m1 = multi(v2, v1 >> 8) >> 5;
+                int s1 = eram_unpack(pcm.ram2[29][4] + pcm.tv_counter);
+                int v3 = addclip20(m1 >> 1, s1, m1 & 1);
+                pcm.ram1[29][4] = v3;
+                int m2 = multi(v3, v1 & 255) >> 5;
+                pcm.ram1[28][0] = addclip20(m2 >> 1, v2, m2 & 1);
+
+
+                eram_pack(pcm.ram2[28][5] + pcm.tv_counter, pcm.ram1[28][2]);
+
+                eram_pack(pcm.ram2[29][0] + pcm.tv_counter, pcm.ram1[28][5]);
+            }
+            {
+                // 12
+
+                pcm.ram1[28][5] = eram_unpack(pcm.ram2[28][6] + pcm.tv_counter);
+            }
+
+            {
+                // 13
+
+                int s1 = eram_unpack(pcm.ram2[28][10] + pcm.tv_counter);
+                pcm.ram1[28][5] = addclip20(pcm.ram1[28][5], s1, 0);
+
+                pcm.ram1[28][2] = eram_unpack(pcm.ram2[29][2] + pcm.tv_counter);
+            }
+
+            {
+                // 14
+
+                int s1 = eram_unpack(pcm.ram2[29][6] + pcm.tv_counter);
+                int t1 = addclip20(s1, pcm.ram1[28][2], 0); // 6
+
+                pcm.ram1[28][5] = addclip20(t1, pcm.ram1[28][5], 0);
+
+                pcm.ram1[28][2] = eram_unpack(pcm.ram2[28][7] + pcm.tv_counter);
+            }
+
+            {
+                // 15
+
+                int s1 = eram_unpack(pcm.ram2[28][11] + pcm.tv_counter);
+                pcm.ram1[28][2] = addclip20(pcm.ram1[28][2], s1, 0);
+
+                pcm.ram1[28][3] = eram_unpack(pcm.ram2[29][3] + pcm.tv_counter);
+            }
+
+            {
+                // 16
+
+                int s1 = eram_unpack(pcm.ram2[29][7] + pcm.tv_counter);
+                int t1 = addclip20(s1, pcm.ram1[28][2], 0);
+                pcm.ram1[28][2] = addclip20(t1, pcm.ram1[28][3], 0);
+
+
+                eram_pack(pcm.ram2[29][1] + pcm.tv_counter, pcm.ram1[28][4]);
+
+                eram_pack(pcm.ram2[28][8] + pcm.tv_counter, pcm.ram1[28][1]);
+            }
+
+            {
+                // 17
+                int v1 = pcm.ram2[30][2];
+                int v2 = pcm.ram2[28][5];
+
+                int m1 = multi(v2, v1 >> 8) >> 5;
+
+                rcadd[0] = m1;
+
+                rcadd2[0] = multi(v2, v1 & 255) >> 5;
+
+                int t1 = eram_unpack(pcm.ram2[29][10] + pcm.tv_counter);
+                eram_pack(pcm.ram2[28][9] + pcm.tv_counter, pcm.ram1[29][5]);
+                pcm.ram1[29][5] = t1;
+            }
+
+            {
+                // 18
+                int v1 = pcm.ram2[30][3];
+                int v2 = pcm.ram2[28][2];
+
+                int m1 = multi(v2, v1 >> 8) >> 5;
+
+                rcadd[1] = m1;
+
+                rcadd2[1] = multi(v2, v1 & 255) >> 5;
+
+                pcm.ram1[28][1] = eram_unpack(pcm.ram2[29][11] + pcm.tv_counter);
+            }
+            {
+                // 19
+
+                int v1 = pcm.ram2[31][9];
+
+                int s1 = eram_unpack(pcm.ram2[29][10] + pcm.tv_counter);
+
+                eram_pack(pcm.ram2[29][4] + pcm.tv_counter, pcm.ram1[29][4]);
+
+                int m1 = multi(pcm.ram1[29][4], v1 >> 8) >> 5;
+                int m2 = multi(pcm.ram1[29][5], v1 >> 8) >> 5;
+
+                int t2 = addclip20(s1, m1 >> 1, m1 & 1);
+
+                pcm.ram1[29][5] = addclip20(t2, (m2 >> 1) ^ 0xfffff, 1);
+            }
+            {
+                // 20
+
+                int v1 = pcm.ram2[31][10];
+
+                int s1 = eram_unpack(pcm.ram2[29][11] + pcm.tv_counter);
+
+                eram_pack(pcm.ram2[29][5] + pcm.tv_counter, pcm.ram1[28][0]);
+
+                int m1 = multi(pcm.ram1[28][0], v1 >> 8) >> 5;
+                int m2 = multi(pcm.ram1[28][1], v1 >> 8) >> 5;
+
+                int t2 = addclip20(s1, m1 >> 1, m1 & 1);
+
+                pcm.ram1[28][1] = addclip20(t2, (m2 >> 1) ^ 0xfffff, 1);
+
+                eram_pack(pcm.ram2[29][9] + pcm.tv_counter, pcm.ram1[29][1]);
+            }
+            {
+                // 21
+
+                int v1 = pcm.ram2[31][2];
+                int v2 = pcm.ram1[29][5];
+
+                int m1 = multi(v2, v1 >> 8) >> 5;
+                int m2 = multi(v2, v1 & 255) >> 5;
+
+                rcadd[2] = m1;
+                rcadd2[2] = m2;
+            }
+            {
+                // 22
+
+                int v1 = pcm.ram2[31][3];
+                int v2 = pcm.ram1[29][5];
+
+                int m1 = multi(v2, v1 >> 8) >> 5;
+                int m2 = multi(v2, v1 & 255) >> 5;
+
+                rcadd[3] = m1;
+                rcadd2[3] = m2;
+            }
+            {
+                // 23
+
+                int v1 = pcm.ram2[31][4];
+                int v2 = pcm.ram1[28][1];
+
+                int m1 = multi(v2, v1 >> 8) >> 5;
+                int m2 = multi(v2, v1 & 255) >> 5;
+
+                rcadd[4] = m1;
+                rcadd2[4] = m2;
+            }
+            {
+                // 31
+
+                int v1 = pcm.ram2[31][5];
+                int v2 = pcm.ram1[28][1];
+
+                int m1 = multi(v2, v1 >> 8) >> 5;
+                int m2 = multi(v2, v1 & 255) >> 5;
+
+                rcadd[5] = m1;
+                rcadd2[5] = m2;
+            }
+        }
+
+        pcm.ram1[31][1] = 0;
+        pcm.ram1[31][3] = 0;
+        pcm.rcsum[0] = 0;
+        pcm.rcsum[1] = 0;
 
         for (int slot = 0; slot < reg_slots; slot++)
         {
@@ -708,170 +1277,12 @@ void PCM_Update(uint64_t cycles)
             int volmul1 = 0;
             int volmul2 = 0;
 
-            for (int e = 0; e < 3; e++)
-            {
-                int adjust = ram2[3+e];
-                int levelcur = ram2[9+e] & 0x7fff;
-                int speed = adjust & 0xff;
-                int target = (adjust >> 8) & 0xff;
-
-                
-                int w1 = (speed & 0xf0) == 0;
-                int w2 = w1 || (speed & 0x10) != 0;
-                int w3 = pcm.nfs &&
-                    ((speed & 0x80) == 0 || ((speed & 0x40) == 0 && (!w2 || (speed & 0x20) == 0)));
-
-                int type = w2 | (w3 << 3);
-                if (speed & 0x20)
-                    type |= 2;
-                if ((speed & 0x80) == 0 || (speed & 0x40) == 0)
-                    type |= 4;
-
-
-                int write = !active;
-                int addlow = 0;
-                if (type & 4)
-                {
-                    if (pcm.tv_counter & 8)
-                        addlow |= 1;
-                    if (pcm.tv_counter & 4)
-                        addlow |= 2;
-                    if (pcm.tv_counter & 2)
-                        addlow |= 4;
-                    if (pcm.tv_counter & 1)
-                        addlow |= 8;
-                    write |= 1;
-                }
-                else
-                {
-                    switch (type & 3)
-                    {
-                    case 0:
-                        if (pcm.tv_counter & 0x20)
-                            addlow |= 1;
-                        if (pcm.tv_counter & 0x10)
-                            addlow |= 2;
-                        if (pcm.tv_counter & 8)
-                            addlow |= 4;
-                        if (pcm.tv_counter & 4)
-                            addlow |= 8;
-                        write |= (pcm.tv_counter & 3) == 0;
-                        break;
-                    case 1:
-                        if (pcm.tv_counter & 0x80)
-                            addlow |= 1;
-                        if (pcm.tv_counter & 0x40)
-                            addlow |= 2;
-                        if (pcm.tv_counter & 0x20)
-                            addlow |= 4;
-                        if (pcm.tv_counter & 0x10)
-                            addlow |= 8;
-                        write |= (pcm.tv_counter & 15) == 0;
-                        break;
-                    case 2:
-                        if (pcm.tv_counter & 0x200)
-                            addlow |= 1;
-                        if (pcm.tv_counter & 0x100)
-                            addlow |= 2;
-                        if (pcm.tv_counter & 0x80)
-                            addlow |= 4;
-                        if (pcm.tv_counter & 0x40)
-                            addlow |= 8;
-                        write |= (pcm.tv_counter & 63) == 0;
-                        break;
-                    case 3:
-                        if (pcm.tv_counter & 0x800)
-                            addlow |= 1;
-                        if (pcm.tv_counter & 0x400)
-                            addlow |= 2;
-                        if (pcm.tv_counter & 0x200)
-                            addlow |= 4;
-                        if (pcm.tv_counter & 0x100)
-                            addlow |= 8;
-                        write |= (pcm.tv_counter & 127) == 0;
-                        break;
-                    }
-                }
-
-                if ((type & 8) == 0)
-                {
-                    int shift = speed & 15;
-                    shift = (10 - shift) & 15;
-
-                    int sum1 = (target << 11); // 5
-                    if (e != 2 || active)
-                        sum1 -= (levelcur << 4); // 6
-                    int neg = (sum1 & 0x80000) != 0;
-
-                    int preshift = sum1;
-
-                    int shifted = preshift >> shift;
-                    shifted -= sum1;
-
-                    int sum2 = (target << 11) + addlow + shifted;
-                    if (write && pcm.nfs)
-                        ram2[9 + e] = (sum2 >> 4) & 0x7fff;
-
-                    if (e == 0)
-                    {
-                        volmul1 = (sum2 >> 4) & 0x7ffe;
-                    }
-                    else if (e == 1)
-                    {
-                        volmul2 = (sum2 >> 4) & 0x7ffe;
-                    }
-                }
-                else
-                {
-                    int shift = (speed >> 4) & 14;
-                    shift |= w2;
-                    shift = (10 - shift) & 15;
-
-                    int sum1 = target << 11; // 5
-                    if (e != 2 || active)
-                        sum1 -= (levelcur << 4); // 6
-                    int neg = (sum1 & 0x80000) != 0;
-                    int preshift = (speed & 15) << 9;
-                    if (!w1)
-                        preshift |= 0x2000;
-                    if (neg)
-                        preshift ^= ~0x3f;
-
-                    int shifted = preshift >> shift;
-                    int sum2 = shifted;
-                    if (e != 2 || active)
-                        sum2 += (levelcur << 4) | addlow;
-
-                    int sum2_l = (sum2 >> 4);
-
-                    int sum3 = (target << 11) - (sum2_l << 4);
-
-                    int neg2 = (sum3 & 0x80000) != 0;
-                    int xnor = !(neg2 ^ neg);
-
-                    if (write && pcm.nfs)
-                    {
-                        if (xnor)
-                            ram2[9 + e] = sum2_l & 0x7fff;
-                        else
-                            ram2[9 + e] = target << 7;
-                    }
-
-                    if (e == 0)
-                    {
-                        volmul1 = sum2_l & 0x7ffe;
-                    }
-                    else if (e == 1)
-                    {
-                        if (xnor)
-                            volmul2 = sum2_l & 0x7ffe;
-                        else
-                            volmul2 = target << 7;
-                    }
-                }
-            }
+            calc_tv(0, ram2[3], &ram2[9], active, &volmul1);
+            calc_tv(1, ram2[4], &ram2[10], active, &volmul2);
+            calc_tv(2, ram2[5], &ram2[11], active, NULL);
 
             int sample = (ram2[6] & 2) == 0 ? ram1[3] : v3;
+            //sample = test;
 
             int multiv1 = multi(sample, volmul1 >> 8);
             int multiv2 = multi(sample, (volmul1 >> 1) & 127);
@@ -889,14 +1300,63 @@ void PCM_Update(uint64_t cycles)
             int sampl = multi(sample3, (pan >> 8) & 255);
             int sampr = multi(sample3, (pan >> 0) & 255);
 
-            int rc1 = multi(sample3, (rc >> 8) & 255);
-            int rc2 = multi(sample3, (rc >> 0) & 255);
+            int rc0 = multi(sample3, (rc >> 8) & 255);
+            int rc1 = multi(sample3, (rc >> 0) & 255);
 
+            rc0 = addclip20(rc0 >> 6, rc0 >> 6, (rc0 >> 5) & 1);
             rc1 = addclip20(rc1 >> 6, rc1 >> 6, (rc1 >> 5) & 1);
-            rc2 = addclip20(rc2 >> 6, rc2 >> 6, (rc2 >> 5) & 1);
+            
+            // mix reverb/chorus?
+            int slot2 = (slot == reg_slots - 1) ? 23 : slot;
+            switch (slot2)
+            {
+                case 16:
+                    pcm.ram1[31][1] = addclip20(pcm.ram1[31][1], rcadd[0] >> 1, rcadd[0] & 1);
+                    break;
+                case 17:
+                    pcm.ram1[31][3] = addclip20(pcm.ram1[31][3], rcadd[1] >> 1, rcadd[1] & 1);
+                    break;
+                case 20:
+                    pcm.ram1[31][1] = addclip20(pcm.ram1[31][1], rcadd[2] >> 1, rcadd[2] & 1);
+                    break;
+                case 21:
+                    pcm.ram1[31][3] = addclip20(pcm.ram1[31][3], rcadd[3] >> 1, rcadd[3] & 1);
+                    break;
+                case 22:
+                    pcm.ram1[31][1] = addclip20(pcm.ram1[31][1], rcadd[4] >> 1, rcadd[4] & 1);
+                    break;
+                case 23:
+                    pcm.ram1[31][3] = addclip20(pcm.ram1[31][3], rcadd[5] >> 1, rcadd[5] & 1);
+                    break;
+            }
 
             int suml = addclip20(pcm.ram1[31][1], sampl >> 6, (sampl >> 5) & 1);
             int sumr = addclip20(pcm.ram1[31][3], sampr >> 6, (sampr >> 5) & 1);
+
+            switch (slot2)
+            {
+                case 16:
+                    pcm.rcsum[1] = addclip20(pcm.rcsum[1], rcadd2[0] >> 1, rcadd2[0] & 1);
+                    break;
+                case 17:
+                    pcm.rcsum[1] = addclip20(pcm.rcsum[1], rcadd2[1] >> 1, rcadd2[1] & 1);
+                    break;
+                case 20:
+                    pcm.rcsum[0] = addclip20(pcm.rcsum[0], rcadd2[2] >> 1, rcadd2[2] & 1);
+                    break;
+                case 21:
+                    pcm.rcsum[1] = addclip20(pcm.rcsum[1], rcadd2[3] >> 1, rcadd2[3] & 1);
+                    break;
+                case 22:
+                    pcm.rcsum[0] = addclip20(pcm.rcsum[0], rcadd2[4] >> 1, rcadd2[4] & 1);
+                    break;
+                case 23:
+                    pcm.rcsum[1] = addclip20(pcm.rcsum[1], rcadd2[5] >> 1, rcadd2[5] & 1);
+                    break;
+            }
+
+            pcm.rcsum[0] = addclip20(pcm.rcsum[0], rc0, 0);
+            pcm.rcsum[1] = addclip20(pcm.rcsum[1], rc1, 0);
 
             if (slot != reg_slots - 1)
             {
@@ -931,6 +1391,11 @@ void PCM_Update(uint64_t cycles)
                 ram2[9] = 0;
                 ram2[10] = 0;
             }
+        }
+
+        if (pcm.nfs)
+        {
+            pcm.ram2[31][7] |= 0x20;
         }
 
         pcm.nfs = 1;
