@@ -450,28 +450,16 @@ inline void eram_pack(int addr, int val)
     addr &= 0x3fff;
     int sh = 0;
     int top = (val >> 13) & 0x7f;
-    if ((top & 0x40) == 0)
-    {
-        if (top >= 48)
-            sh = 3;
-        else if (top >= 12)
-            sh = 2;
-        else if (top >= 3)
-            sh = 1;
-        else
-            sh = 0;
-    }
+    if (top & 0x40)
+        top ^= 0x7f;
+    if (top >= 16)
+        sh = 3;
+    else if (top >= 4)
+        sh = 2;
+    else if (top >= 1)
+        sh = 1;
     else
-    {
-        if (top <= 79)
-            sh = 3;
-        else if (top <= 115)
-            sh = 2;
-        else if (top <= 124)
-            sh = 1;
-        else
-            sh = 0;
-    }
+        sh = 0;
 
     int data = (val >> (sh * 2)) & 0x3fff;
     data |= sh << 14;
@@ -1307,25 +1295,25 @@ void PCM_Update(uint64_t cycles)
             rc1 = addclip20(rc1 >> 6, rc1 >> 6, (rc1 >> 5) & 1);
             
             // mix reverb/chorus?
-            int slot2 = (slot == reg_slots - 1) ? 23 : slot;
+            int slot2 = (slot == reg_slots - 1) ? 31 : slot + 1;
             switch (slot2)
             {
-                case 16:
+                case 17:
                     pcm.ram1[31][1] = addclip20(pcm.ram1[31][1], rcadd[0] >> 1, rcadd[0] & 1);
                     break;
-                case 17:
+                case 18:
                     pcm.ram1[31][3] = addclip20(pcm.ram1[31][3], rcadd[1] >> 1, rcadd[1] & 1);
                     break;
-                case 20:
+                case 21:
                     pcm.ram1[31][1] = addclip20(pcm.ram1[31][1], rcadd[2] >> 1, rcadd[2] & 1);
                     break;
-                case 21:
+                case 22:
                     pcm.ram1[31][3] = addclip20(pcm.ram1[31][3], rcadd[3] >> 1, rcadd[3] & 1);
                     break;
-                case 22:
+                case 23:
                     pcm.ram1[31][1] = addclip20(pcm.ram1[31][1], rcadd[4] >> 1, rcadd[4] & 1);
                     break;
-                case 23:
+                case 31:
                     pcm.ram1[31][3] = addclip20(pcm.ram1[31][3], rcadd[5] >> 1, rcadd[5] & 1);
                     break;
             }
@@ -1335,22 +1323,22 @@ void PCM_Update(uint64_t cycles)
 
             switch (slot2)
             {
-                case 16:
+                case 17:
                     pcm.rcsum[1] = addclip20(pcm.rcsum[1], rcadd2[0] >> 1, rcadd2[0] & 1);
                     break;
-                case 17:
+                case 18:
                     pcm.rcsum[1] = addclip20(pcm.rcsum[1], rcadd2[1] >> 1, rcadd2[1] & 1);
                     break;
-                case 20:
+                case 21:
                     pcm.rcsum[0] = addclip20(pcm.rcsum[0], rcadd2[2] >> 1, rcadd2[2] & 1);
                     break;
-                case 21:
+                case 22:
                     pcm.rcsum[1] = addclip20(pcm.rcsum[1], rcadd2[3] >> 1, rcadd2[3] & 1);
                     break;
-                case 22:
+                case 23:
                     pcm.rcsum[0] = addclip20(pcm.rcsum[0], rcadd2[4] >> 1, rcadd2[4] & 1);
                     break;
-                case 23:
+                case 31:
                     pcm.rcsum[1] = addclip20(pcm.rcsum[1], rcadd2[5] >> 1, rcadd2[5] & 1);
                     break;
             }
