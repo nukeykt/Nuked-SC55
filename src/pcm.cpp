@@ -139,6 +139,9 @@ void PCM_Write(uint32_t address, uint8_t data)
     }
 }
 
+// rv: [30][2], [30][3]
+// ch: [31][2], [31][5]
+
 uint8_t PCM_Read(uint32_t address)
 {
     address &= 0x3f;
@@ -845,7 +848,7 @@ void PCM_Update(uint64_t cycles)
             {
                 // 17
                 int v1 = pcm.ram2[30][2];
-                int v2 = pcm.ram2[28][5];
+                int v2 = pcm.ram1[28][5];
 
                 int m1 = multi(v2, v1 >> 8) >> 5;
 
@@ -861,7 +864,7 @@ void PCM_Update(uint64_t cycles)
             {
                 // 18
                 int v1 = pcm.ram2[30][3];
-                int v2 = pcm.ram2[28][2];
+                int v2 = pcm.ram1[28][2];
 
                 int m1 = multi(v2, v1 >> 8) >> 5;
 
@@ -1288,16 +1291,15 @@ void PCM_Update(uint64_t cycles)
             int sampl = multi(sample3, (pan >> 8) & 255);
             int sampr = multi(sample3, (pan >> 0) & 255);
 
-            int rc0 = multi(sample3, (rc >> 8) & 255);
-            int rc1 = multi(sample3, (rc >> 0) & 255);
-
-            rc0 = addclip20(rc0 >> 6, rc0 >> 6, (rc0 >> 5) & 1);
-            rc1 = addclip20(rc1 >> 6, rc1 >> 6, (rc1 >> 5) & 1);
+            int rc0 = multi(sample3, (rc >> 8) & 255) >> 5; // reverb
+            int rc1 = multi(sample3, (rc >> 0) & 255) >> 5; // chorus
             
             // mix reverb/chorus?
             int slot2 = (slot == reg_slots - 1) ? 31 : slot + 1;
             switch (slot2)
             {
+                // 17, 18 - reverb
+
                 case 17:
                     pcm.ram1[31][1] = addclip20(pcm.ram1[31][1], rcadd[0] >> 1, rcadd[0] & 1);
                     break;
@@ -1343,8 +1345,8 @@ void PCM_Update(uint64_t cycles)
                     break;
             }
 
-            pcm.rcsum[0] = addclip20(pcm.rcsum[0], rc0, 0);
-            pcm.rcsum[1] = addclip20(pcm.rcsum[1], rc1, 0);
+            pcm.rcsum[0] = addclip20(pcm.rcsum[0], rc0 >> 1, rc0 & 1);
+            pcm.rcsum[1] = addclip20(pcm.rcsum[1], rc1 >> 1, rc1 & 1);
 
             if (slot != reg_slots - 1)
             {
