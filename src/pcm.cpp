@@ -591,7 +591,7 @@ void PCM_Update(uint64_t cycles)
             if (!pcm.nfs)
                 pcm.tv_counter = pcm.ram2[31][8]; // fixme
 
-            pcm.tv_counter += 1;
+            pcm.tv_counter -= 1;
 
             pcm.tv_counter &= 0x3fff;
         }
@@ -856,7 +856,7 @@ void PCM_Update(uint64_t cycles)
 
                 rcadd2[0] = multi(v2, v1 & 255) >> 5;
 
-                int t1 = eram_unpack(pcm.ram2[29][10] + pcm.tv_counter);
+                int t1 = eram_unpack(pcm.ram2[29][10] + pcm.tv_counter + 1); //? 3a6e
                 eram_pack(pcm.ram2[28][9] + pcm.tv_counter, pcm.ram1[29][5]);
                 pcm.ram1[29][5] = t1;
             }
@@ -872,14 +872,14 @@ void PCM_Update(uint64_t cycles)
 
                 rcadd2[1] = multi(v2, v1 & 255) >> 5;
 
-                pcm.ram1[28][1] = eram_unpack(pcm.ram2[29][11] + pcm.tv_counter);
+                pcm.ram1[28][1] = eram_unpack(pcm.ram2[29][11] + pcm.tv_counter + 1); //? 3a1e
             }
             {
                 // 19
 
                 int v1 = pcm.ram2[31][9];
 
-                int s1 = eram_unpack(pcm.ram2[29][10] + pcm.tv_counter);
+                int s1 = eram_unpack(pcm.ram2[29][10] + pcm.tv_counter); //? 3a6d
 
                 eram_pack(pcm.ram2[29][4] + pcm.tv_counter, pcm.ram1[29][4]);
 
@@ -895,7 +895,7 @@ void PCM_Update(uint64_t cycles)
 
                 int v1 = pcm.ram2[31][10];
 
-                int s1 = eram_unpack(pcm.ram2[29][11] + pcm.tv_counter);
+                int s1 = eram_unpack(pcm.ram2[29][11] + pcm.tv_counter); //? 3a1d
 
                 eram_pack(pcm.ram2[29][5] + pcm.tv_counter, pcm.ram1[28][0]);
 
@@ -955,6 +955,85 @@ void PCM_Update(uint64_t cycles)
 
                 rcadd[5] = m1;
                 rcadd2[5] = m2;
+
+                {
+                    // address generator
+
+                    int key = 1;
+                    int okey = (pcm.ram2[31][7] & 0x20) != 0;
+                    int active = key && okey;
+                    int kon = key && !okey;
+
+                    int b15 = (pcm.ram2[31][8] & 0x8000) != 0; // 0
+                    int b6 = (pcm.ram2[31][7] & 0x40) != 0; // 1
+                    int b7 = (pcm.ram2[31][7] & 0x80) != 0; // 1
+                    int old_nibble = (pcm.ram2[31][7] >> 12) & 15; // 1
+
+                    int address = pcm.ram1[31][4]; // 0
+                    int address_end = pcm.ram1[31][0]; // 1 or 2
+                    int address_loop = pcm.ram1[31][2]; // 2 or 1
+
+                    int sub_phase = (pcm.ram2[31][8] & 0x3fff); // 1
+                    int interp_ratio = (sub_phase >> 7) & 127;
+                    sub_phase += pcm.ram2[pcm.ram2[31][7] & 31][0]; // 5
+                    int sub_phase_of = (sub_phase >> 14) & 7;
+                    if (pcm.nfs)
+                    {
+                        pcm.ram2[31][8] &= ~0x3fff;
+                        pcm.ram2[31][8] |= sub_phase & 0x3fff;
+                    }
+
+
+                    // address 0
+                    int address_cnt = address;
+
+                    int cmp1 = b15 ? address_loop : address_end;
+                    int cmp2 = address_cnt;
+                    int address_cmp = (cmp1 & 0xfffff) == (cmp2 & 0xfffff); // 9
+                    int next_b15 = b15;
+
+                    int next_address = address_cnt; // 11
+
+                    cmp1 = (!b6 && address_cmp) ? address_loop : address_cnt;
+                    cmp2 = address_cnt;
+                    int address_cnt2 = (kon || (!b6 && address_cmp)) ? cmp1 : cmp2;
+
+                    int address_add = (!address_cmp && b6 && !b15) || (!address_cmp && !b6);
+                    int address_sub = !address_cmp && b6 && b15;
+                    if (b7)
+                        address_cnt2 -= address_add - address_sub;
+                    else
+                        address_cnt2 += address_add - address_sub;
+                    address_cnt = address_cnt2 & 0xfffff; // 11
+                    b15 = b6 && (b15 ^ address_cmp); // 11
+
+                    cmp1 = b15 ? address_loop : address_end;
+                    cmp2 = address_cnt;
+                    address_cmp = (cmp1 & 0xfffff) == (cmp2 & 0xfffff); // 13
+
+                    if (sub_phase_of >= 1)
+                    {
+                        next_address = address_cnt; // 13
+                        next_b15 = b15;
+                    }
+
+                    if (active && pcm.nfs)
+                        pcm.ram1[31][4] = next_address;
+
+                    if (pcm.nfs)
+                    {
+                        pcm.ram2[31][8] &= ~0x8000;
+                        pcm.ram2[31][8] |= next_b15 << 15;
+                    }
+
+                    int t1 = address_loop; // 18
+                    int t2 = pcm.ram1[31][4] - t1; // 19
+                    int t3 = address_end - t2; // 20
+                    int t4 = pcm.ram1[31][4]; // 23
+
+                    pcm.ram2[29][10] = t3;
+                    pcm.ram2[29][11] = t4;
+                }
             }
         }
 
