@@ -437,7 +437,7 @@ inline void calc_tv(int e, int adjust, uint16_t *levelcur, int active, int *volm
     }
 }
 
-inline int eram_unpack(int addr)
+inline int eram_unpack(int addr, int type = 0)
 {
     addr &= 0x3fff;
     int data = pcm.eram[addr];
@@ -445,7 +445,7 @@ inline int eram_unpack(int addr)
     int sh = (data >> 14) & 3;
 
     val <<= 18;
-    return val >> (18 - sh * 2);
+    return val >> (18 - sh * 2 + type);
 }
 
 inline void eram_pack(int addr, int val)
@@ -644,7 +644,8 @@ void PCM_Update(uint64_t cycles)
                 int v1 = pcm.ram2[30][4];
                 int m1 = multi(pcm.ram1[29][0], (v1 >> 8)) >> 6;
                 int v2 = 0;
-                int s1 = eram_unpack(pcm.ram2[28][1] + pcm.tv_counter);
+                int s1 = eram_unpack(pcm.ram2[28][1] + pcm.tv_counter, 1);
+                int s2 = eram_unpack(pcm.ram2[28][1] + pcm.tv_counter);
                 if ((v1 & 0x30) != 0)
                 {
                     v2 = s1;
@@ -652,13 +653,14 @@ void PCM_Update(uint64_t cycles)
                 int v3 = addclip20(m1, v2 ^ 0xfffff, 1);
                 pcm.ram1[29][4] = v3;
                 int m2 = multi(v3, v1 & 255) >> 5;
-                pcm.ram1[29][5] = addclip20(m2 >> 1, s1, m2 & 1);
+                pcm.ram1[29][5] = addclip20(m2 >> 1, s2, m2 & 1);
             }
             {
                 // 2
                 int v1 = pcm.ram2[30][4];
                 int v2 = 0;
-                int s1 = eram_unpack(pcm.ram2[28][2] + pcm.tv_counter);
+                int s1 = eram_unpack(pcm.ram2[28][2] + pcm.tv_counter, 1);
+                int s2 = eram_unpack(pcm.ram2[28][2] + pcm.tv_counter);
                 if ((v1 & 0x30) != 0)
                 {
                     v2 = s1;
@@ -666,13 +668,14 @@ void PCM_Update(uint64_t cycles)
                 int v3 = addclip20(pcm.ram1[29][5], v2 ^ 0xfffff, 1);
                 pcm.ram1[29][5] = v3;
                 int m2 = multi(v3, v1 & 255) >> 5;
-                pcm.ram1[28][0] = addclip20(m2 >> 1, s1, m2 & 1);
+                pcm.ram1[28][0] = addclip20(m2 >> 1, s2, m2 & 1);
             }
             {
                 // 3
                 int v1 = pcm.ram2[30][4];
                 int v2 = 0;
-                int s1 = eram_unpack(pcm.ram2[28][3] + pcm.tv_counter);
+                int s1 = eram_unpack(pcm.ram2[28][3] + pcm.tv_counter, 1);
+                int s2 = eram_unpack(pcm.ram2[28][3] + pcm.tv_counter);
                 if ((v1 & 0x30) != 0)
                 {
                     v2 = s1;
@@ -680,7 +683,7 @@ void PCM_Update(uint64_t cycles)
                 int v3 = addclip20(pcm.ram1[28][0], v2 ^ 0xfffff, 1);
                 pcm.ram1[28][0] = v3;
                 int m2 = multi(v3, v1 & 255) >> 5;
-                pcm.ram1[28][1] = addclip20(m2 >> 1, s1, m2 & 1);
+                pcm.ram1[28][1] = addclip20(m2 >> 1, s2, m2 & 1);
 
 
                 pcm.ram1[28][2] = eram_unpack(pcm.ram2[28][5] + pcm.tv_counter);
@@ -689,7 +692,8 @@ void PCM_Update(uint64_t cycles)
                 // 4
                 int v1 = pcm.ram2[30][5];
                 int v2 = 0;
-                int s1 = eram_unpack(pcm.ram2[28][4] + pcm.tv_counter);
+                int s1 = eram_unpack(pcm.ram2[28][4] + pcm.tv_counter, 1);
+                int s2 = eram_unpack(pcm.ram2[28][4] + pcm.tv_counter);
                 if ((v1 & 0x30) != 0)
                 {
                     v2 = s1;
@@ -697,7 +701,7 @@ void PCM_Update(uint64_t cycles)
                 int v3 = addclip20(pcm.ram1[28][1], v2 ^ 0xfffff, 1);
                 pcm.ram1[28][1] = v3;
                 int m2 = multi(v3, v1 & 255) >> 5;
-                pcm.ram1[28][3] = addclip20(m2 >> 1, s1, m2 & 1);
+                pcm.ram1[28][3] = addclip20(m2 >> 1, s2, m2 & 1);
 
 
                 pcm.ram1[28][4] = eram_unpack(pcm.ram2[29][1] + pcm.tv_counter);
