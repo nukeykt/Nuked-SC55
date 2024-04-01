@@ -600,14 +600,14 @@ void PCM_Update(uint64_t cycles)
 
         { // fixme
             if (pcm.ram2[31][8] & 0x8000)
-                pcm.ram2[31][9] = pcm.ram2[31][8];
+                pcm.ram2[31][9] = pcm.ram2[31][8] & 0x7fff;
             else
-                pcm.ram2[31][10] = pcm.ram2[31][8];
+                pcm.ram2[31][10] = pcm.ram2[31][8] & 0x7fff;
 
             if ((0x4000 - pcm.ram2[31][8]) & 0x8000)
-                pcm.ram2[31][10] = 0x4000 - pcm.ram2[31][8];
+                pcm.ram2[31][10] = (0x4000 - pcm.ram2[31][8]) & 0x7fff;
             else
-                pcm.ram2[31][9] = 0x4000 - pcm.ram2[31][8];
+                pcm.ram2[31][9] = (0x4000 - pcm.ram2[31][8]) & 0x7fff;
         }
 
         {
