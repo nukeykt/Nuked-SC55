@@ -883,12 +883,12 @@ void PCM_Update(uint64_t cycles)
 
                 eram_pack(pcm.ram2[29][4] + pcm.tv_counter, pcm.ram1[29][4]);
 
-                int m1 = multi(pcm.ram1[29][4], v1 >> 8) >> 5;
+                int m1 = multi(s1, v1 >> 8) >> 5;
                 int m2 = multi(pcm.ram1[29][5], v1 >> 8) >> 5;
 
-                int t2 = addclip20(s1, m1 >> 1, m1 & 1);
+                int t2 = addclip20(s1, (m1 >> 1) ^ 0xfffff, 1);
 
-                pcm.ram1[29][5] = addclip20(t2, (m2 >> 1) ^ 0xfffff, 1);
+                pcm.ram1[29][5] = addclip20(t2, m2 >> 1, m2 & 1);
             }
             {
                 // 20
@@ -899,12 +899,12 @@ void PCM_Update(uint64_t cycles)
 
                 eram_pack(pcm.ram2[29][5] + pcm.tv_counter, pcm.ram1[28][0]);
 
-                int m1 = multi(pcm.ram1[28][0], v1 >> 8) >> 5;
+                int m1 = multi(s1, v1 >> 8) >> 5;
                 int m2 = multi(pcm.ram1[28][1], v1 >> 8) >> 5;
 
-                int t2 = addclip20(s1, m1 >> 1, m1 & 1);
+                int t2 = addclip20(s1, (m1 >> 1) ^ 0xfffff, 1);
 
-                pcm.ram1[28][1] = addclip20(t2, (m2 >> 1) ^ 0xfffff, 1);
+                pcm.ram1[28][1] = addclip20(t2, m2 >> 1, m2 & 1);
 
                 eram_pack(pcm.ram2[29][9] + pcm.tv_counter, pcm.ram1[29][1]);
             }
