@@ -68,3 +68,5 @@ K -> CHORUS R
 LEFT -> PART L
 RIGHT -> PART R
 ```
+
+- Due to a bug in the SC-55mkII's firmware, some parameters don't reset properly on startup. Do GM, GS or MT-32 reset using buttons to fix this issue.
