@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.2...3.5)
-project (NukedSC55 VERSION 1.0.0 LANGUAGES CXX)
+project (NukedSC55 VERSION 0.1.0 LANGUAGES CXX)
 
 include(FindPkgConfig)
 include(GNUInstallDirs)
@@ -253,11 +253,6 @@ macro(copy_rom_target TargetName TargetFile)
 endmacro()
 
 copy_rom_target(back_data back.data)
-copy_rom_target(rom1 rom1.bin)
-copy_rom_target(rom2 rom2.bin)
-copy_rom_target(rom_sm rom_sm.bin)
-copy_rom_target(waverom1 waverom1.bin)
-copy_rom_target(waverom2 waverom2.bin)
 
 install(TARGETS nuked-sc55
         EXPORT NukedSC55StaticTargets
