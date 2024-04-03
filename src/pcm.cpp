@@ -41,6 +41,7 @@
 pcm_t pcm;
 uint8_t waverom1[0x200000];
 uint8_t waverom2[0x100000];
+uint8_t waverom3[0x100000];
 
 uint8_t PCM_ReadROM(uint32_t address)
 {
@@ -52,9 +53,14 @@ uint8_t PCM_ReadROM(uint32_t address)
     switch (bank)
     {
         case 0:
-            return waverom1[address & 0x1fffff];
+            if (mcu_mk1)
+                return waverom1[address & 0xfffff];
+            else
+                return waverom1[address & 0x1fffff];
         case 1:
             return waverom2[address & 0xfffff];
+        case 3:
+            return waverom3[address & 0xfffff];
         default:
             break;
     }
@@ -1387,6 +1393,9 @@ void PCM_Update(uint64_t cycles)
             calc_tv(0, ram2[3], &ram2[9], active, &volmul1);
             calc_tv(1, ram2[4], &ram2[10], active, &volmul2);
             calc_tv(2, ram2[5], &ram2[11], active, NULL);
+
+            if (volmul1 && volmul2)
+                volmul1 += 0;
 
             int sample = (ram2[6] & 2) == 0 ? ram1[3] : v3;
             //sample = test;

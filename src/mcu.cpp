@@ -74,6 +74,7 @@ void MCU_ErrorTrap(void)
     printf("%.2x %.4x\n", mcu.cp, mcu.pc);
 }
 
+int mcu_mk1 = 0; // 0 - SC-55mkII, SC-55ST. 1 - SC-55, CM-300/SCC-1
 
 static int ga_int[8];
 static int ga_int_enable = 0;
@@ -340,6 +341,8 @@ uint8_t rom2[ROM2_SIZE];
 uint8_t ram[RAM_SIZE];
 uint8_t sram[SRAM_SIZE];
 
+int rom2_mask = ROM2_SIZE - 1;
+
 uint8_t MCU_Read(uint32_t address)
 {
     uint32_t address_rom = address & 0x3ffff;
@@ -355,39 +358,65 @@ uint8_t MCU_Read(uint32_t address)
             ret = rom1[address & 0x7fff];
         else
         {
-            if (address >= 0xe000 && address < 0xe400)
+            if (!mcu_mk1)
             {
-                ret = PCM_Read(address & 0x3f);
-            }
-            else if (address >= 0xec00 && address < 0xf000)
-            {
-                ret = SM_SysRead(address & 0xff);
-            }
-            else if (address >= 0xff80)
-            {
-                ret = MCU_DeviceRead(address & 0x7f);
-            }
-            else if (address >= 0xfb80 && address < 0xff80
-                && (dev_register[DEV_RAME] & 0x80) != 0)
-                ret = ram[(address - 0xfb80) & 0x3ff];
-            else if (address >= 0x8000 && address < 0xe000)
-            {
-                ret = sram[address & 0x7fff];
-            }
-            else if (address == 0xe402)
-            {
-                ret = ga_int_trigger;
-                ga_int_trigger = 0;
-                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ1, 0);
+                if (address >= 0xe000 && address < 0xe400)
+                {
+                    ret = PCM_Read(address & 0x3f);
+                }
+                else if (address >= 0xec00 && address < 0xf000)
+                {
+                    ret = SM_SysRead(address & 0xff);
+                }
+                else if (address >= 0xff80)
+                {
+                    ret = MCU_DeviceRead(address & 0x7f);
+                }
+                else if (address >= 0xfb80 && address < 0xff80
+                    && (dev_register[DEV_RAME] & 0x80) != 0)
+                    ret = ram[(address - 0xfb80) & 0x3ff];
+                else if (address >= 0x8000 && address < 0xe000)
+                {
+                    ret = sram[address & 0x7fff];
+                }
+                else if (address == 0xe402)
+                {
+                    ret = ga_int_trigger;
+                    ga_int_trigger = 0;
+                    MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ1, 0);
+                }
+                else
+                {
+                    printf("Unknown read %x\n", address);
+                    ret = 0xff;
+                }
+                //
+                // e402:2-0 irq source
+                //
             }
             else
             {
-                printf("Unknown read %x\n", address);
-                ret = 0xff;
+                if (address >= 0xe000 && address < 0xe040)
+                {
+                    ret = PCM_Read(address & 0x3f);
+                }
+                else if (address >= 0xff80)
+                {
+                    ret = MCU_DeviceRead(address & 0x7f);
+                }
+                else if (address >= 0xfb80 && address < 0xff80
+                    && (dev_register[DEV_RAME] & 0x80) != 0)
+                    ret = ram[(address - 0xfb80) & 0x3ff];
+                else if (address >= 0x8000 && address < 0xe000)
+                {
+                    ret = sram[address & 0x7fff];
+                }
+                else
+                {
+                    printf("Unknown read %x\n", address);
+                    ret = 0xff;
+                }
             }
-            //
-            // e402:2-0 irq source
-            //
         }
         break;
 #if 0
@@ -412,10 +441,19 @@ uint8_t MCU_Read(uint32_t address)
     case 9:
     case 14:
     case 15:
-        ret = rom2[address_rom];
+        ret = rom2[address_rom & rom2_mask];
         break;
     case 10:
-        ret = sram[address & 0x7fff]; // FIXME
+        if (!mcu_mk1)
+            ret = sram[address & 0x7fff]; // FIXME
+        else
+            ret = 0xff;
+        break;
+    case 5:
+        if (mcu_mk1)
+            ret = sram[address & 0x7fff]; // FIXME
+        else
+            ret = 0xff;
         break;
     default:
         ret = 0x00;
@@ -452,58 +490,87 @@ void MCU_Write(uint32_t address, uint8_t value)
     {
         if (address & 0x8000)
         {
-            if (address >= 0xe400 && address < 0xe800)
+            if (!mcu_mk1)
             {
-                if (address == 0xe404 || address == 0xe405)
-                    LCD_Write(address & 1, value);
-                else if (address == 0xe401)
+                if (address >= 0xe400 && address < 0xe800)
                 {
-                    io_sd = value;
-                    LCD_Enable((value & 1) == 0);
+                    if (address == 0xe404 || address == 0xe405)
+                        LCD_Write(address & 1, value);
+                    else if (address == 0xe401)
+                    {
+                        io_sd = value;
+                        LCD_Enable((value & 1) == 0);
+                    }
+                    else if (address == 0xe402)
+                        ga_int_enable = (value << 1);
+                    else
+                        printf("Unknown write %x %x\n", address, value);
+                    //
+                    // e400: always 4?
+                    // e401: SC0-6?
+                    // e402: enable/disable IRQ?
+                    // e403: always 1?
+                    // e404: LCD
+                    // e405: LCD
+                    // e406: 0 or 40
+                    // e407: 0, e406 continuation?
+                    //
                 }
-                else if (address == 0xe402)
-                    ga_int_enable = (value << 1);
+                else if (address >= 0xe000 && address < 0xe400)
+                {
+                    PCM_Write(address & 0x3f, value);
+                }
+                else if (!mcu_mk1 && address >= 0xec00 && address < 0xf000)
+                {
+                    SM_SysWrite(address & 0xff, value);
+                }
+                else if (address >= 0xff80)
+                {
+                    MCU_DeviceWrite(address & 0x7f, value);
+                }
+                else if (address >= 0xfb80 && address < 0xff80
+                    && (dev_register[DEV_RAME] & 0x80) != 0)
+                    ram[(address - 0xfb80) & 0x3ff] = value;
+                else if (address >= 0x8000 && address < 0xe000)
+                {
+                    sram[address & 0x7fff] = value;
+                }
                 else
+                {
                     printf("Unknown write %x %x\n", address, value);
-                //
-                // e400: always 4?
-                // e401: SC0-6?
-                // e402: enable/disable IRQ?
-                // e403: always 1?
-                // e404: LCD
-                // e405: LCD
-                // e406: 0 or 40
-                // e407: 0, e406 continuation?
-                //
-            }
-            else if (address >= 0xe000 && address < 0xe400)
-            {
-                PCM_Write(address & 0x3f, value);
-            }
-            else if (address >= 0xec00 && address < 0xf000)
-            {
-                SM_SysWrite(address & 0xff, value);
-            }
-            else if (address >= 0xff80)
-            {
-                MCU_DeviceWrite(address & 0x7f, value);
-            }
-            else if (address >= 0xfb80 && address < 0xff80
-                && (dev_register[DEV_RAME] & 0x80) != 0)
-                ram[(address - 0xfb80) & 0x3ff] = value;
-            else if (address >= 0x8000 && address < 0xe000)
-            {
-                sram[address & 0x7fff] = value;
+                }
             }
             else
             {
-                printf("Unknown write %x %x\n", address, value);
+                if (address >= 0xe000 && address < 0xe040)
+                {
+                    PCM_Write(address & 0x3f, value);
+                }
+                else if (address >= 0xff80)
+                {
+                    MCU_DeviceWrite(address & 0x7f, value);
+                }
+                else if (address >= 0xfb80 && address < 0xff80
+                    && (dev_register[DEV_RAME] & 0x80) != 0)
+                    ram[(address - 0xfb80) & 0x3ff] = value;
+                else if (address >= 0x8000 && address < 0xe000)
+                {
+                    sram[address & 0x7fff] = value;
+                }
+                else
+                {
+                    printf("Unknown write %x %x\n", address, value);
+                }
             }
         }
         else
         {
             printf("Unknown write %x %x\n", address, value);
         }
+    }
+    else if (page == 5 && mcu_mk1)
+    {
+        sram[address & 0x7fff] = value; // FIXME
     }
     else if (page == 10)
     {
@@ -622,7 +689,8 @@ int SDLCALL work_thread(void* data)
 
         TIMER_Clock(mcu.cycles);
 
-        SM_Update(mcu.cycles);
+        if (!mcu_mk1)
+            SM_Update(mcu.cycles);
 
         MCU_UpdateAnalog(mcu.cycles);
     }
@@ -767,7 +835,7 @@ int MCU_OpenAudio(void)
     SDL_AudioSpec spec_actual = {};
 
     spec.format = AUDIO_S16SYS;
-    spec.freq = 66207;
+    spec.freq = mcu_mk1 ? 64000: 66207;
     spec.channels = 2;
     spec.callback = audio_callback;
     spec.samples = audio_page_size / 4;
@@ -806,12 +874,12 @@ void MCU_CloseAudio(void)
 
 void MCU_PostSample(int *sample)
 {
-    sample[0] >>= 14;
+    sample[0] >>= 15;
     if (sample[0] > INT16_MAX)
         sample[0] = INT16_MAX;
     else if (sample[0] < INT16_MIN)
         sample[0] = INT16_MIN;
-    sample[1] >>= 14;
+    sample[1] >>= 15;
     if (sample[1] > INT16_MAX)
         sample[1] = INT16_MAX;
     else if (sample[1] < INT16_MIN)
@@ -878,10 +946,24 @@ int main(int argc, char *argv[])
     {
         basePath + "/rom1.bin",
         basePath + "/rom2.bin",
-        basePath + "/rom_sm.bin",
         basePath + "/waverom1.bin",
-        basePath + "/waverom2.bin"
+        basePath + "/waverom2.bin",
+        basePath + "/rom_sm.bin"
     };
+
+    if (mcu_mk1)
+    {
+        //rpaths[0] = basePath + "/sc55_rom1.bin";
+        //rpaths[1] = basePath + "/sc55_rom2.bin";
+        //rpaths[2] = basePath + "/sc55_waverom1.bin";
+        //rpaths[3] = basePath + "/sc55_waverom2.bin";
+        //rpaths[4] = basePath + "/sc55_waverom3.bin";
+        rpaths[0] = basePath + "/cm300_rom1.bin";
+        rpaths[1] = basePath + "/cm300_rom2.bin";
+        rpaths[2] = basePath + "/cm300_waverom1.bin";
+        rpaths[3] = basePath + "/cm300_waverom2.bin";
+        rpaths[4] = basePath + "/cm300_waverom3.bin";
+    }
 
     bool r_ok = true;
     std::string errors_list;
@@ -914,47 +996,88 @@ int main(int argc, char *argv[])
 
     if (fread(rom1, 1, ROM1_SIZE, s_rf[0]) != ROM1_SIZE)
     {
-        fprintf(stderr, "FATAL ERROR: Failed to read the ROM1.\n");
+        fprintf(stderr, "FATAL ERROR: Failed to read the mcu ROM1.\n");
         fflush(stderr);
         closeAllR();
         return 1;
     }
 
-    if (fread(rom2, 1, ROM2_SIZE, s_rf[1]) != ROM2_SIZE)
+    size_t rom2_read = fread(rom2, 1, ROM2_SIZE, s_rf[1]);
+
+    if (rom2_read == ROM2_SIZE || rom2_read == ROM2_SIZE / 2)
     {
-        fprintf(stderr, "FATAL ERROR: Failed to read the ROM2.\n");
-        fflush(stderr);
-        closeAllR();
-        return 1;
+        rom2_mask = rom2_read - 1;
     }
-
-    if (fread(sm_rom, 1, ROMSM_SIZE, s_rf[2]) != ROMSM_SIZE)
+    else
     {
-        fprintf(stderr, "FATAL ERROR: Failed to read the SM_ROM.\n");
+        fprintf(stderr, "FATAL ERROR: Failed to read the mcu ROM2.\n");
         fflush(stderr);
         closeAllR();
         return 1;
     }
 
-    if (fread(tempbuf, 1, 0x200000, s_rf[3]) != 0x200000)
+    if (mcu_mk1)
     {
-        fprintf(stderr, "FATAL ERROR: WaveRom1 file seens corrupted.\n");
-        fflush(stderr);
-        closeAllR();
-        return 1;
+        if (fread(tempbuf, 1, 0x100000, s_rf[2]) != 0x100000)
+        {
+            fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom1.\n");
+            fflush(stderr);
+            closeAllR();
+            return 1;
+        }
+
+        unscramble(tempbuf, waverom1, 0x100000);
+
+        if (fread(tempbuf, 1, 0x100000, s_rf[3]) != 0x100000)
+        {
+            fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom2.\n");
+            fflush(stderr);
+            closeAllR();
+            return 1;
+        }
+
+        unscramble(tempbuf, waverom2, 0x100000);
+
+        if (fread(tempbuf, 1, 0x100000, s_rf[4]) != 0x100000)
+        {
+            fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom3.\n");
+            fflush(stderr);
+            closeAllR();
+            return 1;
+        }
+
+        unscramble(tempbuf, waverom2, 0x100000);
     }
-
-    unscramble(tempbuf, waverom1, 0x200000);
-
-    if (fread(tempbuf, 1, 0x100000, s_rf[4]) != 0x100000)
+    else
     {
-        fprintf(stderr, "FATAL ERROR: WaveRom2 file seens corrupted.\n");
-        fflush(stderr);
-        closeAllR();
-        return 1;
-    }
+        if (fread(tempbuf, 1, 0x200000, s_rf[2]) != 0x200000)
+        {
+            fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom1.\n");
+            fflush(stderr);
+            closeAllR();
+            return 1;
+        }
 
-    unscramble(tempbuf, waverom2, 0x100000);
+        unscramble(tempbuf, waverom1, 0x200000);
+
+        if (fread(tempbuf, 1, 0x100000, s_rf[3]) != 0x100000)
+        {
+            fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom2.\n");
+            fflush(stderr);
+            closeAllR();
+            return 1;
+        }
+
+        unscramble(tempbuf, waverom2, 0x100000);
+
+        if (fread(sm_rom, 1, ROMSM_SIZE, s_rf[4]) != ROMSM_SIZE)
+        {
+            fprintf(stderr, "FATAL ERROR: Failed to read the sub mcu ROM.\n");
+            fflush(stderr);
+            closeAllR();
+            return 1;
+        }
+    }
 
     // Close all files as they no longer needed being open
     closeAllR();

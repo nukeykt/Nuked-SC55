@@ -392,6 +392,8 @@ enum {
     MCU_BUTTON_PART_L = 20
 };
 
+extern int mcu_mk1;
+
 extern SDL_atomic_t mcu_button_pressed;
 
 uint8_t MCU_ReadP0(void);
