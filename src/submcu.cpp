@@ -1337,10 +1337,10 @@ void SM_UpdateTimer(void)
 
 void SM_PostUART(uint8_t data)
 {
-    MCU_WorkThread_Lock();
+    //MCU_WorkThread_Lock();
     uart_buffer[uart_write_ptr] = data;
     uart_write_ptr = (uart_write_ptr + 1) % uart_buffer_size;
-    MCU_WorkThread_Unlock();
+    //MCU_WorkThread_Unlock();
 }
 
 void SM_UpdateUART(void)
