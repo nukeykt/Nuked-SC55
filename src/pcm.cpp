@@ -1394,8 +1394,8 @@ void PCM_Update(uint64_t cycles)
             calc_tv(1, ram2[4], &ram2[10], active, &volmul2);
             calc_tv(2, ram2[5], &ram2[11], active, NULL);
 
-            if (volmul1 && volmul2)
-                volmul1 += 0;
+            // if (volmul1 && volmul2)
+            //     volmul1 += 0;
 
             int sample = (ram2[6] & 2) == 0 ? ram1[3] : v3;
             //sample = test;
