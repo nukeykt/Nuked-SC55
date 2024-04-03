@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.2...3.5)
-project (NukedSC55 VERSION 0.1.0 LANGUAGES CXX)
+project (NukedSC55 VERSION 0.1.1 LANGUAGES CXX)
 
 include(FindPkgConfig)
 include(GNUInstallDirs)
