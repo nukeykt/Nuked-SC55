@@ -22,7 +22,7 @@ static void MidiOnError(RtMidiError::Type, const std::string &errorText, void *)
     fflush(stderr);
 }
 
-int MIDI_Init(void)
+int MIDI_Init(int port)
 {
     if (s_midi_in)
     {
@@ -30,7 +30,7 @@ int MIDI_Init(void)
         return 0; // Already running
     }
 
-    s_midi_in = new RtMidiIn(RtMidi::UNSPECIFIED, "Virtual SC55", 1024);
+    s_midi_in = new RtMidiIn(RtMidi::UNSPECIFIED, "Nuked SC55", 1024);
     s_midi_in->setCallback(&MidiOnReceive, nullptr); // FIXME: (local bug) Fix the linking error
     s_midi_in->setErrorCallback(&MidiOnError, nullptr);
 
@@ -44,7 +44,13 @@ int MIDI_Init(void)
         return 0;
     }
 
-    s_midi_in->openPort(0, "Virtual SC55");
+    if (port < 0 || port >= count)
+    {
+        printf("Out of range midi port is requested. Defaulting to port 0\n");
+        port = 0;
+    }
+
+    s_midi_in->openPort(port, "Nuked SC55");
 
     return 1;
 }

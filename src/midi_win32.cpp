@@ -102,7 +102,7 @@ void CALLBACK MIDI_Callback(
     }
 }
 
-int MIDI_Init(void)
+int MIDI_Init(int port)
 {
     int num = midiInGetNumDevs();
 
@@ -112,11 +112,17 @@ int MIDI_Init(void)
         return 0;
     }
 
+    if (port < 0 || port >= num)
+    {
+        printf("Out of range midi port is requested. Defaulting to port 0\n");
+        port = 0;
+    }
+
     MIDIINCAPSA caps;
 
     midiInGetDevCapsA(0, &caps, sizeof(MIDIINCAPSA));
 
-    auto res = midiInOpen(&midi_handle, 0, (DWORD_PTR)MIDI_Callback, 0, CALLBACK_FUNCTION);
+    auto res = midiInOpen(&midi_handle, port, (DWORD_PTR)MIDI_Callback, 0, CALLBACK_FUNCTION);
 
     if (res != MMSYSERR_NOERROR)
     {

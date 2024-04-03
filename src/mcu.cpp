@@ -973,7 +973,19 @@ int main(int argc, char *argv[])
         return 2;
     }
 
-    if(!MIDI_Init())
+    int port = 0;
+    {
+        for (int i = 1; i < argc; i++)
+        {
+            if (!strncmp(argv[i], "-p:", 3))
+            {
+                port = atoi(argv[i] + 3);
+                break;
+            }
+        }
+    }
+
+    if(!MIDI_Init(port))
     {
         fprintf(stderr, "ERROR: Failed to initialize the MIDI Input.\nWARNING: Continuing without MIDI Input...\n");
         fflush(stderr);

@@ -41,7 +41,7 @@ R15279813 (WAVE 8M) -> waverom2.bin
 
 ## Additional info
 
-- Nuked SC-55 will listen to the default MIDI IN port. To use it with the other applications use external MIDI pipe software (e.g. loopMIDI).
+- Nuked SC-55 will listen to the specified MIDI IN port (default is port 0). Use '-p:<port_number>' command line argument to specify port number. To use it with the other applications use external MIDI pipe software (e.g. loopMIDI).
 
 - SC-55mkII buttons are mapped as such (currently hardcoded):
 

@@ -33,6 +33,6 @@
  */
 #pragma once
 
-int MIDI_Init(void);
+int MIDI_Init(int port);
 void MIDI_Quit(void);
 
