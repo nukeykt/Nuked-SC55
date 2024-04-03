@@ -34,8 +34,14 @@
 #pragma once
 
 #include <stdint.h>
+#include <vector>
 #include "mcu_interrupt.h"
-#include "SDL_atomic.h"
+#include <SDL2/SDL_atomic.h>
+
+#ifdef __APPLE__
+#include <sys/syslimits.h> // PATH_MAX
+#include <mach-o/dyld.h>
+#endif
 
 enum {
     DEV_P1DDR = 0x00,
@@ -404,5 +410,8 @@ void MCU_GA_SetGAInt(int line, int value);
 
 void MCU_PostSample(int *sample);
 
-void MCU_WorkThread_Lock(void);
-void MCU_WorkThread_Unlock(void);
+int startSC55(std::string basepath);
+int updateSC55(int16_t *data, unsigned int dataSize);
+int stopSC55();
+void postMidiSC55(uint8_t* message, int length);
+extern "C" {void SC55_Reset();}

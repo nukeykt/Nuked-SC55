@@ -33,7 +33,7 @@
  */
 #include <stdio.h>
 #include <string.h>
-#include "SDL_audio.h"
+// #include "SDL_audio.h"
 #include "mcu.h"
 #include "submcu.h"
 
@@ -106,7 +106,7 @@ uint64_t uart_rx_delay;
 
 void SM_ErrorTrap(void)
 {
-    printf("%.4x\n", sm.pc);
+    printf("smtrap %.4x\n", sm.pc);
 }
 
 uint8_t SM_Read(uint16_t address)

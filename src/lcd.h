@@ -43,4 +43,7 @@ void LCD_Write(uint32_t address, uint8_t data);
 void LCD_Enable(uint32_t enable);
 bool LCD_QuitRequested();
 void LCD_Sync(void);
-void LCD_Update(void);
+extern "C" {
+  uint32_t* LCD_Update(void);
+  void LCD_SendButton(uint8_t button, int state);
+}

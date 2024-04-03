@@ -33,6 +33,7 @@
  */
 #include <stdio.h>
 #include <string.h>
+#include <chrono>
 #define SDL_MAIN_HANDLED
 #include "SDL.h"
 #include "mcu.h"
@@ -59,19 +60,19 @@ static const int SRAM_SIZE = 0x8000;
 static const int ROMSM_SIZE = 0x1000;
 
 
-static const int audio_buffer_size = 16384;
+static const int audio_buffer_size = 4096 * 8;
 static const int audio_page_size = 512;
 
-static short sample_buffer[audio_buffer_size];
+static short sample_buffer[audio_buffer_size] = {0};
 
 static int sample_read_ptr;
 static int sample_write_ptr;
 
-static SDL_AudioDeviceID sdl_audio;
+// static SDL_AudioDeviceID sdl_audio;
 
 void MCU_ErrorTrap(void)
 {
-    printf("%.2x %.4x\n", mcu.cp, mcu.pc);
+    printf("trap %.2x %.4x\n", mcu.cp, mcu.pc);
 }
 
 int mcu_mk1 = 0; // 0 - SC-55mkII, SC-55ST. 1 - SC-55, CM-300/SCC-1
@@ -641,86 +642,6 @@ void MCU_Reset(void)
     MCU_DeviceReset();
 }
 
-static bool work_thread_run = false;
-
-static SDL_mutex *work_thread_lock;
-
-void MCU_WorkThread_Lock(void)
-{
-    SDL_LockMutex(work_thread_lock);
-}
-
-void MCU_WorkThread_Unlock(void)
-{
-    SDL_UnlockMutex(work_thread_lock);
-}
-
-int SDLCALL work_thread(void* data)
-{
-    work_thread_lock = SDL_CreateMutex();
-
-    MCU_WorkThread_Lock();
-    while (work_thread_run)
-    {
-        if (sample_read_ptr == sample_write_ptr)
-        {
-            MCU_WorkThread_Unlock();
-            while (sample_read_ptr == sample_write_ptr)
-            {
-                SDL_Delay(1);
-            }
-            MCU_WorkThread_Lock();
-        }
-
-        if (!mcu.ex_ignore)
-            MCU_Interrupt_Handle();
-        else
-            mcu.ex_ignore = 0;
-
-        if (!mcu.sleep)
-            MCU_ReadInstruction();
-
-        mcu.cycles += 12; // FIXME: assume 12 cycles per instruction
-
-        // if (mcu.cycles % 24000000 == 0)
-        //     printf("seconds: %i\n", (int)(mcu.cycles / 24000000));
-
-        PCM_Update(mcu.cycles);
-
-        TIMER_Clock(mcu.cycles);
-
-        if (!mcu_mk1)
-            SM_Update(mcu.cycles);
-
-        MCU_UpdateAnalog(mcu.cycles);
-    }
-    MCU_WorkThread_Unlock();
-
-    SDL_DestroyMutex(work_thread_lock);
-
-    return 0;
-}
-
-static void MCU_Run()
-{
-    bool working = true;
-
-    work_thread_run = true;
-    SDL_Thread *thread = SDL_CreateThread(work_thread, "work thread", 0);
-
-    while (working)
-    {
-        if(LCD_QuitRequested())
-            working = false;
-
-        LCD_Update();
-        SDL_Delay(15);
-    }
-
-    work_thread_run = false;
-    SDL_WaitThread(thread, 0);
-}
-
 void MCU_PatchROM(void)
 {
     //rom2[0x1333] = 0x11;
@@ -792,86 +713,6 @@ void unscramble(uint8_t *src, uint8_t *dst, int len)
     }
 }
 
-void audio_callback(void* /*userdata*/, Uint8* stream, int len)
-{
-    len /= 2;
-    memcpy(stream, &sample_buffer[sample_read_ptr], len * 2);
-    memset(&sample_buffer[sample_read_ptr], 0, len * 2);
-    sample_read_ptr += len;
-    sample_read_ptr %= audio_buffer_size;
-}
-
-static const char* audio_format_to_str(int format)
-{
-    switch(format)
-    {
-    case AUDIO_S8:
-        return "S8";
-    case AUDIO_U8:
-        return "U8";
-    case AUDIO_S16MSB:
-        return "S16MSB";
-    case AUDIO_S16LSB:
-        return "S16LSB";
-    case AUDIO_U16MSB:
-        return "U16MSB";
-    case AUDIO_U16LSB:
-        return "U16LSB";
-    case AUDIO_S32MSB:
-        return "S32MSB";
-    case AUDIO_S32LSB:
-        return "S32LSB";
-    case AUDIO_F32MSB:
-        return "F32MSB";
-    case AUDIO_F32LSB:
-        return "F32LSB";
-    }
-    return "UNK";
-}
-
-int MCU_OpenAudio(void)
-{
-    SDL_AudioSpec spec = {};
-    SDL_AudioSpec spec_actual = {};
-
-    spec.format = AUDIO_S16SYS;
-    spec.freq = mcu_mk1 ? 64000: 66207;
-    spec.channels = 2;
-    spec.callback = audio_callback;
-    spec.samples = audio_page_size / 4;
-
-    sdl_audio = SDL_OpenAudioDevice(NULL, 0, &spec, &spec_actual, 0);
-    if (!sdl_audio)
-    {
-        return 0;
-    }
-
-    printf("Audio Requested: F=%s, C=%d, R=%d, B=%d\n",
-           audio_format_to_str(spec.format),
-           spec.channels,
-           spec.freq,
-           spec.samples);
-
-    printf("Audio Actual: F=%s, C=%d, R=%d, B=%d\n",
-           audio_format_to_str(spec_actual.format),
-           spec_actual.channels,
-           spec_actual.freq,
-           spec_actual.samples);
-    fflush(stdout);
-
-    sample_read_ptr = 0;
-    sample_write_ptr = 0;
-
-    SDL_PauseAudioDevice(sdl_audio, 0);
-
-    return 1;
-}
-
-void MCU_CloseAudio(void)
-{
-    SDL_CloseAudio();
-}
-
 void MCU_PostSample(int *sample)
 {
     sample[0] >>= 15;
@@ -920,24 +761,49 @@ static void closeAllR()
     }
 }
 
-int main(int argc, char *argv[])
+bool resolveBinaryLocation(std::string &binaryDirname)
 {
-    (void)argc;
-    std::string basePath;
+  const size_t bufSize = PATH_MAX + 1;
+  char dirNameBuffer[bufSize];
 
-#if __linux__
-    char self_path[PATH_MAX];
-    memset(&self_path[0], 0, PATH_MAX);
+#ifdef __APPLE__
+  uint32_t size = bufSize;
 
-    if(readlink("/proc/self/exe", self_path, PATH_MAX) == -1)
-        basePath = Files::real_dirname(argv[0]);
-    else
-        basePath = Files::dirname(self_path);
-#else
-    basePath = Files::real_dirname(argv[0]);
-#endif
+  if (_NSGetExecutablePath(dirNameBuffer, &size) != 0) {
+    // Buffer size is too small.
+    return false;
+  }
+#else // not __APPLE__
+  // Read the symbolic link '/proc/self/exe'.
+  const char *linkName = "/proc/self/exe";
+  const int ret = int(readlink(linkName, dirNameBuffer, bufSize - 1));
 
-    printf("Base path is: %s\n", argv[0]);
+  if (ret == -1) {
+    // Permission denied (We must be inetd with this app run as other than root).
+    return false;
+  }
+    
+  dirNameBuffer[ret] = 0; // Terminate the string with a NULL character.
+#endif // else not __APPLE__
+
+  binaryDirname = dirNameBuffer;
+
+  // Erase the name of the executable:
+//   std::string::size_type last = binaryDirname.size() - 1;
+//   std::string::size_type idx  = binaryDirname.rfind("nuked", last);
+
+  // Add one to keep the trailing directory separator.
+//   binaryDirname.erase(idx + 1);
+
+  return true;
+}
+
+int startSC55(std::string basePath)
+{
+    // std::string basePath = "/Users/giuliozausa/personal/programming/Nuked-SC55/build";
+    // resolveBinaryLocation(basePath);
+
+    printf("Base path is: %s\n", basePath.c_str());
 
     if(Files::dirExists(basePath + "/../share/nuked-sc55"))
         basePath += "/../share/nuked-sc55";
@@ -1082,37 +948,12 @@ int main(int argc, char *argv[])
     // Close all files as they no longer needed being open
     closeAllR();
 
-    if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0)
-    {
-        fprintf(stderr, "FATAL ERROR: Failed to initialize the SDL2: %s.\n", SDL_GetError());
-        fflush(stderr);
-        return 2;
-    }
-
-    if (!MCU_OpenAudio())
-    {
-        fprintf(stderr, "FATAL ERROR: Failed to open the audio stream.\n");
-        fflush(stderr);
-        return 2;
-    }
-
-    int port = 0;
-    {
-        for (int i = 1; i < argc; i++)
-        {
-            if (!strncmp(argv[i], "-p:", 3))
-            {
-                port = atoi(argv[i] + 3);
-                break;
-            }
-        }
-    }
-
-    if(!MIDI_Init(port))
-    {
-        fprintf(stderr, "ERROR: Failed to initialize the MIDI Input.\nWARNING: Continuing without MIDI Input...\n");
-        fflush(stderr);
-    }
+    // if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0)
+    // {
+    //     fprintf(stderr, "FATAL ERROR: Failed to initialize the SDL2: %s.\n", SDL_GetError());
+    //     fflush(stderr);
+    //     return 2;
+    // }
 
     LCD_Init();
     MCU_Init();
@@ -1121,12 +962,92 @@ int main(int argc, char *argv[])
     SM_Reset();
     PCM_Reset();
 
-    MCU_Run();
+    sample_read_ptr = 0;
+    sample_write_ptr = 0;
+    
+    return 0;
+}
 
-    MCU_CloseAudio();
-    MIDI_Quit();
-    LCD_UnInit();
-    SDL_Quit();
+int updateSC55(int16_t *data, unsigned int dataSize) {
+    // auto start = std::chrono::high_resolution_clock::now();
+
+    dataSize /= 2;
+
+    if (audio_buffer_size < dataSize) {
+        printf("Audio buffer size is too small. (%d requested)\n", dataSize);
+        fflush(stdout);
+        return 0;
+    }
+
+    sample_write_ptr = 0;
+    // memset(sample_buffer, 0, audio_buffer_size * 2);
+
+    int maxCycles = dataSize * 256;
+
+    for (int i = 0; sample_write_ptr < dataSize; i++) {
+        if (i > maxCycles) {
+            printf("Not enough samples!\n");
+            fflush(stdout);
+            break;
+        }
+
+        if (!mcu.ex_ignore)
+            MCU_Interrupt_Handle();
+        else
+            mcu.ex_ignore = 0;
+
+        if (!mcu.sleep)
+            MCU_ReadInstruction();
+
+        mcu.cycles += 12; // FIXME: assume 12 cycles per instruction
+
+        // if (mcu.cycles % 24000000 == 0)
+        //     printf("seconds: %i\n", (int)(mcu.cycles / 24000000));
+
+        PCM_Update(mcu.cycles);
+
+        TIMER_Clock(mcu.cycles);
+
+        if (!mcu_mk1)
+            SM_Update(mcu.cycles);
+
+        MCU_UpdateAnalog(mcu.cycles);
+    }
+
+    memcpy(data, sample_buffer, dataSize * 2);
+
+    // auto stop = std::chrono::high_resolution_clock::now();
+    // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+    // if (duration > 8) {
+    //     printf("updateSC55 took %lld ms\n", duration);
+    //     fflush(stdout);
+    // }
 
     return 0;
+}
+
+int stopSC55() {
+    LCD_UnInit();
+    // SDL_Quit();
+    return 0;
+}
+
+extern "C" {
+void SC55_Reset() {
+    LCD_Init();
+    MCU_Init();
+    MCU_PatchROM();
+    MCU_Reset();
+    SM_Reset();
+    PCM_Reset();
+
+    sample_read_ptr = 0;
+    sample_write_ptr = 0;
+}
+}
+
+void postMidiSC55(uint8_t* message, int length) {
+    for (int i = 0; i < length; i++) {
+        SM_PostUART(message[i]);
+    }
 }

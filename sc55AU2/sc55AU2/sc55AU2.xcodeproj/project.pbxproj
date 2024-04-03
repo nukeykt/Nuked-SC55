@@ -1,0 +1,823 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		5E9FCCF42BBC8E25009EE67D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCCF32BBC8E25009EE67D /* ContentView.swift */; };
+		5E9FCCF82BBC8E25009EE67D /* ViewControllerRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCCF72BBC8E25009EE67D /* ViewControllerRepresentable.swift */; };
+		5E9FCCFB2BBC8E25009EE67D /* Synth.aif in Resources */ = {isa = PBXBuildFile; fileRef = 5E9FCCFA2BBC8E25009EE67D /* Synth.aif */; };
+		5E9FCCFD2BBC8E25009EE67D /* SimplePlayEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCCFC2BBC8E25009EE67D /* SimplePlayEngine.swift */; };
+		5E9FCD002BBC8E25009EE67D /* MIDIManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCCFF2BBC8E25009EE67D /* MIDIManager.swift */; };
+		5E9FCD022BBC8E25009EE67D /* TypeAliases.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCD012BBC8E25009EE67D /* TypeAliases.swift */; };
+		5E9FCD052BBC8E25009EE67D /* StringHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCD042BBC8E25009EE67D /* StringHelpers.swift */; };
+		5E9FCD082BBC8E25009EE67D /* AudioUnitHostModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCD072BBC8E25009EE67D /* AudioUnitHostModel.swift */; };
+		5E9FCD0A2BBC8E25009EE67D /* AudioUnitViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCD092BBC8E25009EE67D /* AudioUnitViewModel.swift */; };
+		5E9FCD0C2BBC8E25009EE67D /* sc55AU2App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCD0B2BBC8E25009EE67D /* sc55AU2App.swift */; };
+		5E9FCD0F2BBC8E25009EE67D /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5E9FCD0E2BBC8E25009EE67D /* Preview Assets.xcassets */; };
+		5E9FCD112BBC8E27009EE67D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5E9FCD102BBC8E27009EE67D /* Assets.xcassets */; };
+		5E9FCD182BBC8E27009EE67D /* sc55AU2Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5E9FCD172BBC8E27009EE67D /* sc55AU2Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		5E9FCD1D2BBC8E27009EE67D /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 5E9FCD1C2BBC8E27009EE67D /* README.md */; };
+		5E9FCD222BBC8E27009EE67D /* ParameterSpecBase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCD212BBC8E27009EE67D /* ParameterSpecBase.swift */; };
+		5E9FCD252BBC8E27009EE67D /* CrossPlatform.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCD242BBC8E27009EE67D /* CrossPlatform.swift */; };
+		5E9FCD272BBC8E27009EE67D /* String+Utils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCD262BBC8E27009EE67D /* String+Utils.swift */; };
+		5E9FCD2B2BBC8E27009EE67D /* sc55AU2ExtensionAudioUnit.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCD2A2BBC8E27009EE67D /* sc55AU2ExtensionAudioUnit.mm */; };
+		5E9FCD2E2BBC8E27009EE67D /* sc55AU2ExtensionAUProcessHelper.hpp in Resources */ = {isa = PBXBuildFile; fileRef = 5E9FCD2D2BBC8E27009EE67D /* sc55AU2ExtensionAUProcessHelper.hpp */; };
+		5E9FCD322BBC8E27009EE67D /* Parameters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCD312BBC8E27009EE67D /* Parameters.swift */; };
+		5E9FCD362BBC8E27009EE67D /* sc55AU2ExtensionDSPKernel.hpp in Resources */ = {isa = PBXBuildFile; fileRef = 5E9FCD352BBC8E27009EE67D /* sc55AU2ExtensionDSPKernel.hpp */; };
+		5E9FCD392BBC8E27009EE67D /* sc55AU2ExtensionMainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCD382BBC8E27009EE67D /* sc55AU2ExtensionMainView.swift */; };
+		5E9FCD3B2BBC8E27009EE67D /* ParameterSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCD3A2BBC8E27009EE67D /* ParameterSlider.swift */; };
+		5E9FCD402BBC8E27009EE67D /* Base in Resources */ = {isa = PBXBuildFile; fileRef = 5E9FCD3F2BBC8E27009EE67D /* Base */; };
+		5E9FCD422BBC8E27009EE67D /* ObservableAUParameter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCD412BBC8E27009EE67D /* ObservableAUParameter.swift */; };
+		5E9FCD442BBC8E27009EE67D /* AudioUnitViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCD432BBC8E27009EE67D /* AudioUnitViewController.swift */; };
+		5E9FCD572BBCABC2009EE67D /* libnuked-sc55.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5E9FCD562BBCABB7009EE67D /* libnuked-sc55.a */; };
+		5E9FCD592BBCABE8009EE67D /* libSDL2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5E9FCD582BBCABDF009EE67D /* libSDL2.a */; };
+		5E9FCD5F2BBCB1F6009EE67D /* back.data in Resources */ = {isa = PBXBuildFile; fileRef = 5E9FCD5E2BBCB1F6009EE67D /* back.data */; };
+		5E9FCD652BBCB206009EE67D /* rom_sm.bin in Resources */ = {isa = PBXBuildFile; fileRef = 5E9FCD602BBCB206009EE67D /* rom_sm.bin */; };
+		5E9FCD662BBCB206009EE67D /* rom2.bin in Resources */ = {isa = PBXBuildFile; fileRef = 5E9FCD612BBCB206009EE67D /* rom2.bin */; };
+		5E9FCD672BBCB206009EE67D /* waverom1.bin in Resources */ = {isa = PBXBuildFile; fileRef = 5E9FCD622BBCB206009EE67D /* waverom1.bin */; };
+		5E9FCD682BBCB206009EE67D /* waverom2.bin in Resources */ = {isa = PBXBuildFile; fileRef = 5E9FCD632BBCB206009EE67D /* waverom2.bin */; };
+		5E9FCD692BBCB206009EE67D /* rom1.bin in Resources */ = {isa = PBXBuildFile; fileRef = 5E9FCD642BBCB206009EE67D /* rom1.bin */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		5E9FCD192BBC8E27009EE67D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5E9FCCE82BBC8E25009EE67D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5E9FCD162BBC8E27009EE67D;
+			remoteInfo = sc55AU2Extension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		5E9FCD4B2BBC8E27009EE67D /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				5E9FCD182BBC8E27009EE67D /* sc55AU2Extension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		5E9FCCF02BBC8E25009EE67D /* sc55AU2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = sc55AU2.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5E9FCCF32BBC8E25009EE67D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		5E9FCCF72BBC8E25009EE67D /* ViewControllerRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewControllerRepresentable.swift; sourceTree = "<group>"; };
+		5E9FCCFA2BBC8E25009EE67D /* Synth.aif */ = {isa = PBXFileReference; lastKnownFileType = file; path = Synth.aif; sourceTree = "<group>"; };
+		5E9FCCFC2BBC8E25009EE67D /* SimplePlayEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimplePlayEngine.swift; sourceTree = "<group>"; };
+		5E9FCCFF2BBC8E25009EE67D /* MIDIManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MIDIManager.swift; sourceTree = "<group>"; };
+		5E9FCD012BBC8E25009EE67D /* TypeAliases.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypeAliases.swift; sourceTree = "<group>"; };
+		5E9FCD042BBC8E25009EE67D /* StringHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringHelpers.swift; sourceTree = "<group>"; };
+		5E9FCD072BBC8E25009EE67D /* AudioUnitHostModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioUnitHostModel.swift; sourceTree = "<group>"; };
+		5E9FCD092BBC8E25009EE67D /* AudioUnitViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioUnitViewModel.swift; sourceTree = "<group>"; };
+		5E9FCD0B2BBC8E25009EE67D /* sc55AU2App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = sc55AU2App.swift; sourceTree = "<group>"; };
+		5E9FCD0E2BBC8E25009EE67D /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		5E9FCD102BBC8E27009EE67D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		5E9FCD122BBC8E27009EE67D /* sc55AU2.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = sc55AU2.entitlements; sourceTree = "<group>"; };
+		5E9FCD172BBC8E27009EE67D /* sc55AU2Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = sc55AU2Extension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		5E9FCD1C2BBC8E27009EE67D /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		5E9FCD1F2BBC8E27009EE67D /* sc55AU2Extension-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "sc55AU2Extension-Bridging-Header.h"; sourceTree = "<group>"; };
+		5E9FCD212BBC8E27009EE67D /* ParameterSpecBase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParameterSpecBase.swift; sourceTree = "<group>"; };
+		5E9FCD242BBC8E27009EE67D /* CrossPlatform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrossPlatform.swift; sourceTree = "<group>"; };
+		5E9FCD262BBC8E27009EE67D /* String+Utils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Utils.swift"; sourceTree = "<group>"; };
+		5E9FCD292BBC8E27009EE67D /* sc55AU2ExtensionAudioUnit.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sc55AU2ExtensionAudioUnit.h; sourceTree = "<group>"; };
+		5E9FCD2A2BBC8E27009EE67D /* sc55AU2ExtensionAudioUnit.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = sc55AU2ExtensionAudioUnit.mm; sourceTree = "<group>"; };
+		5E9FCD2D2BBC8E27009EE67D /* sc55AU2ExtensionAUProcessHelper.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = sc55AU2ExtensionAUProcessHelper.hpp; sourceTree = "<group>"; };
+		5E9FCD302BBC8E27009EE67D /* sc55AU2ExtensionParameterAddresses.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sc55AU2ExtensionParameterAddresses.h; sourceTree = "<group>"; };
+		5E9FCD312BBC8E27009EE67D /* Parameters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Parameters.swift; sourceTree = "<group>"; };
+		5E9FCD352BBC8E27009EE67D /* sc55AU2ExtensionDSPKernel.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = sc55AU2ExtensionDSPKernel.hpp; sourceTree = "<group>"; };
+		5E9FCD382BBC8E27009EE67D /* sc55AU2ExtensionMainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = sc55AU2ExtensionMainView.swift; sourceTree = "<group>"; };
+		5E9FCD3A2BBC8E27009EE67D /* ParameterSlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParameterSlider.swift; sourceTree = "<group>"; };
+		5E9FCD3F2BBC8E27009EE67D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = AudioUnitViewController.xib; sourceTree = "<group>"; };
+		5E9FCD412BBC8E27009EE67D /* ObservableAUParameter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservableAUParameter.swift; sourceTree = "<group>"; };
+		5E9FCD432BBC8E27009EE67D /* AudioUnitViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioUnitViewController.swift; sourceTree = "<group>"; };
+		5E9FCD452BBC8E27009EE67D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		5E9FCD562BBCABB7009EE67D /* libnuked-sc55.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libnuked-sc55.a"; path = "../../build/libnuked-sc55.a"; sourceTree = "<group>"; };
+		5E9FCD582BBCABDF009EE67D /* libSDL2.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSDL2.a; path = ../../../../../../../opt/homebrew/Cellar/sdl2/2.28.5/lib/libSDL2.a; sourceTree = "<group>"; };
+		5E9FCD5A2BBCAF82009EE67D /* sc55AU2Extension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = sc55AU2Extension.entitlements; sourceTree = "<group>"; };
+		5E9FCD5E2BBCB1F6009EE67D /* back.data */ = {isa = PBXFileReference; lastKnownFileType = file; name = back.data; path = ../../../../data/back.data; sourceTree = "<group>"; };
+		5E9FCD602BBCB206009EE67D /* rom_sm.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; name = rom_sm.bin; path = ../../../../build/rom_sm.bin; sourceTree = "<group>"; };
+		5E9FCD612BBCB206009EE67D /* rom2.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; name = rom2.bin; path = ../../../../build/rom2.bin; sourceTree = "<group>"; };
+		5E9FCD622BBCB206009EE67D /* waverom1.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; name = waverom1.bin; path = ../../../../build/waverom1.bin; sourceTree = "<group>"; };
+		5E9FCD632BBCB206009EE67D /* waverom2.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; name = waverom2.bin; path = ../../../../build/waverom2.bin; sourceTree = "<group>"; };
+		5E9FCD642BBCB206009EE67D /* rom1.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; name = rom1.bin; path = ../../../../build/rom1.bin; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		5E9FCCED2BBC8E25009EE67D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5E9FCD142BBC8E27009EE67D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5E9FCD592BBCABE8009EE67D /* libSDL2.a in Frameworks */,
+				5E9FCD572BBCABC2009EE67D /* libnuked-sc55.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		5E9FCCE72BBC8E25009EE67D = {
+			isa = PBXGroup;
+			children = (
+				5E9FCCF22BBC8E25009EE67D /* sc55AU2 */,
+				5E9FCD1B2BBC8E27009EE67D /* sc55AU2Extension */,
+				5E9FCCF12BBC8E25009EE67D /* Products */,
+				5E9FCD552BBCABB7009EE67D /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		5E9FCCF12BBC8E25009EE67D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCCF02BBC8E25009EE67D /* sc55AU2.app */,
+				5E9FCD172BBC8E27009EE67D /* sc55AU2Extension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		5E9FCCF22BBC8E25009EE67D /* sc55AU2 */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCCF32BBC8E25009EE67D /* ContentView.swift */,
+				5E9FCD0B2BBC8E25009EE67D /* sc55AU2App.swift */,
+				5E9FCD102BBC8E27009EE67D /* Assets.xcassets */,
+				5E9FCD122BBC8E27009EE67D /* sc55AU2.entitlements */,
+				5E9FCCF52BBC8E25009EE67D /* Common */,
+				5E9FCD062BBC8E25009EE67D /* Model */,
+				5E9FCD0D2BBC8E25009EE67D /* Preview Content */,
+			);
+			path = sc55AU2;
+			sourceTree = "<group>";
+		};
+		5E9FCCF52BBC8E25009EE67D /* Common */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCD012BBC8E25009EE67D /* TypeAliases.swift */,
+				5E9FCCF62BBC8E25009EE67D /* UI */,
+				5E9FCCF92BBC8E25009EE67D /* Audio */,
+				5E9FCCFE2BBC8E25009EE67D /* MIDI */,
+				5E9FCD032BBC8E25009EE67D /* String */,
+			);
+			path = Common;
+			sourceTree = "<group>";
+		};
+		5E9FCCF62BBC8E25009EE67D /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCCF72BBC8E25009EE67D /* ViewControllerRepresentable.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		5E9FCCF92BBC8E25009EE67D /* Audio */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCCFA2BBC8E25009EE67D /* Synth.aif */,
+				5E9FCCFC2BBC8E25009EE67D /* SimplePlayEngine.swift */,
+			);
+			path = Audio;
+			sourceTree = "<group>";
+		};
+		5E9FCCFE2BBC8E25009EE67D /* MIDI */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCCFF2BBC8E25009EE67D /* MIDIManager.swift */,
+			);
+			path = MIDI;
+			sourceTree = "<group>";
+		};
+		5E9FCD032BBC8E25009EE67D /* String */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCD042BBC8E25009EE67D /* StringHelpers.swift */,
+			);
+			path = String;
+			sourceTree = "<group>";
+		};
+		5E9FCD062BBC8E25009EE67D /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCD072BBC8E25009EE67D /* AudioUnitHostModel.swift */,
+				5E9FCD092BBC8E25009EE67D /* AudioUnitViewModel.swift */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
+		5E9FCD0D2BBC8E25009EE67D /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCD0E2BBC8E25009EE67D /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		5E9FCD1B2BBC8E27009EE67D /* sc55AU2Extension */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCD5D2BBCB1E8009EE67D /* Resources */,
+				5E9FCD5A2BBCAF82009EE67D /* sc55AU2Extension.entitlements */,
+				5E9FCD1C2BBC8E27009EE67D /* README.md */,
+				5E9FCD452BBC8E27009EE67D /* Info.plist */,
+				5E9FCD1E2BBC8E27009EE67D /* Common */,
+				5E9FCD2F2BBC8E27009EE67D /* Parameters */,
+				5E9FCD332BBC8E27009EE67D /* DSP */,
+				5E9FCD372BBC8E27009EE67D /* UI */,
+			);
+			path = sc55AU2Extension;
+			sourceTree = "<group>";
+		};
+		5E9FCD1E2BBC8E27009EE67D /* Common */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCD1F2BBC8E27009EE67D /* sc55AU2Extension-Bridging-Header.h */,
+				5E9FCD202BBC8E27009EE67D /* Parameters */,
+				5E9FCD232BBC8E27009EE67D /* Utility */,
+				5E9FCD282BBC8E27009EE67D /* Audio Unit */,
+				5E9FCD2C2BBC8E27009EE67D /* DSP */,
+				5E9FCD3C2BBC8E27009EE67D /* UI */,
+			);
+			path = Common;
+			sourceTree = "<group>";
+		};
+		5E9FCD202BBC8E27009EE67D /* Parameters */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCD212BBC8E27009EE67D /* ParameterSpecBase.swift */,
+			);
+			path = Parameters;
+			sourceTree = "<group>";
+		};
+		5E9FCD232BBC8E27009EE67D /* Utility */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCD242BBC8E27009EE67D /* CrossPlatform.swift */,
+				5E9FCD262BBC8E27009EE67D /* String+Utils.swift */,
+			);
+			path = Utility;
+			sourceTree = "<group>";
+		};
+		5E9FCD282BBC8E27009EE67D /* Audio Unit */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCD292BBC8E27009EE67D /* sc55AU2ExtensionAudioUnit.h */,
+				5E9FCD2A2BBC8E27009EE67D /* sc55AU2ExtensionAudioUnit.mm */,
+			);
+			path = "Audio Unit";
+			sourceTree = "<group>";
+		};
+		5E9FCD2C2BBC8E27009EE67D /* DSP */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCD2D2BBC8E27009EE67D /* sc55AU2ExtensionAUProcessHelper.hpp */,
+			);
+			path = DSP;
+			sourceTree = "<group>";
+		};
+		5E9FCD2F2BBC8E27009EE67D /* Parameters */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCD302BBC8E27009EE67D /* sc55AU2ExtensionParameterAddresses.h */,
+				5E9FCD312BBC8E27009EE67D /* Parameters.swift */,
+			);
+			path = Parameters;
+			sourceTree = "<group>";
+		};
+		5E9FCD332BBC8E27009EE67D /* DSP */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCD352BBC8E27009EE67D /* sc55AU2ExtensionDSPKernel.hpp */,
+			);
+			path = DSP;
+			sourceTree = "<group>";
+		};
+		5E9FCD372BBC8E27009EE67D /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCD382BBC8E27009EE67D /* sc55AU2ExtensionMainView.swift */,
+				5E9FCD3A2BBC8E27009EE67D /* ParameterSlider.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		5E9FCD3C2BBC8E27009EE67D /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCD412BBC8E27009EE67D /* ObservableAUParameter.swift */,
+				5E9FCD432BBC8E27009EE67D /* AudioUnitViewController.swift */,
+				5E9FCD3D2BBC8E27009EE67D /* Base.lproj */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		5E9FCD3D2BBC8E27009EE67D /* Base.lproj */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCD3E2BBC8E27009EE67D /* AudioUnitViewController.xib */,
+			);
+			path = Base.lproj;
+			sourceTree = "<group>";
+		};
+		5E9FCD552BBCABB7009EE67D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCD582BBCABDF009EE67D /* libSDL2.a */,
+				5E9FCD562BBCABB7009EE67D /* libnuked-sc55.a */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		5E9FCD5D2BBCB1E8009EE67D /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				5E9FCD602BBCB206009EE67D /* rom_sm.bin */,
+				5E9FCD642BBCB206009EE67D /* rom1.bin */,
+				5E9FCD612BBCB206009EE67D /* rom2.bin */,
+				5E9FCD622BBCB206009EE67D /* waverom1.bin */,
+				5E9FCD632BBCB206009EE67D /* waverom2.bin */,
+				5E9FCD5E2BBCB1F6009EE67D /* back.data */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		5E9FCCEF2BBC8E25009EE67D /* sc55AU2 */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5E9FCD4C2BBC8E27009EE67D /* Build configuration list for PBXNativeTarget "sc55AU2" */;
+			buildPhases = (
+				5E9FCCEC2BBC8E25009EE67D /* Sources */,
+				5E9FCCED2BBC8E25009EE67D /* Frameworks */,
+				5E9FCCEE2BBC8E25009EE67D /* Resources */,
+				5E9FCD4B2BBC8E27009EE67D /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				5E9FCD1A2BBC8E27009EE67D /* PBXTargetDependency */,
+			);
+			name = sc55AU2;
+			productName = sc55AU2;
+			productReference = 5E9FCCF02BBC8E25009EE67D /* sc55AU2.app */;
+			productType = "com.apple.product-type.application";
+		};
+		5E9FCD162BBC8E27009EE67D /* sc55AU2Extension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5E9FCD482BBC8E27009EE67D /* Build configuration list for PBXNativeTarget "sc55AU2Extension" */;
+			buildPhases = (
+				5E9FCD132BBC8E27009EE67D /* Sources */,
+				5E9FCD142BBC8E27009EE67D /* Frameworks */,
+				5E9FCD152BBC8E27009EE67D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = sc55AU2Extension;
+			productName = sc55AU2Extension;
+			productReference = 5E9FCD172BBC8E27009EE67D /* sc55AU2Extension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5E9FCCE82BBC8E25009EE67D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1530;
+				LastUpgradeCheck = 1530;
+				TargetAttributes = {
+					5E9FCCEF2BBC8E25009EE67D = {
+						CreatedOnToolsVersion = 15.3;
+					};
+					5E9FCD162BBC8E27009EE67D = {
+						CreatedOnToolsVersion = 15.3;
+					};
+				};
+			};
+			buildConfigurationList = 5E9FCCEB2BBC8E25009EE67D /* Build configuration list for PBXProject "sc55AU2" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 5E9FCCE72BBC8E25009EE67D;
+			productRefGroup = 5E9FCCF12BBC8E25009EE67D /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				5E9FCCEF2BBC8E25009EE67D /* sc55AU2 */,
+				5E9FCD162BBC8E27009EE67D /* sc55AU2Extension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		5E9FCCEE2BBC8E25009EE67D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5E9FCD0F2BBC8E25009EE67D /* Preview Assets.xcassets in Resources */,
+				5E9FCD112BBC8E27009EE67D /* Assets.xcassets in Resources */,
+				5E9FCCFB2BBC8E25009EE67D /* Synth.aif in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5E9FCD152BBC8E27009EE67D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5E9FCD1D2BBC8E27009EE67D /* README.md in Resources */,
+				5E9FCD5F2BBCB1F6009EE67D /* back.data in Resources */,
+				5E9FCD362BBC8E27009EE67D /* sc55AU2ExtensionDSPKernel.hpp in Resources */,
+				5E9FCD2E2BBC8E27009EE67D /* sc55AU2ExtensionAUProcessHelper.hpp in Resources */,
+				5E9FCD662BBCB206009EE67D /* rom2.bin in Resources */,
+				5E9FCD682BBCB206009EE67D /* waverom2.bin in Resources */,
+				5E9FCD672BBCB206009EE67D /* waverom1.bin in Resources */,
+				5E9FCD652BBCB206009EE67D /* rom_sm.bin in Resources */,
+				5E9FCD692BBCB206009EE67D /* rom1.bin in Resources */,
+				5E9FCD402BBC8E27009EE67D /* Base in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		5E9FCCEC2BBC8E25009EE67D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5E9FCD082BBC8E25009EE67D /* AudioUnitHostModel.swift in Sources */,
+				5E9FCD0A2BBC8E25009EE67D /* AudioUnitViewModel.swift in Sources */,
+				5E9FCCF42BBC8E25009EE67D /* ContentView.swift in Sources */,
+				5E9FCCF82BBC8E25009EE67D /* ViewControllerRepresentable.swift in Sources */,
+				5E9FCD0C2BBC8E25009EE67D /* sc55AU2App.swift in Sources */,
+				5E9FCD052BBC8E25009EE67D /* StringHelpers.swift in Sources */,
+				5E9FCD002BBC8E25009EE67D /* MIDIManager.swift in Sources */,
+				5E9FCD022BBC8E25009EE67D /* TypeAliases.swift in Sources */,
+				5E9FCCFD2BBC8E25009EE67D /* SimplePlayEngine.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5E9FCD132BBC8E27009EE67D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5E9FCD322BBC8E27009EE67D /* Parameters.swift in Sources */,
+				5E9FCD222BBC8E27009EE67D /* ParameterSpecBase.swift in Sources */,
+				5E9FCD422BBC8E27009EE67D /* ObservableAUParameter.swift in Sources */,
+				5E9FCD252BBC8E27009EE67D /* CrossPlatform.swift in Sources */,
+				5E9FCD272BBC8E27009EE67D /* String+Utils.swift in Sources */,
+				5E9FCD442BBC8E27009EE67D /* AudioUnitViewController.swift in Sources */,
+				5E9FCD3B2BBC8E27009EE67D /* ParameterSlider.swift in Sources */,
+				5E9FCD392BBC8E27009EE67D /* sc55AU2ExtensionMainView.swift in Sources */,
+				5E9FCD2B2BBC8E27009EE67D /* sc55AU2ExtensionAudioUnit.mm in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		5E9FCD1A2BBC8E27009EE67D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5E9FCD162BBC8E27009EE67D /* sc55AU2Extension */;
+			targetProxy = 5E9FCD192BBC8E27009EE67D /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		5E9FCD3E2BBC8E27009EE67D /* AudioUnitViewController.xib */ = {
+			isa = PBXVariantGroup;
+			children = (
+				5E9FCD3F2BBC8E27009EE67D /* Base */,
+			);
+			name = AudioUnitViewController.xib;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		5E9FCD462BBC8E27009EE67D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		5E9FCD472BBC8E27009EE67D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		5E9FCD492BBC8E27009EE67D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				CLANG_CXX_LIBRARY = "libc++";
+				CODE_SIGN_ENTITLEMENTS = sc55AU2Extension/sc55AU2Extension.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_USER_SELECTED_FILES = readwrite;
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"/Users/giuliozausa/personal/programming/Nuked-SC55/src/**",
+					/opt/homebrew/Cellar/sdl2/2.28.5/include,
+				);
+				INFOPLIST_FILE = sc55AU2Extension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = sc55AU2Extension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"/Users/giuliozausa/personal/programming/Nuked-SC55/build",
+					/opt/homebrew/Cellar/sdl2/2.28.5/lib,
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = giulioz.sc55AU2.sc55AU2Extension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "sc55AU2Extension/Common/sc55AU2Extension-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		5E9FCD4A2BBC8E27009EE67D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				CLANG_CXX_LIBRARY = "libc++";
+				CODE_SIGN_ENTITLEMENTS = sc55AU2Extension/sc55AU2Extension.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_USER_SELECTED_FILES = readwrite;
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"/Users/giuliozausa/personal/programming/Nuked-SC55/src/**",
+					/opt/homebrew/Cellar/sdl2/2.28.5/include,
+				);
+				INFOPLIST_FILE = sc55AU2Extension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = sc55AU2Extension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"/Users/giuliozausa/personal/programming/Nuked-SC55/build",
+					/opt/homebrew/Cellar/sdl2/2.28.5/lib,
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = giulioz.sc55AU2.sc55AU2Extension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "sc55AU2Extension/Common/sc55AU2Extension-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		5E9FCD4D2BBC8E27009EE67D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = sc55AU2/sc55AU2.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"sc55AU2/Preview Content\"";
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = "/Users/giuliozausa/personal/programming/Nuked-SC55/src";
+				INFOPLIST_KEY_CFBundleDisplayName = sc55AU2;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = "/Users/giuliozausa/personal/programming/Nuked-SC55/build";
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					AudioToolbox,
+					"-framework",
+					AVFoundation,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = giulioz.sc55AU2;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		5E9FCD4E2BBC8E27009EE67D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = sc55AU2/sc55AU2.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"sc55AU2/Preview Content\"";
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = "/Users/giuliozausa/personal/programming/Nuked-SC55/src";
+				INFOPLIST_KEY_CFBundleDisplayName = sc55AU2;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = "/Users/giuliozausa/personal/programming/Nuked-SC55/build";
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					AudioToolbox,
+					"-framework",
+					AVFoundation,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = giulioz.sc55AU2;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		5E9FCCEB2BBC8E25009EE67D /* Build configuration list for PBXProject "sc55AU2" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5E9FCD462BBC8E27009EE67D /* Debug */,
+				5E9FCD472BBC8E27009EE67D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5E9FCD482BBC8E27009EE67D /* Build configuration list for PBXNativeTarget "sc55AU2Extension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5E9FCD492BBC8E27009EE67D /* Debug */,
+				5E9FCD4A2BBC8E27009EE67D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5E9FCD4C2BBC8E27009EE67D /* Build configuration list for PBXNativeTarget "sc55AU2" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5E9FCD4D2BBC8E27009EE67D /* Debug */,
+				5E9FCD4E2BBC8E27009EE67D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 5E9FCCE82BBC8E25009EE67D /* Project object */;
+}

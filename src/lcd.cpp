@@ -164,9 +164,6 @@ void LCD_Write(uint32_t address, uint8_t data)
 
 static const int lcd_width = 741;
 static const int lcd_height = 268;
-static SDL_Window *window;
-static SDL_Renderer *renderer;
-static SDL_Texture *texture;
 
 static std::string m_back_path = "back.data";
 
@@ -209,24 +206,6 @@ void LCD_SetBackPath(const std::string &path)
 void LCD_Init(void)
 {
     FILE *raw;
-
-    if(lcd_init)
-        return;
-
-    lcd_quit_requested = false;
-
-    window = SDL_CreateWindow("SC-55mkII", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, lcd_width, lcd_height, SDL_WINDOW_SHOWN);
-    if (!window)
-        return;
-
-    renderer = SDL_CreateRenderer(window, -1, 0);
-    if (!renderer)
-        return;
-
-    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGR888, SDL_TEXTUREACCESS_STREAMING, lcd_width, lcd_height);
-
-    if (!texture)
-        return;
 
     raw = Files::utf8_fopen(m_back_path.c_str(), "rb");
     if (!raw)
@@ -313,12 +292,11 @@ void LCD_FontRenderLevel(int32_t x, int32_t y, uint8_t ch, uint8_t width = 5)
     }
 }
 
-void LCD_Update(void)
+extern "C" {
+uint32_t* LCD_Update(void)
 {
-    if (!lcd_init)
-        return;
-
-    MCU_WorkThread_Lock();
+    // if (!lcd_init)
+    //     return;
 
     if (!lcd_enable)
     {
@@ -393,141 +371,17 @@ void LCD_Update(void)
         }
     }
 
-    MCU_WorkThread_Unlock();
-
-    SDL_UpdateTexture(texture, NULL, lcd_buffer, lcd_width * 4);
-    SDL_RenderCopy(renderer, texture, NULL, NULL);
-    SDL_RenderPresent(renderer);
-
-    SDL_Event sdl_event;
-    while (SDL_PollEvent(&sdl_event))
-    {
-        switch (sdl_event.type)
-        {
-            case SDL_QUIT:
-                lcd_quit_requested = true;
-                break;
-
-            case SDL_KEYDOWN:
-            case SDL_KEYUP:
-            {
-                if (sdl_event.key.repeat)
-                    continue;
-
-                int mask = 0;
-                uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
-
-                for (size_t i = 0; i < sizeof(button_map) / sizeof(button_map[0]); i++)
-                {
-                    if (button_map[i][0] == sdl_event.key.keysym.scancode)
-                        mask |= (1 << button_map[i][1]);
-                }
-
-                if (sdl_event.type == SDL_KEYDOWN)
-                    button_pressed |= mask;
-                else
-                    button_pressed &= ~mask;
-
-                SDL_AtomicSet(&mcu_button_pressed, (int)button_pressed);
-
-#if 1
-                if (sdl_event.key.keysym.scancode >= SDL_SCANCODE_1 && sdl_event.key.keysym.scancode < SDL_SCANCODE_0)
-                {
-#if 0
-                    int kk = sdl_event.key.keysym.scancode - SDL_SCANCODE_1;
-                    if (sdl_event.type == SDL_KEYDOWN)
-                    {
-                        SM_PostUART(0xc0);
-                        SM_PostUART(118);
-                        SM_PostUART(0x90);
-                        SM_PostUART(0x30 + kk);
-                        SM_PostUART(0x7f);
-                    }
-                    else
-                    {
-                        SM_PostUART(0x90);
-                        SM_PostUART(0x30 + kk);
-                        SM_PostUART(0);
-                    }
-#endif
-                    int kk = sdl_event.key.keysym.scancode - SDL_SCANCODE_1;
-                    const int patch = 47;
-                    if (sdl_event.type == SDL_KEYDOWN)
-                    {
-                        static int bend = 0x2000;
-                        if (kk == 4)
-                        {
-                            SM_PostUART(0x99);
-                            SM_PostUART(0x32);
-                            SM_PostUART(0x7f);
-                        }
-                        else if (kk == 3)
-                        {
-                            bend += 0x100;
-                            if (bend > 0x3fff)
-                                bend = 0x3fff;
-                            SM_PostUART(0xe1);
-                            SM_PostUART(bend & 127);
-                            SM_PostUART((bend >> 7) & 127);
-                        }
-                        else if (kk == 2)
-                        {
-                            bend -= 0x100;
-                            if (bend < 0)
-                                bend = 0;
-                            SM_PostUART(0xe1);
-                            SM_PostUART(bend & 127);
-                            SM_PostUART((bend >> 7) & 127);
-                        }
-                        else if (kk)
-                        {
-                            SM_PostUART(0xc1);
-                            SM_PostUART(patch);
-                            SM_PostUART(0xe1);
-                            SM_PostUART(bend & 127);
-                            SM_PostUART((bend >> 7) & 127);
-                            SM_PostUART(0x91);
-                            SM_PostUART(0x32);
-                            SM_PostUART(0x7f);
-                        }
-                        else if (kk == 0)
-                        {
-                            //SM_PostUART(0xc0);
-                            //SM_PostUART(patch);
-                            SM_PostUART(0xe0);
-                            SM_PostUART(0x00);
-                            SM_PostUART(0x40);
-                            SM_PostUART(0x99);
-                            SM_PostUART(0x37);
-                            SM_PostUART(0x7f);
-                        }
-                    }
-                    else
-                    {
-                        if (kk == 1)
-                        {
-                            SM_PostUART(0x91);
-                            SM_PostUART(0x32);
-                            SM_PostUART(0);
-                        }
-                        else if (kk == 0)
-                        {
-                            SM_PostUART(0x99);
-                            SM_PostUART(0x37);
-                            SM_PostUART(0);
-                        }
-                        else if (kk == 4)
-                        {
-                            SM_PostUART(0x99);
-                            SM_PostUART(0x32);
-                            SM_PostUART(0);
-                        }
-                    }
-                }
-#endif
-                break;
-            }
-        }
-    }
+    return (uint32_t*)lcd_buffer;
 }
 
+void LCD_SendButton(uint8_t button, int state) {
+    uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
+    int mask = (1 << button);
+    if (state) {
+        button_pressed |= mask;
+    } else {
+        button_pressed &= ~mask;
+    }
+    SDL_AtomicSet(&mcu_button_pressed, (int)button_pressed);
+}
+}
