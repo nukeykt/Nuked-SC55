@@ -183,6 +183,15 @@ struct sc55AU2ExtensionMainView: View {
                         audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_POWER), 0)
                     }
                 }){ Text("INIT ALL") }
+                
+                Button(action: {
+                    audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_INST_R), 1)
+                    audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_POWER), 1)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_INST_R), 0)
+                        audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_POWER), 0)
+                    }
+                }){ Text("GS RESET") }
             }
             Button(action: {
                 audioUnit.sc55_Reset()
