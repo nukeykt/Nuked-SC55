@@ -45,11 +45,11 @@ public:
 
         AudioConverterNew(&sourceDescription, &destFormat, &audioConverterRef);
 
-        startSC55(std::string(NSBundle.mainBundle.bundleURL.absoluteString.UTF8String).substr(7) + "Contents/Resources");
+        auto path = std::string(NSBundle.mainBundle.bundleURL.absoluteString.UTF8String).substr(7) + "Contents/Resources";
+        mcu.startSC55(&path);
     }
     
     void deInitialize() {
-        stopSC55();
     }
     
     // MARK: - Bypass
@@ -175,7 +175,7 @@ public:
         messageBytes[0] = message.channelVoice1.status << 4 | message.channelVoice1.channel;
         messageBytes[1] = message.channelVoice1.note.number;
         messageBytes[2] = message.channelVoice1.note.velocity;
-        postMidiSC55(messageBytes, length);
+        mcu.postMidiSC55(messageBytes, length);
     }
     
     // MARK: - Member Variables
@@ -188,6 +188,8 @@ public:
     AudioStreamBasicDescription destFormat;
 
     int16_t *lastBufferData;
+    
+    MCU mcu;
 };
 
 OSStatus EncoderDataProc(AudioConverterRef inAudioConverter, UInt32 *ioNumberDataPackets,
@@ -205,7 +207,7 @@ OSStatus EncoderDataProc(AudioConverterRef inAudioConverter, UInt32 *ioNumberDat
   unsigned int dataSize = amountToWrite * 2 * 2;
   int16_t *dataBuff = (int16_t *)malloc(dataSize);
 //   memset(dataBuff, 0, dataSize);
-  updateSC55(dataBuff, dataSize);
+  _this->mcu.updateSC55(dataBuff, dataSize);
   _this->lastBufferData = dataBuff;
 
   ioData->mNumberBuffers = 1;

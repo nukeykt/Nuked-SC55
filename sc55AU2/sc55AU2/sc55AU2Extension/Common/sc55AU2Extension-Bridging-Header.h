@@ -8,9 +8,9 @@
 #import "sc55AU2ExtensionAudioUnit.h"
 #import "sc55AU2ExtensionParameterAddresses.h"
 
-void SC55_Reset();
-uint32_t* LCD_Update(void);
-void LCD_SendButton(uint8_t button, int state);
+// void SC55_Reset();
+// uint32_t* LCD_Update(void);
+// void LCD_SendButton(uint8_t button, int state);
 
 enum {
     MCU_BUTTON_POWER = 0,

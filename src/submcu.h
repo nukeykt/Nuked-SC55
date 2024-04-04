@@ -56,12 +56,58 @@ struct submcu_t {
     uint8_t sleep;
 };
 
-extern submcu_t sm;
+static const uint32_t uart_buffer_size = 8192;
 
-extern uint8_t sm_rom[4096];
+struct MCU;
 
-void SM_Reset(void);
-void SM_Update(uint64_t cycles);
-void SM_SysWrite(uint32_t address, uint8_t data);
-uint8_t SM_SysRead(uint32_t address);
-void SM_PostUART(uint8_t data);
+struct SubMcu {
+    MCU *mcu;
+    SubMcu(MCU *mcu) : mcu(mcu) {}
+
+    uint8_t sm_rom[4096];
+    uint8_t sm_ram[128];
+    uint8_t sm_shared_ram[192];
+    uint8_t sm_access[0x18];
+
+    uint8_t sm_p0_dir;
+    uint8_t sm_p1_dir;
+
+    uint8_t sm_device_mode[32];
+    uint8_t sm_cts;
+
+    uint64_t sm_timer_cycles;
+    uint8_t sm_timer_prescaler;
+    uint8_t sm_timer_counter;
+
+    submcu_t sm;
+
+    uint32_t uart_write_ptr;
+    uint32_t uart_read_ptr;
+    uint8_t uart_buffer[uart_buffer_size];
+
+    uint8_t uart_rx_gotbyte;
+    uint8_t uart_rx_byte;
+    uint64_t uart_rx_delay;
+
+    void SM_ErrorTrap(void);
+    uint8_t SM_Read(uint16_t address);
+    void SM_Write(uint16_t address, uint8_t data);
+    void SM_SysWrite(uint32_t address, uint8_t data);
+    uint8_t SM_SysRead(uint32_t address);
+    uint16_t SM_GetVectorAddress(uint32_t vector);
+    void SM_SetStatus(uint32_t condition, uint32_t mask);
+    void SM_Reset(void);
+    uint8_t SM_ReadAdvance(void);
+    uint16_t SM_ReadAdvance16(void);
+    uint16_t SM_Read16(uint16_t address);
+    void SM_Update_NZ(uint8_t val);
+    void SM_PushStack(uint8_t data);
+    uint8_t SM_PopStack(void);
+
+    void SM_StartVector(uint32_t vector);
+    void SM_HandleInterrupt(void);
+    void SM_UpdateTimer(void);
+    void SM_PostUART(uint8_t data);
+    void SM_UpdateUART(void);
+    void SM_Update(uint64_t cycles);
+};

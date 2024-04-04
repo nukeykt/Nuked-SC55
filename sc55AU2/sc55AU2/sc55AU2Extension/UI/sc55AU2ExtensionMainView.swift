@@ -77,22 +77,24 @@ public struct Bitmap {
 public struct Renderer {
     public private(set) var bitmap: Bitmap
     
-    public init(width: Int, height: Int, backgroundColor: Color = .clear) {
-        self.bitmap = Bitmap(width: width, height: height, color: backgroundColor)
+    public init(width: Int, height: Int) {
+        self.bitmap = Bitmap(width: width, height: height, color: Color.init(
+            r: 0, g: 0,b: 0, a: 0
+        ))
     }
     
     mutating func draw() {
-        let lcdResult = LCD_Update();
-        for x in 0...(741-1) {
-            for y in 0...(268-1) {
-                bitmap[x, y] = Color.init(
-                    r: UInt8((lcdResult![x + y * 741] >> 0) & 0xff),
-                    g: UInt8((lcdResult![x + y * 741] >> 8) & 0xff),
-                    b: UInt8((lcdResult![x + y * 741] >> 16) & 0xff),
-                    a: 255
-                )
-            }
-        }
+        // let lcdResult = LCD_Update();
+        // for x in 0...(741-1) {
+        //     for y in 0...(268-1) {
+        //         bitmap[x, y] = Color.init(
+        //             r: UInt8((lcdResult![x + y * 741] >> 0) & 0xff),
+        //             g: UInt8((lcdResult![x + y * 741] >> 8) & 0xff),
+        //             b: UInt8((lcdResult![x + y * 741] >> 16) & 0xff),
+        //             a: 255
+        //         )
+        //     }
+        // }
     }
 }
 
@@ -103,16 +105,16 @@ struct SCButton: View {
     var body: some View {
         Button(action: {
             if code == 0xFF {
-                LCD_SendButton(UInt8(MCU_BUTTON_PART_L), 1)
-                LCD_SendButton(UInt8(MCU_BUTTON_PART_R), 1)
+                // LCD_SendButton(UInt8(MCU_BUTTON_PART_L), 1)
+                // LCD_SendButton(UInt8(MCU_BUTTON_PART_R), 1)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                    LCD_SendButton(UInt8(MCU_BUTTON_PART_L), 0)
-                    LCD_SendButton(UInt8(MCU_BUTTON_PART_R), 0)
+                    // LCD_SendButton(UInt8(MCU_BUTTON_PART_L), 0)
+                    // LCD_SendButton(UInt8(MCU_BUTTON_PART_R), 0)
                 }
             } else {
-                LCD_SendButton(UInt8(code), 1)
+                // LCD_SendButton(UInt8(code), 1)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    LCD_SendButton(UInt8(code), 0)
+                    // LCD_SendButton(UInt8(code), 0)
                 }
             }
         }){
@@ -163,7 +165,9 @@ struct sc55AU2ExtensionMainView: View {
                 SCButton(code: MCU_BUTTON_REVERB_R, text: "REVERB_R")
             }
             SCButton(code: 0xFF, text: "DEMO")
-            Button(action: { SC55_Reset() }) {
+            Button(action: {
+                // SC55_Reset()
+            }) {
                 Text("RESET")
             }
         }

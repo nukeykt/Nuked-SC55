@@ -43,27 +43,17 @@
 #include "submcu.h"
 #include "utils/files.h"
 
-
-static uint32_t LCD_DL, LCD_N, LCD_F, LCD_D, LCD_C, LCD_B, LCD_ID, LCD_S;
-static uint32_t LCD_DD_RAM, LCD_AC, LCD_CG_RAM;
-static uint32_t LCD_RAM_MODE = 0;
-static uint8_t LCD_Data[80];
-static uint8_t LCD_CG[64];
-
-static uint8_t lcd_enable = 1;
-static bool lcd_quit_requested = false;
-
-void LCD_Enable(uint32_t enable)
+void LCD::LCD_Enable(uint32_t enable)
 {
     lcd_enable = enable;
 }
 
-bool LCD_QuitRequested()
+bool LCD::LCD_QuitRequested()
 {
     return lcd_quit_requested;
 }
 
-void LCD_Write(uint32_t address, uint8_t data)
+void LCD::LCD_Write(uint32_t address, uint8_t data)
 {
     if (address == 0)
     {
@@ -162,16 +152,6 @@ void LCD_Write(uint32_t address, uint8_t data)
     //    printf("\n");
 }
 
-static const int lcd_width = 741;
-static const int lcd_height = 268;
-
-static std::string m_back_path = "back.data";
-
-static uint32_t lcd_buffer[lcd_height][lcd_width];
-static uint32_t lcd_background[lcd_height][lcd_width];
-
-static uint32_t lcd_init = 0;
-
 const int button_map[][2] =
 {
     SDL_SCANCODE_Q, MCU_BUTTON_POWER,
@@ -198,13 +178,15 @@ const int button_map[][2] =
 };
 
 
-void LCD_SetBackPath(const std::string &path)
+void LCD::LCD_SetBackPath(const std::string &path)
 {
     m_back_path = path;
 }
 
-void LCD_Init(void)
+void LCD::LCD_Init(MCU *mcu)
 {
+    this->mcu = mcu;
+    
     FILE *raw;
 
     raw = Files::utf8_fopen(m_back_path.c_str(), "rb");
@@ -213,20 +195,12 @@ void LCD_Init(void)
 
     fread(lcd_background, 1, sizeof(lcd_background), raw);
     fclose(raw);
-
-    lcd_init = 1;
 }
 
-void LCD_UnInit(void)
-{
-    if(!lcd_init)
-        return;
-}
+const uint32_t lcd_col1 = 0x000000;
+const uint32_t lcd_col2 = 0x0050c8;
 
-uint32_t lcd_col1 = 0x000000;
-uint32_t lcd_col2 = 0x0050c8;
-
-void LCD_FontRenderStandard(int32_t x, int32_t y, uint8_t ch)
+void LCD::LCD_FontRenderStandard(int32_t x, int32_t y, uint8_t ch)
 {
     uint8_t* f;
     if (ch >= 16)
@@ -259,7 +233,7 @@ void LCD_FontRenderStandard(int32_t x, int32_t y, uint8_t ch)
     }
 }
 
-void LCD_FontRenderLevel(int32_t x, int32_t y, uint8_t ch, uint8_t width = 5)
+void LCD::LCD_FontRenderLevel(int32_t x, int32_t y, uint8_t ch, uint8_t width)
 {
     uint8_t* f;
     if (ch >= 16)
@@ -292,8 +266,7 @@ void LCD_FontRenderLevel(int32_t x, int32_t y, uint8_t ch, uint8_t width = 5)
     }
 }
 
-extern "C" {
-uint32_t* LCD_Update(void)
+uint32_t* LCD::LCD_Update(void)
 {
     // if (!lcd_init)
     //     return;
@@ -374,14 +347,14 @@ uint32_t* LCD_Update(void)
     return (uint32_t*)lcd_buffer;
 }
 
-void LCD_SendButton(uint8_t button, int state) {
-    uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
+void LCD::LCD_SendButton(uint8_t button, int state) {
+    uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu->mcu_button_pressed);
     int mask = (1 << button);
     if (state) {
         button_pressed |= mask;
     } else {
         button_pressed &= ~mask;
     }
-    SDL_AtomicSet(&mcu_button_pressed, (int)button_pressed);
+    SDL_AtomicSet(&mcu->mcu_button_pressed, (int)button_pressed);
 }
-}
+

@@ -648,7 +648,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
 					"/Users/giuliozausa/personal/programming/Nuked-SC55/src/**",
-					/opt/homebrew/Cellar/sdl2/2.28.5/include,
+					"/opt/homebrew/Cellar/sdl2/2.28.5/include/**",
 				);
 				INFOPLIST_FILE = sc55AU2Extension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = sc55AU2Extension;
@@ -687,7 +687,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
 					"/Users/giuliozausa/personal/programming/Nuked-SC55/src/**",
-					/opt/homebrew/Cellar/sdl2/2.28.5/include,
+					"/opt/homebrew/Cellar/sdl2/2.28.5/include/**",
 				);
 				INFOPLIST_FILE = sc55AU2Extension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = sc55AU2Extension;
