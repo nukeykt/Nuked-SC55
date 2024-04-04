@@ -39,6 +39,11 @@ R15209359 (WAVE 16M) -> waverom1.bin
 R15279813 (WAVE 8M) -> waverom2.bin
 ```
 
+## License
+
+Nuked SC-55 can be distributed and used under the original MAME license (see LICENSE file).
+Non-commercial license was chosen to prevent making and selling SC-55 emulation boxes using (or around) this code, as well as preventing from using it in the commercial music production.
+
 ## Additional info
 
 - Nuked SC-55 will listen to the specified MIDI IN port (default is port 0). Use '-p:<port_number>' command line argument to specify port number. To use it with the other applications use external MIDI pipe software (e.g. loopMIDI).
