@@ -262,6 +262,15 @@ struct MCU {
     int adf_rd = 0;
     uint64_t analog_end_time = 0;
 
+    uint32_t operand_type;
+    uint16_t operand_ea;
+    uint8_t operand_ep;
+    uint8_t operand_size;
+    uint8_t operand_reg;
+    uint8_t operand_status;
+    uint16_t operand_data;
+    uint8_t opcode_extended;
+
     SDL_mutex *init_lock;
 
     FILE *s_rf[rf_num] =

@@ -58,7 +58,6 @@ set(SC55_SRC
     src/mcu_interrupt.cpp src/mcu_interrupt.h
     src/mcu_opcodes.cpp src/mcu_opcodes.h
     src/mcu_timer.cpp src/mcu_timer.h
-    src/midi.h
     src/pcm.cpp src/pcm.h
     src/submcu.cpp src/submcu.h
 
