@@ -33,6 +33,7 @@
  */
 #include <stdio.h>
 #include <string.h>
+#include <chrono>
 #define SDL_MAIN_HANDLED
 #include "SDL.h"
 #include "mcu.h"
@@ -42,7 +43,6 @@
 #include "pcm.h"
 #include "lcd.h"
 #include "submcu.h"
-#include "midi.h"
 #include "utf8main.h"
 #include "utils/files.h"
 
@@ -51,44 +51,12 @@
 #include <limits.h>
 #endif
 
-
-static const int ROM1_SIZE = 0x8000;
-static const int ROM2_SIZE = 0x80000;
-static const int RAM_SIZE = 0x400;
-static const int SRAM_SIZE = 0x8000;
-static const int ROMSM_SIZE = 0x1000;
-
-
-static const int audio_buffer_size = 16384;
-static const int audio_page_size = 512;
-
-static short sample_buffer[audio_buffer_size];
-
-static int sample_read_ptr;
-static int sample_write_ptr;
-
-static SDL_AudioDeviceID sdl_audio;
-
-void MCU_ErrorTrap(void)
+void MCU::MCU_ErrorTrap(void)
 {
-    printf("%.2x %.4x\n", mcu.cp, mcu.pc);
+    printf("trap %.2x %.4x\n", mcu.cp, mcu.pc);
 }
 
-int mcu_mk1 = 0; // 0 - SC-55mkII, SC-55ST. 1 - SC-55, CM-300/SCC-1
-
-static int ga_int[8];
-static int ga_int_enable = 0;
-static int ga_int_trigger = 0;
-
-
-uint8_t dev_register[0x80];
-
-static uint16_t ad_val[4];
-static uint8_t ad_nibble = 0x00;
-static uint8_t sw_pos = 0;
-static uint8_t io_sd = 0x00;
-
-uint8_t RCU_Read(void)
+uint8_t MCU::RCU_Read(void)
 {
     return 0;
 }
@@ -103,7 +71,181 @@ enum {
     ANALOG_LEVEL_BATTERY = 0x3ff,
 };
 
-uint16_t MCU_AnalogReadPin(uint32_t pin)
+uint32_t MCU::MCU_GetAddress(uint8_t page, uint16_t address) {
+    return (page << 16) + address;
+}
+
+uint8_t MCU::MCU_ReadCode(void) {
+    return MCU_Read(MCU_GetAddress(mcu.cp, mcu.pc));
+}
+
+uint8_t MCU::MCU_ReadCodeAdvance(void) {
+    uint8_t ret = MCU_ReadCode();
+    mcu.pc++;
+    return ret;
+}
+
+void MCU::MCU_SetRegisterByte(uint8_t reg, uint8_t val)
+{
+    mcu.r[reg] = val;
+}
+
+uint32_t MCU::MCU_GetVectorAddress(uint32_t vector)
+{
+    return MCU_Read32(vector * 4);
+}
+
+uint32_t MCU::MCU_GetPageForRegister(uint32_t reg)
+{
+    if (reg >= 6)
+        return mcu.tp;
+    else if (reg >= 4)
+        return mcu.ep;
+    return mcu.dp;
+}
+
+void MCU::MCU_ControlRegisterWrite(uint32_t reg, uint32_t siz, uint32_t data)
+{
+    if (siz)
+    {
+        if (reg == 0)
+        {
+            mcu.sr = data;
+            mcu.sr &= sr_mask;
+        }
+        else if (reg == 5) // FIXME: undocumented
+        {
+            mcu.dp = data & 0xff;
+        }
+        else if (reg == 4) // FIXME: undocumented
+        {
+            mcu.ep = data & 0xff;
+        }
+        else if (reg == 3) // FIXME: undocumented
+        {
+            mcu.br = data & 0xff;
+        }
+        else
+        {
+            MCU_ErrorTrap();
+        }
+    }
+    else
+    {
+        if (reg == 1)
+        {
+            mcu.sr &= ~0xff;
+            mcu.sr |= data & 0xff;
+            mcu.sr &= sr_mask;
+        }
+        else if (reg == 3)
+        {
+            mcu.br = data;
+        }
+        else if (reg == 4)
+        {
+            mcu.ep = data;
+        }
+        else if (reg == 5)
+        {
+            mcu.dp = data;
+        }
+        else if (reg == 7)
+        {
+            mcu.tp = data;
+        }
+        else
+        {
+            MCU_ErrorTrap();
+        }
+    }
+}
+
+uint32_t MCU::MCU_ControlRegisterRead(uint32_t reg, uint32_t siz)
+{
+    uint32_t ret = 0;
+    if (siz)
+    {
+        if (reg == 0)
+        {
+            ret = mcu.sr & sr_mask;
+        }
+        else if (reg == 5) // FIXME: undocumented
+        {
+            ret = mcu.dp | (mcu.dp << 8);
+        }
+        else if (reg == 4) // FIXME: undocumented
+        {
+            ret = mcu.ep | (mcu.ep << 8);
+        }
+        else if (reg == 3) // FIXME: undocumented
+        {
+            ret = mcu.br | (mcu.br << 8);;
+        }
+        else
+        {
+            MCU_ErrorTrap();
+        }
+        ret &= 0xffff;
+    }
+    else
+    {
+        if (reg == 1)
+        {
+            ret = mcu.sr & sr_mask;
+        }
+        else if (reg == 3)
+        {
+            ret = mcu.br;
+        }
+        else if (reg == 4)
+        {
+            ret = mcu.ep;
+        }
+        else if (reg == 5)
+        {
+            ret = mcu.dp;
+        }
+        else if (reg == 7)
+        {
+            ret = mcu.tp;
+        }
+        else
+        {
+            MCU_ErrorTrap();
+        }
+        ret &= 0xff;
+    }
+    return ret;
+}
+
+void MCU::MCU_SetStatus(uint32_t condition, uint32_t mask)
+{
+    if (condition)
+        mcu.sr |= mask;
+    else
+        mcu.sr &= ~mask;
+}
+
+void MCU::MCU_PushStack(uint16_t data)
+{
+    if (mcu.r[7] & 1)
+        MCU_Interrupt_Exception(this, EXCEPTION_SOURCE_ADDRESS_ERROR);
+    mcu.r[7] -= 2;
+    MCU_Write16(mcu.r[7], data);
+}
+
+uint16_t MCU::MCU_PopStack(void)
+{
+    uint16_t ret;
+    if (mcu.r[7] & 1)
+        MCU_Interrupt_Exception(this, EXCEPTION_SOURCE_ADDRESS_ERROR);
+    ret = MCU_Read16(mcu.r[7]);
+    mcu.r[7] += 2;
+    return ret;
+}
+
+uint16_t MCU::MCU_AnalogReadPin(uint32_t pin)
 {
     return 0x3ff;
     uint8_t rcu;
@@ -139,7 +281,7 @@ uint16_t MCU_AnalogReadPin(uint32_t pin)
         return ANALOG_LEVEL_RCU_LOW;
 }
 
-void MCU_AnalogSample(int channel)
+void MCU::MCU_AnalogSample(int channel)
 {
     int value = MCU_AnalogReadPin(channel);
     int dest = (channel << 1) & 6;
@@ -147,21 +289,17 @@ void MCU_AnalogSample(int channel)
     dev_register[DEV_ADDRAL + dest] = (value << 6) & 0xc0;
 }
 
-int adf_rd = 0;
-
-uint64_t analog_end_time;
-
-void MCU_DeviceWrite(uint32_t address, uint8_t data)
+void MCU::MCU_DeviceWrite(uint32_t address, uint8_t data)
 {
     address &= 0x7f;
     if (address >= 0x10 && address < 0x40)
     {
-        TIMER_Write(address, data);
+        mcu_timer.TIMER_Write(address, data);
         return;
     }
     if (address >= 0x50 && address < 0x55)
     {
-        TIMER2_Write(address, data);
+        mcu_timer.TIMER2_Write(address, data);
         return;
     }
     switch (address)
@@ -233,10 +371,10 @@ void MCU_DeviceWrite(uint32_t address, uint8_t data)
         if ((data & 0x80) == 0 && adf_rd)
         {
             dev_register[address] &= ~0x80;
-            MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_ANALOG, 0);
+            MCU_Interrupt_SetRequest(this, INTERRUPT_SOURCE_ANALOG, 0);
         }
         if ((data & 0x40) == 0)
-            MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_ANALOG, 0);
+            MCU_Interrupt_SetRequest(this, INTERRUPT_SOURCE_ANALOG, 0);
         return;
     }
     default:
@@ -246,16 +384,16 @@ void MCU_DeviceWrite(uint32_t address, uint8_t data)
     dev_register[address] = data;
 }
 
-uint8_t MCU_DeviceRead(uint32_t address)
+uint8_t MCU::MCU_DeviceRead(uint32_t address)
 {
     address &= 0x7f;
     if (address >= 0x10 && address < 0x40)
     {
-        return TIMER_Read(address);
+        return mcu_timer.TIMER_Read(address);
     }
     if (address >= 0x50 && address < 0x55)
     {
-        return TIMER_Read(address);
+        return mcu_timer.TIMER_Read(address);
     }
     switch (address)
     {
@@ -294,14 +432,14 @@ uint8_t MCU_DeviceRead(uint32_t address)
     return dev_register[address];
 }
 
-void MCU_DeviceReset(void)
+void MCU::MCU_DeviceReset(void)
 {
     // dev_register[0x00] = 0x03;
     // dev_register[0x7c] = 0x87;
     dev_register[DEV_RAME] = 0x80;
 }
 
-void MCU_UpdateAnalog(uint64_t cycles)
+void MCU::MCU_UpdateAnalog(uint64_t cycles)
 {
     int ctrl = dev_register[DEV_ADCSR];
     int isscan = (ctrl & 16) != 0;
@@ -327,23 +465,14 @@ void MCU_UpdateAnalog(uint64_t cycles)
             }
             dev_register[DEV_ADCSR] |= 0x80;
             if (ctrl & 0x40)
-                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_ANALOG, 1);
+                MCU_Interrupt_SetRequest(this, INTERRUPT_SOURCE_ANALOG, 1);
         }
     }
     else
         analog_end_time = 0;
 }
 
-mcu_t mcu;
-
-uint8_t rom1[ROM1_SIZE];
-uint8_t rom2[ROM2_SIZE];
-uint8_t ram[RAM_SIZE];
-uint8_t sram[SRAM_SIZE];
-
-int rom2_mask = ROM2_SIZE - 1;
-
-uint8_t MCU_Read(uint32_t address)
+uint8_t MCU::MCU_Read(uint32_t address)
 {
     uint32_t address_rom = address & 0x3ffff;
     if (address & 0x80000)
@@ -362,11 +491,11 @@ uint8_t MCU_Read(uint32_t address)
             {
                 if (address >= 0xe000 && address < 0xe400)
                 {
-                    ret = PCM_Read(address & 0x3f);
+                    ret = pcm.PCM_Read(address & 0x3f);
                 }
                 else if (address >= 0xec00 && address < 0xf000)
                 {
-                    ret = SM_SysRead(address & 0xff);
+                    ret = sub_mcu.SM_SysRead(address & 0xff);
                 }
                 else if (address >= 0xff80)
                 {
@@ -383,7 +512,7 @@ uint8_t MCU_Read(uint32_t address)
                 {
                     ret = ga_int_trigger;
                     ga_int_trigger = 0;
-                    MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ1, 0);
+                    MCU_Interrupt_SetRequest(this, INTERRUPT_SOURCE_IRQ1, 0);
                 }
                 else
                 {
@@ -398,7 +527,7 @@ uint8_t MCU_Read(uint32_t address)
             {
                 if (address >= 0xe000 && address < 0xe040)
                 {
-                    ret = PCM_Read(address & 0x3f);
+                    ret = pcm.PCM_Read(address & 0x3f);
                 }
                 else if (address >= 0xff80)
                 {
@@ -462,7 +591,7 @@ uint8_t MCU_Read(uint32_t address)
     return ret;
 }
 
-uint16_t MCU_Read16(uint32_t address)
+uint16_t MCU::MCU_Read16(uint32_t address)
 {
     address &= ~1;
     uint8_t b0, b1;
@@ -471,7 +600,7 @@ uint16_t MCU_Read16(uint32_t address)
     return (b0 << 8) + b1;
 }
 
-uint32_t MCU_Read32(uint32_t address)
+uint32_t MCU::MCU_Read32(uint32_t address)
 {
     address &= ~3;
     uint8_t b0, b1, b2, b3;
@@ -482,7 +611,7 @@ uint32_t MCU_Read32(uint32_t address)
     return (b0 << 24) + (b1 << 16) + (b2 << 8) + b3;
 }
 
-void MCU_Write(uint32_t address, uint8_t value)
+void MCU::MCU_Write(uint32_t address, uint8_t value)
 {
     uint8_t page = (address >> 16) & 0xf;
     address &= 0xffff;
@@ -495,11 +624,11 @@ void MCU_Write(uint32_t address, uint8_t value)
                 if (address >= 0xe400 && address < 0xe800)
                 {
                     if (address == 0xe404 || address == 0xe405)
-                        LCD_Write(address & 1, value);
+                        lcd.LCD_Write(address & 1, value);
                     else if (address == 0xe401)
                     {
                         io_sd = value;
-                        LCD_Enable((value & 1) == 0);
+                        lcd.LCD_Enable((value & 1) == 0);
                     }
                     else if (address == 0xe402)
                         ga_int_enable = (value << 1);
@@ -518,11 +647,11 @@ void MCU_Write(uint32_t address, uint8_t value)
                 }
                 else if (address >= 0xe000 && address < 0xe400)
                 {
-                    PCM_Write(address & 0x3f, value);
+                    pcm.PCM_Write(address & 0x3f, value);
                 }
                 else if (!mcu_mk1 && address >= 0xec00 && address < 0xf000)
                 {
-                    SM_SysWrite(address & 0xff, value);
+                    sub_mcu.SM_SysWrite(address & 0xff, value);
                 }
                 else if (address >= 0xff80)
                 {
@@ -544,7 +673,7 @@ void MCU_Write(uint32_t address, uint8_t value)
             {
                 if (address >= 0xe000 && address < 0xe040)
                 {
-                    PCM_Write(address & 0x3f, value);
+                    pcm.PCM_Write(address & 0x3f, value);
                 }
                 else if (address >= 0xff80)
                 {
@@ -582,14 +711,14 @@ void MCU_Write(uint32_t address, uint8_t value)
     }
 }
 
-void MCU_Write16(uint32_t address, uint16_t value)
+void MCU::MCU_Write16(uint32_t address, uint16_t value)
 {
     address &= ~1;
     MCU_Write(address, value >> 8);
     MCU_Write(address + 1, value & 0xff);
 }
 
-void MCU_ReadInstruction(void)
+void MCU::MCU_ReadInstruction(void)
 {
     uint8_t operand = MCU_ReadCodeAdvance();
 
@@ -598,20 +727,20 @@ void MCU_ReadInstruction(void)
         mcu.cycles += 0;
     }
 
-    MCU_Operand_Table[operand](operand);
+    MCU_Operand_Table[operand](this, operand);
 
     if (mcu.sr & STATUS_T)
     {
-        MCU_Interrupt_Exception(EXCEPTION_SOURCE_TRACE);
+        MCU_Interrupt_Exception(this, EXCEPTION_SOURCE_TRACE);
     }
 }
 
-void MCU_Init(void)
+void MCU::MCU_Init(void)
 {
     memset(&mcu, 0, sizeof(mcu_t));
 }
 
-void MCU_Reset(void)
+void MCU::MCU_Reset(void)
 {
     mcu.r[0] = 0;
     mcu.r[1] = 0;
@@ -632,7 +761,8 @@ void MCU_Reset(void)
     mcu.tp = 0;
     mcu.br = 0;
 
-    uint32_t reset_address = MCU_GetVectorAddress(VECTOR_RESET);
+    // uint32_t reset_address = MCU_GetVectorAddress(VECTOR_RESET);
+    uint32_t reset_address = 0x016C;
     mcu.cp = (reset_address >> 16) & 0xff;
     mcu.pc = reset_address & 0xffff;
 
@@ -641,104 +771,19 @@ void MCU_Reset(void)
     MCU_DeviceReset();
 }
 
-static bool work_thread_run = false;
-
-static SDL_mutex *work_thread_lock;
-
-void MCU_WorkThread_Lock(void)
-{
-    SDL_LockMutex(work_thread_lock);
-}
-
-void MCU_WorkThread_Unlock(void)
-{
-    SDL_UnlockMutex(work_thread_lock);
-}
-
-int SDLCALL work_thread(void* data)
-{
-    work_thread_lock = SDL_CreateMutex();
-
-    MCU_WorkThread_Lock();
-    while (work_thread_run)
-    {
-        if (sample_read_ptr == sample_write_ptr)
-        {
-            MCU_WorkThread_Unlock();
-            while (sample_read_ptr == sample_write_ptr)
-            {
-                SDL_Delay(1);
-            }
-            MCU_WorkThread_Lock();
-        }
-
-        if (!mcu.ex_ignore)
-            MCU_Interrupt_Handle();
-        else
-            mcu.ex_ignore = 0;
-
-        if (!mcu.sleep)
-            MCU_ReadInstruction();
-
-        mcu.cycles += 12; // FIXME: assume 12 cycles per instruction
-
-        // if (mcu.cycles % 24000000 == 0)
-        //     printf("seconds: %i\n", (int)(mcu.cycles / 24000000));
-
-        PCM_Update(mcu.cycles);
-
-        TIMER_Clock(mcu.cycles);
-
-        if (!mcu_mk1)
-            SM_Update(mcu.cycles);
-
-        MCU_UpdateAnalog(mcu.cycles);
-    }
-    MCU_WorkThread_Unlock();
-
-    SDL_DestroyMutex(work_thread_lock);
-
-    return 0;
-}
-
-static void MCU_Run()
-{
-    bool working = true;
-
-    work_thread_run = true;
-    SDL_Thread *thread = SDL_CreateThread(work_thread, "work thread", 0);
-
-    while (working)
-    {
-        if(LCD_QuitRequested())
-            working = false;
-
-        LCD_Update();
-        SDL_Delay(15);
-    }
-
-    work_thread_run = false;
-    SDL_WaitThread(thread, 0);
-}
-
-void MCU_PatchROM(void)
+void MCU::MCU_PatchROM(void)
 {
     //rom2[0x1333] = 0x11;
     //rom2[0x1334] = 0x19;
     //rom1[0x622d] = 0x19;
 }
 
-SDL_atomic_t mcu_button_pressed = {0};
-
-uint8_t mcu_p0_data = 0x00;
-uint8_t mcu_p1_data = 0x00;
-
-uint8_t MCU_ReadP0(void)
+uint8_t MCU::MCU_ReadP0(void)
 {
     return 0xff;
 }
 
-uint8_t MCU_ReadP1(void)
+uint8_t MCU::MCU_ReadP1(void)
 {
     uint8_t data = 0xff;
     uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
@@ -753,17 +798,15 @@ uint8_t MCU_ReadP1(void)
     return data;
 }
 
-void MCU_WriteP0(uint8_t data)
+void MCU::MCU_WriteP0(uint8_t data)
 {
     mcu_p0_data = data;
 }
 
-void MCU_WriteP1(uint8_t data)
+void MCU::MCU_WriteP1(uint8_t data)
 {
     mcu_p1_data = data;
 }
-
-uint8_t tempbuf[0x200000];
 
 void unscramble(uint8_t *src, uint8_t *dst, int len)
 {
@@ -792,87 +835,7 @@ void unscramble(uint8_t *src, uint8_t *dst, int len)
     }
 }
 
-void audio_callback(void* /*userdata*/, Uint8* stream, int len)
-{
-    len /= 2;
-    memcpy(stream, &sample_buffer[sample_read_ptr], len * 2);
-    memset(&sample_buffer[sample_read_ptr], 0, len * 2);
-    sample_read_ptr += len;
-    sample_read_ptr %= audio_buffer_size;
-}
-
-static const char* audio_format_to_str(int format)
-{
-    switch(format)
-    {
-    case AUDIO_S8:
-        return "S8";
-    case AUDIO_U8:
-        return "U8";
-    case AUDIO_S16MSB:
-        return "S16MSB";
-    case AUDIO_S16LSB:
-        return "S16LSB";
-    case AUDIO_U16MSB:
-        return "U16MSB";
-    case AUDIO_U16LSB:
-        return "U16LSB";
-    case AUDIO_S32MSB:
-        return "S32MSB";
-    case AUDIO_S32LSB:
-        return "S32LSB";
-    case AUDIO_F32MSB:
-        return "F32MSB";
-    case AUDIO_F32LSB:
-        return "F32LSB";
-    }
-    return "UNK";
-}
-
-int MCU_OpenAudio(void)
-{
-    SDL_AudioSpec spec = {};
-    SDL_AudioSpec spec_actual = {};
-
-    spec.format = AUDIO_S16SYS;
-    spec.freq = mcu_mk1 ? 64000: 66207;
-    spec.channels = 2;
-    spec.callback = audio_callback;
-    spec.samples = audio_page_size / 4;
-
-    sdl_audio = SDL_OpenAudioDevice(NULL, 0, &spec, &spec_actual, 0);
-    if (!sdl_audio)
-    {
-        return 0;
-    }
-
-    printf("Audio Requested: F=%s, C=%d, R=%d, B=%d\n",
-           audio_format_to_str(spec.format),
-           spec.channels,
-           spec.freq,
-           spec.samples);
-
-    printf("Audio Actual: F=%s, C=%d, R=%d, B=%d\n",
-           audio_format_to_str(spec_actual.format),
-           spec_actual.channels,
-           spec_actual.freq,
-           spec_actual.samples);
-    fflush(stdout);
-
-    sample_read_ptr = 0;
-    sample_write_ptr = 0;
-
-    SDL_PauseAudioDevice(sdl_audio, 0);
-
-    return 1;
-}
-
-void MCU_CloseAudio(void)
-{
-    SDL_CloseAudio();
-}
-
-void MCU_PostSample(int *sample)
+void MCU::MCU_PostSample(int *sample)
 {
     sample[0] >>= 15;
     if (sample[0] > INT16_MAX)
@@ -889,28 +852,17 @@ void MCU_PostSample(int *sample)
     sample_write_ptr = (sample_write_ptr + 2) % audio_buffer_size;
 }
 
-void MCU_GA_SetGAInt(int line, int value)
+void MCU::MCU_GA_SetGAInt(int line, int value)
 {
     // guesswork
     if (value && !ga_int[line] && (ga_int_enable & (1 << line)) != 0)
         ga_int_trigger = line;
     ga_int[line] = value;
 
-    MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ1, ga_int_trigger != 0);
+    MCU_Interrupt_SetRequest(this, INTERRUPT_SOURCE_IRQ1, ga_int_trigger != 0);
 }
 
-
-static const size_t rf_num = 5;
-static FILE *s_rf[rf_num] =
-{
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr
-};
-
-static void closeAllR()
+void MCU::closeAllR()
 {
     for(size_t i = 0; i < rf_num; ++i)
     {
@@ -920,49 +872,40 @@ static void closeAllR()
     }
 }
 
-int main(int argc, char *argv[])
+MCU::MCU() : pcm(this), lcd(), sub_mcu(this), mcu_timer(this) {}
+
+int MCU::startSC55(std::string *basePath)
 {
-    (void)argc;
-    std::string basePath;
+    if (init_lock == nullptr)
+        init_lock = SDL_CreateMutex();
 
-#if __linux__
-    char self_path[PATH_MAX];
-    memset(&self_path[0], 0, PATH_MAX);
+    SDL_LockMutex(init_lock);
 
-    if(readlink("/proc/self/exe", self_path, PATH_MAX) == -1)
-        basePath = Files::real_dirname(argv[0]);
-    else
-        basePath = Files::dirname(self_path);
-#else
-    basePath = Files::real_dirname(argv[0]);
-#endif
+    uint8_t* tempbuf = (uint8_t*) malloc(0x200000);
 
-    printf("Base path is: %s\n", argv[0]);
-
-    if(Files::dirExists(basePath + "/../share/nuked-sc55"))
-        basePath += "/../share/nuked-sc55";
+    printf("Base path is: %s\n", basePath->c_str());
 
     std::string rpaths[5] =
     {
-        basePath + "/rom1.bin",
-        basePath + "/rom2.bin",
-        basePath + "/waverom1.bin",
-        basePath + "/waverom2.bin",
-        basePath + "/rom_sm.bin"
+        *basePath + "/rom1.bin",
+        *basePath + "/rom2.bin",
+        *basePath + "/waverom1.bin",
+        *basePath + "/waverom2.bin",
+        *basePath + "/rom_sm.bin"
     };
 
     if (mcu_mk1)
     {
-        //rpaths[0] = basePath + "/sc55_rom1.bin";
-        //rpaths[1] = basePath + "/sc55_rom2.bin";
-        //rpaths[2] = basePath + "/sc55_waverom1.bin";
-        //rpaths[3] = basePath + "/sc55_waverom2.bin";
-        //rpaths[4] = basePath + "/sc55_waverom3.bin";
-        rpaths[0] = basePath + "/cm300_rom1.bin";
-        rpaths[1] = basePath + "/cm300_rom2.bin";
-        rpaths[2] = basePath + "/cm300_waverom1.bin";
-        rpaths[3] = basePath + "/cm300_waverom2.bin";
-        rpaths[4] = basePath + "/cm300_waverom3.bin";
+        //rpaths[0] = *basePath + "/sc55_rom1.bin";
+        //rpaths[1] = *basePath + "/sc55_rom2.bin";
+        //rpaths[2] = *basePath + "/sc55_waverom1.bin";
+        //rpaths[3] = *basePath + "/sc55_waverom2.bin";
+        //rpaths[4] = *basePath + "/sc55_waverom3.bin";
+        rpaths[0] = *basePath + "/cm300_rom1.bin";
+        rpaths[1] = *basePath + "/cm300_rom2.bin";
+        rpaths[2] = *basePath + "/cm300_waverom1.bin";
+        rpaths[3] = *basePath + "/cm300_waverom2.bin";
+        rpaths[4] = *basePath + "/cm300_waverom3.bin";
     }
 
     bool r_ok = true;
@@ -989,7 +932,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    LCD_SetBackPath(basePath + "/back.data");
+    lcd.LCD_SetBackPath(*basePath + "/back.data");
 
     memset(&mcu, 0, sizeof(mcu_t));
 
@@ -1026,7 +969,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        unscramble(tempbuf, waverom1, 0x100000);
+        unscramble(tempbuf, pcm.waverom1, 0x100000);
 
         if (fread(tempbuf, 1, 0x100000, s_rf[3]) != 0x100000)
         {
@@ -1036,7 +979,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        unscramble(tempbuf, waverom2, 0x100000);
+        unscramble(tempbuf, pcm.waverom2, 0x100000);
 
         if (fread(tempbuf, 1, 0x100000, s_rf[4]) != 0x100000)
         {
@@ -1046,7 +989,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        unscramble(tempbuf, waverom2, 0x100000);
+        unscramble(tempbuf, pcm.waverom2, 0x100000);
     }
     else
     {
@@ -1058,7 +1001,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        unscramble(tempbuf, waverom1, 0x200000);
+        unscramble(tempbuf, pcm.waverom1, 0x200000);
 
         if (fread(tempbuf, 1, 0x100000, s_rf[3]) != 0x100000)
         {
@@ -1068,9 +1011,9 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        unscramble(tempbuf, waverom2, 0x100000);
+        unscramble(tempbuf, pcm.waverom2, 0x100000);
 
-        if (fread(sm_rom, 1, ROMSM_SIZE, s_rf[4]) != ROMSM_SIZE)
+        if (fread(sub_mcu.sm_rom, 1, ROMSM_SIZE, s_rf[4]) != ROMSM_SIZE)
         {
             fprintf(stderr, "FATAL ERROR: Failed to read the sub mcu ROM.\n");
             fflush(stderr);
@@ -1082,51 +1025,99 @@ int main(int argc, char *argv[])
     // Close all files as they no longer needed being open
     closeAllR();
 
-    if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0)
-    {
-        fprintf(stderr, "FATAL ERROR: Failed to initialize the SDL2: %s.\n", SDL_GetError());
-        fflush(stderr);
-        return 2;
-    }
-
-    if (!MCU_OpenAudio())
-    {
-        fprintf(stderr, "FATAL ERROR: Failed to open the audio stream.\n");
-        fflush(stderr);
-        return 2;
-    }
-
-    int port = 0;
-    {
-        for (int i = 1; i < argc; i++)
-        {
-            if (!strncmp(argv[i], "-p:", 3))
-            {
-                port = atoi(argv[i] + 3);
-                break;
-            }
-        }
-    }
-
-    if(!MIDI_Init(port))
-    {
-        fprintf(stderr, "ERROR: Failed to initialize the MIDI Input.\nWARNING: Continuing without MIDI Input...\n");
-        fflush(stderr);
-    }
-
-    LCD_Init();
+    lcd.LCD_Init(this);
     MCU_Init();
     MCU_PatchROM();
     MCU_Reset();
-    SM_Reset();
-    PCM_Reset();
+    sub_mcu.SM_Reset();
+    pcm.PCM_Reset();
 
-    MCU_Run();
+    sample_write_ptr = 0;
 
-    MCU_CloseAudio();
-    MIDI_Quit();
-    LCD_UnInit();
-    SDL_Quit();
+    free(tempbuf);
+    SDL_UnlockMutex(init_lock);
+    
+    return 0;
+}
+
+int MCU::updateSC55(int16_t *data, unsigned int dataSize) {
+    if (init_lock == nullptr)
+        init_lock = SDL_CreateMutex();
+
+    SDL_LockMutex(init_lock);
+
+    // auto start = std::chrono::high_resolution_clock::now();
+
+    dataSize /= 2;
+
+    if (audio_buffer_size < dataSize) {
+        printf("Audio buffer size is too small. (%d requested)\n", dataSize);
+        fflush(stdout);
+        return 0;
+    }
+
+    sample_write_ptr = 0;
+    // memset(sample_buffer, 0, audio_buffer_size * 2);
+
+    int maxCycles = dataSize * 256;
+
+    for (int i = 0; sample_write_ptr < dataSize; i++) {
+        if (i > maxCycles) {
+            printf("Not enough samples!\n");
+            fflush(stdout);
+            break;
+        }
+
+        if (!mcu.ex_ignore)
+            MCU_Interrupt_Handle(this);
+        else
+            mcu.ex_ignore = 0;
+
+        if (!mcu.sleep)
+            MCU_ReadInstruction();
+
+        mcu.cycles += 12; // FIXME: assume 12 cycles per instruction
+
+        // if (mcu.cycles % 24000000 == 0)
+        //     printf("seconds: %i\n", (int)(mcu.cycles / 24000000));
+
+        pcm.PCM_Update(mcu.cycles);
+
+        mcu_timer.TIMER_Clock(mcu.cycles);
+
+        if (!mcu_mk1)
+            sub_mcu.SM_Update(mcu.cycles);
+
+        MCU_UpdateAnalog(mcu.cycles);
+    }
+
+    memcpy(data, sample_buffer, dataSize * 2);
+
+    // auto stop = std::chrono::high_resolution_clock::now();
+    // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+    // if (duration > 8) {
+    //     printf("updateSC55 took %lld ms\n", duration);
+    //     fflush(stdout);
+    // }
+
+    SDL_UnlockMutex(init_lock);
 
     return 0;
+}
+
+void MCU::SC55_Reset() {
+    lcd.LCD_Init(this);
+    MCU_Init();
+    MCU_PatchROM();
+    MCU_Reset();
+    sub_mcu.SM_Reset();
+    pcm.PCM_Reset();
+
+    sample_write_ptr = 0;
+}
+
+void MCU::postMidiSC55(uint8_t* message, int length) {
+    for (int i = 0; i < length; i++) {
+        sub_mcu.SM_PostUART(message[i]);
+    }
 }

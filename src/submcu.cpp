@@ -33,7 +33,7 @@
  */
 #include <stdio.h>
 #include <string.h>
-#include "SDL_audio.h"
+// #include "SDL_audio.h"
 #include "mcu.h"
 #include "submcu.h"
 
@@ -78,38 +78,12 @@ enum {
     SM_DEV_TIMER_CTRL = 0x1f
 };
 
-uint8_t sm_rom[4096];
-uint8_t sm_ram[128];
-uint8_t sm_shared_ram[192];
-uint8_t sm_access[0x18];
-
-uint8_t sm_p0_dir;
-uint8_t sm_p1_dir;
-
-uint8_t sm_device_mode[32];
-uint8_t sm_cts;
-
-uint64_t sm_timer_cycles;
-uint8_t sm_timer_prescaler;
-uint8_t sm_timer_counter;
-
-submcu_t sm;
-
-static const uint32_t uart_buffer_size = 8192;
-uint32_t uart_write_ptr;
-uint32_t uart_read_ptr;
-uint8_t uart_buffer[uart_buffer_size];
-
-uint8_t uart_rx_gotbyte;
-uint8_t uart_rx_byte;
-uint64_t uart_rx_delay;
-
-void SM_ErrorTrap(void)
+void SubMcu::SM_ErrorTrap(void)
 {
-    printf("%.4x\n", sm.pc);
+    printf("smtrap %.4x\n", sm.pc);
 }
 
-uint8_t SM_Read(uint16_t address)
+uint8_t SubMcu::SM_Read(uint16_t address)
 {
     address &= 0x1fff;
     if (address & 0x1000)
@@ -153,7 +127,7 @@ uint8_t SM_Read(uint16_t address)
                 return ret;
             }
             case SM_DEV_P1_DATA:
-                return MCU_ReadP1();
+                return mcu->MCU_ReadP1();
             case SM_DEV_P1_DIR:
                 return sm_p1_dir;
             case SM_DEV_PRESCALER:
@@ -177,7 +151,7 @@ uint8_t SM_Read(uint16_t address)
     }
 }
 
-void SM_Write(uint16_t address, uint8_t data)
+void SubMcu::SM_Write(uint16_t address, uint8_t data)
 {
     address &= 0x1fff;
     if (address < 0x80)
@@ -190,7 +164,7 @@ void SM_Write(uint16_t address, uint8_t data)
         switch (address)
         {
             case SM_DEV_P1_DATA:
-                MCU_WriteP1(data);
+                mcu->MCU_WriteP1(data);
                 break;
             case SM_DEV_P1_DIR:
                 sm_p1_dir = data;
@@ -221,7 +195,7 @@ void SM_Write(uint16_t address, uint8_t data)
                 break;
         }
         if (address == SM_DEV_UART3_MODE_STATUS || address == SM_DEV_UART3_CTRL)
-            MCU_GA_SetGAInt(5, (sm_device_mode[SM_DEV_UART3_MODE_STATUS] & 0x80) != 0
+            mcu->MCU_GA_SetGAInt(5, (sm_device_mode[SM_DEV_UART3_MODE_STATUS] & 0x80) != 0
                 && (sm_device_mode[SM_DEV_UART3_CTRL] & 0x20) == 0);
     }
     else if (address >= 0x200 && address < 0x2c0)
@@ -236,7 +210,7 @@ void SM_Write(uint16_t address, uint8_t data)
     }
 }
 
-void SM_SysWrite(uint32_t address, uint8_t data)
+void SubMcu::SM_SysWrite(uint32_t address, uint8_t data)
 {
     address &= 0xff;
     if (address < 0xc0)
@@ -261,11 +235,11 @@ void SM_SysWrite(uint32_t address, uint8_t data)
     }
     else if (address == 0xf5)
     {
-        MCU_WriteP1(data);
+        mcu->MCU_WriteP1(data);
     }
     else if (address == 0xf6)
     {
-        MCU_WriteP0(data);
+        mcu->MCU_WriteP0(data);
     }
     else if (address == 0xf7)
     {
@@ -277,7 +251,7 @@ void SM_SysWrite(uint32_t address, uint8_t data)
     }
 }
 
-uint8_t SM_SysRead(uint32_t address)
+uint8_t SubMcu::SM_SysRead(uint32_t address)
 {
     address &= 0xff;
     if (address < 0xc0)
@@ -302,11 +276,11 @@ uint8_t SM_SysRead(uint32_t address)
     }
     else if (address == 0xf5)
     {
-        return MCU_ReadP1();
+        return mcu->MCU_ReadP1();
     }
     else if (address == 0xf6)
     {
-        return MCU_ReadP0();
+        return mcu->MCU_ReadP0();
     }
     else if (address == 0xf7)
     {
@@ -319,14 +293,14 @@ uint8_t SM_SysRead(uint32_t address)
     }
 }
 
-uint16_t SM_GetVectorAddress(uint32_t vector)
+uint16_t SubMcu::SM_GetVectorAddress(uint32_t vector)
 {
     uint16_t pc = SM_Read(0x1fec + vector * 2);
     pc |= SM_Read(0x1fec + vector * 2 + 1) << 8;
     return pc;
 }
 
-void SM_SetStatus(uint32_t condition, uint32_t mask)
+void SubMcu::SM_SetStatus(uint32_t condition, uint32_t mask)
 {
     if (condition)
         sm.sr |= mask;
@@ -334,145 +308,145 @@ void SM_SetStatus(uint32_t condition, uint32_t mask)
         sm.sr &= ~mask;
 }
 
-void SM_Reset(void)
+void SubMcu::SM_Reset(void)
 {
     memset(&sm, 0, sizeof(sm));
-    sm.pc = SM_GetVectorAddress(SM_VECTOR_RESET);
+    this->sm.pc = SM_GetVectorAddress(SM_VECTOR_RESET);
 }
 
-uint8_t SM_ReadAdvance(void)
+uint8_t SubMcu::SM_ReadAdvance(void)
 {
-    uint8_t byte = SM_Read(sm.pc);
-    sm.pc++;
+    uint8_t byte = SM_Read(this->sm.pc);
+    this->sm.pc++;
     return byte;
 }
 
-uint16_t SM_ReadAdvance16(void)
+uint16_t SubMcu::SM_ReadAdvance16(void)
 {
     uint16_t word = SM_ReadAdvance();
     word |= SM_ReadAdvance() << 8;
     return word;
 }
 
-uint16_t SM_Read16(uint16_t address)
+uint16_t SubMcu::SM_Read16(uint16_t address)
 {
     uint16_t word = SM_Read(address);
     word |= SM_Read(address) << 8;
     return word;
 }
 
-void SM_Update_NZ(uint8_t val)
+void SubMcu::SM_Update_NZ(uint8_t val)
 {
     SM_SetStatus(val == 0, SM_STATUS_Z);
     SM_SetStatus(val & 0x80, SM_STATUS_N);
 }
 
-void SM_PushStack(uint8_t data)
+void SubMcu::SM_PushStack(uint8_t data)
 {
     SM_Write(sm.s, data);
     sm.s--;
 }
 
-uint8_t SM_PopStack(void)
+uint8_t SubMcu::SM_PopStack(void)
 {
     sm.s++;
     return SM_Read(sm.s);
 }
 
-void SM_Opcode_NotImplemented(uint8_t opcode)
+void SM_Opcode_NotImplemented(SubMcu* _this, uint8_t opcode)
 {
-    SM_ErrorTrap();
+    _this->SM_ErrorTrap();
 }
 
-void SM_Opcode_SEI(uint8_t opcode) // 78
+void SM_Opcode_SEI(SubMcu* _this, uint8_t opcode) // 78
 {
-    SM_SetStatus(1, SM_STATUS_I);
+    _this->SM_SetStatus(1, SM_STATUS_I);
 }
 
-void SM_Opcode_CLD(uint8_t opcode) // d8
+void SM_Opcode_CLD(SubMcu* _this, uint8_t opcode) // d8
 {
-    SM_SetStatus(0, SM_STATUS_D);
+    _this->SM_SetStatus(0, SM_STATUS_D);
 }
 
-void SM_Opcode_CLT(uint8_t opcode) // 12
+void SM_Opcode_CLT(SubMcu* _this, uint8_t opcode) // 12
 {
-    SM_SetStatus(0, SM_STATUS_T);
+    _this->SM_SetStatus(0, SM_STATUS_T);
 }
 
-void SM_Opcode_LDX(uint8_t opcode) // a2, a6, ae, b6, be
+void SM_Opcode_LDX(SubMcu* _this, uint8_t opcode) // a2, a6, ae, b6, be
 {
     uint8_t val = 0;
     switch (opcode)
     {
         case 0xa2:
-            val = SM_ReadAdvance();
+            val = _this->SM_ReadAdvance();
             break;
         case 0xa6:
-            val = SM_Read(SM_ReadAdvance());
+            val = _this->SM_Read(_this->SM_ReadAdvance());
             break;
         case 0xb6:
-            val = SM_Read((SM_ReadAdvance() + sm.y) & 0xff);
+            val = _this->SM_Read((_this->SM_ReadAdvance() + _this->sm.y) & 0xff);
             break;
         case 0xae:
-            val = SM_Read(SM_ReadAdvance16());
+            val = _this->SM_Read(_this->SM_ReadAdvance16());
             break;
         case 0xbe:
-            val = SM_Read(SM_ReadAdvance16() + sm.y);
+            val = _this->SM_Read(_this->SM_ReadAdvance16() + _this->sm.y);
             break;
     }
-    sm.x = val;
-    SM_Update_NZ(sm.x);
+    _this->sm.x = val;
+    _this->SM_Update_NZ(_this->sm.x);
 }
 
-void SM_Opcode_TXS(uint8_t opcode) // 9a
+void SM_Opcode_TXS(SubMcu* _this, uint8_t opcode) // 9a
 {
-    sm.s = sm.x;
+    _this->sm.s = _this->sm.x;
 }
 
-void SM_Opcode_TXA(uint8_t opcode) // 8a
+void SM_Opcode_TXA(SubMcu* _this, uint8_t opcode) // 8a
 {
-    sm.a = sm.x;
-    SM_Update_NZ(sm.a);
+    _this->sm.a = _this->sm.x;
+    _this->SM_Update_NZ(_this->sm.a);
 }
 
-void SM_Opcode_STA(uint8_t opcode) // 85, 95, 8d, 9d, 99, 81, 91
+void SM_Opcode_STA(SubMcu* _this, uint8_t opcode) // 85, 95, 8d, 9d, 99, 81, 91
 {
     uint16_t dest = 0;
     switch (opcode)
     {
         case 0x85:
-            dest = SM_ReadAdvance();
+            dest = _this->SM_ReadAdvance();
             break;
         case 0x95:
-            dest = SM_ReadAdvance() + sm.x;
+            dest = _this->SM_ReadAdvance() + _this->sm.x;
             break;
         case 0x8d:
-            dest = SM_ReadAdvance16();
+            dest = _this->SM_ReadAdvance16();
             break;
         case 0x9d:
-            dest = SM_ReadAdvance16() + sm.x;
+            dest = _this->SM_ReadAdvance16() + _this->sm.x;
             break;
         case 0x99:
-            dest = SM_ReadAdvance16() + sm.y;
+            dest = _this->SM_ReadAdvance16() + _this->sm.y;
             break;
         case 0x81:
-            dest = SM_Read16((SM_ReadAdvance() + sm.x) & 0xff);
+            dest = _this->SM_Read16((_this->SM_ReadAdvance() + _this->sm.x) & 0xff);
             break;
         case 0x91:
-            dest = SM_Read16(SM_ReadAdvance()) + sm.y;
+            dest = _this->SM_Read16(_this->SM_ReadAdvance()) + _this->sm.y;
             break;
     }
 
-    SM_Write(dest, sm.a);
+    _this->SM_Write(dest, _this->sm.a);
 }
 
-void SM_Opcode_INX(uint8_t opcode) // e8
+void SM_Opcode_INX(SubMcu* _this, uint8_t opcode) // e8
 {
-    sm.x++;
-    SM_Update_NZ(sm.x);
+    _this->sm.x++;
+    _this->SM_Update_NZ(_this->sm.x);
 }
 
-void SM_Opcode_BBC_BBS(uint8_t opcode)
+void SM_Opcode_BBC_BBS(SubMcu* _this, uint8_t opcode)
 {
     int32_t zp = (opcode & 4) != 0;
     int32_t bit = (opcode >> 5) & 7;
@@ -481,127 +455,127 @@ void SM_Opcode_BBC_BBS(uint8_t opcode)
 
     if (!zp)
     {
-        val = sm.a;
+        val = _this->sm.a;
     }
     else
     {
-        val = SM_Read(SM_ReadAdvance());
+        val = _this->SM_Read(_this->SM_ReadAdvance());
     }
 
-    int8_t diff = SM_ReadAdvance();
+    int8_t diff = _this->SM_ReadAdvance();
 
     int32_t set = (val >> bit) & 1;
     
     if (set != type)
-        sm.pc += diff;
+        _this->sm.pc += diff;
 }
 
-void SM_Opcode_CPX(uint8_t opcode) // e0, e4, ec
+void SM_Opcode_CPX(SubMcu* _this, uint8_t opcode) // e0, e4, ec
 {
     uint8_t operand = 0;
     switch (opcode)
     {
         case 0xe0:
-            operand = SM_ReadAdvance();
+            operand = _this->SM_ReadAdvance();
             break;
         case 0xe4:
-            operand = SM_Read(SM_ReadAdvance());
+            operand = _this->SM_Read(_this->SM_ReadAdvance());
             break;
         case 0xec:
-            operand = SM_Read(SM_ReadAdvance16());
+            operand = _this->SM_Read(_this->SM_ReadAdvance16());
             break;
     }
-    int diff = sm.x - operand;
-    SM_SetStatus((diff & 0x100) == 0, SM_STATUS_C);
-    SM_Update_NZ(diff & 0xff);
+    int diff = _this->sm.x - operand;
+    _this->SM_SetStatus((diff & 0x100) == 0, SM_STATUS_C);
+    _this->SM_Update_NZ(diff & 0xff);
 }
 
-void SM_Opcode_BEQ(uint8_t opcode) // f0
+void SM_Opcode_BEQ(SubMcu* _this, uint8_t opcode) // f0
 {
-    int8_t diff = SM_ReadAdvance();
-    if ((sm.sr & SM_STATUS_Z) != 0)
-        sm.pc += diff;
+    int8_t diff = _this->SM_ReadAdvance();
+    if ((_this->sm.sr & SM_STATUS_Z) != 0)
+        _this->sm.pc += diff;
 }
 
-void SM_Opcode_BCC(uint8_t opcode) // 90
+void SM_Opcode_BCC(SubMcu* _this, uint8_t opcode) // 90
 {
-    int8_t diff = SM_ReadAdvance();
-    if ((sm.sr & SM_STATUS_C) == 0)
-        sm.pc += diff;
+    int8_t diff = _this->SM_ReadAdvance();
+    if ((_this->sm.sr & SM_STATUS_C) == 0)
+        _this->sm.pc += diff;
 }
 
-void SM_Opcode_BCS(uint8_t opcode) // b0
+void SM_Opcode_BCS(SubMcu* _this, uint8_t opcode) // b0
 {
-    int8_t diff = SM_ReadAdvance();
-    if ((sm.sr & SM_STATUS_C) != 0)
-        sm.pc += diff;
+    int8_t diff = _this->SM_ReadAdvance();
+    if ((_this->sm.sr & SM_STATUS_C) != 0)
+        _this->sm.pc += diff;
 }
 
-void SM_Opcode_LDM(uint8_t opcode) // 3c
+void SM_Opcode_LDM(SubMcu* _this, uint8_t opcode) // 3c
 {
-    uint8_t val = SM_ReadAdvance();
-    SM_Write(SM_ReadAdvance(), val);
+    uint8_t val = _this->SM_ReadAdvance();
+    _this->SM_Write(_this->SM_ReadAdvance(), val);
 }
 
-void SM_Opcode_LDA(uint8_t opcode) // a9, a5, b5, ad, bd, b9, a1, b1
+void SM_Opcode_LDA(SubMcu* _this, uint8_t opcode) // a9, a5, b5, ad, bd, b9, a1, b1
 {
     uint8_t val = 0;
     switch (opcode)
     {
         case 0xa9:
-            val = SM_ReadAdvance();
+            val = _this->SM_ReadAdvance();
             break;
         case 0xa5:
-            val = SM_Read(SM_ReadAdvance());
+            val = _this->SM_Read(_this->SM_ReadAdvance());
             break;
         case 0xb5:
-            val = SM_Read((SM_ReadAdvance() + sm.x) & 0xff);
+            val = _this->SM_Read((_this->SM_ReadAdvance() + _this->sm.x) & 0xff);
             break;
         case 0xad:
-            val = SM_Read(SM_ReadAdvance16());
+            val = _this->SM_Read(_this->SM_ReadAdvance16());
             break;
         case 0xbd:
-            val = SM_Read(SM_ReadAdvance16() + sm.x);
+            val = _this->SM_Read(_this->SM_ReadAdvance16() + _this->sm.x);
             break;
         case 0xb9:
-            val = SM_Read(SM_ReadAdvance16() + sm.y);
+            val = _this->SM_Read(_this->SM_ReadAdvance16() + _this->sm.y);
             break;
         case 0xa1:
-            val = SM_Read(SM_Read16((SM_ReadAdvance() + sm.x) & 0xff));
+            val = _this->SM_Read(_this->SM_Read16((_this->SM_ReadAdvance() + _this->sm.x) & 0xff));
             break;
         case 0xb1:
-            val = SM_Read(SM_Read16(SM_ReadAdvance()) + sm.y);
+            val = _this->SM_Read(_this->SM_Read16(_this->SM_ReadAdvance()) + _this->sm.y);
             break;
     }
 
-    if ((sm.sr & SM_STATUS_T) == 0)
+    if ((_this->sm.sr & SM_STATUS_T) == 0)
     {
-        sm.a = val;
-        SM_Update_NZ(val);
+        _this->sm.a = val;
+        _this->SM_Update_NZ(val);
     }
     else
     {
         // FIXME
-        SM_Write(sm.x, val);
+        _this->SM_Write(_this->sm.x, val);
     }
 }
 
-void SM_Opcode_CLI(uint8_t opcode) // 58
+void SM_Opcode_CLI(SubMcu* _this, uint8_t opcode) // 58
 {
-    SM_SetStatus(0, SM_STATUS_I);
+    _this->SM_SetStatus(0, SM_STATUS_I);
 }
 
-void SM_Opcode_STP(uint8_t opcode) // 42
+void SM_Opcode_STP(SubMcu* _this, uint8_t opcode) // 42
 {
-    sm.sleep = 1;
+    _this->sm.sleep = 1;
 }
 
-void SM_Opcode_PHA(uint8_t opcode) // 48
+void SM_Opcode_PHA(SubMcu* _this, uint8_t opcode) // 48
 {
-    SM_PushStack(sm.a);
+    _this->SM_PushStack(_this->sm.a);
 }
 
-void SM_Opcode_SEB_CLB(uint8_t opcode)
+void SM_Opcode_SEB_CLB(SubMcu* _this, uint8_t opcode)
 {
     int32_t zp = (opcode & 4) != 0;
     int32_t bit = (opcode >> 5) & 7;
@@ -611,12 +585,12 @@ void SM_Opcode_SEB_CLB(uint8_t opcode)
 
     if (!zp)
     {
-        val = sm.a;
+        val = _this->sm.a;
     }
     else
     {
-        dest = SM_ReadAdvance();
-        val = SM_Read(dest);
+        dest = _this->SM_ReadAdvance();
+        val = _this->SM_Read(dest);
     }
 
     if (type)
@@ -626,339 +600,339 @@ void SM_Opcode_SEB_CLB(uint8_t opcode)
 
     if (!zp)
     {
-        sm.a = val;
+        _this->sm.a = val;
     }
     else
     {
-        SM_Write(dest, val);
+        _this->SM_Write(dest, val);
     }
 }
 
-void SM_Opcode_RTI(uint8_t opcode) // 40
+void SM_Opcode_RTI(SubMcu* _this, uint8_t opcode) // 40
 {
-    sm.sr = SM_PopStack();
-    sm.pc = SM_PopStack();
-    sm.pc |= SM_PopStack() << 8;
+    _this->sm.sr = _this->SM_PopStack();
+    _this->sm.pc = _this->SM_PopStack();
+    _this->sm.pc |= _this->SM_PopStack() << 8;
 }
 
-void SM_Opcode_PLA(uint8_t opcode) // 68
+void SM_Opcode_PLA(SubMcu* _this, uint8_t opcode) // 68
 {
-    sm.a = SM_PopStack();
-    SM_Update_NZ(sm.a);
+    _this->sm.a = _this->SM_PopStack();
+    _this->SM_Update_NZ(_this->sm.a);
 }
 
-void SM_Opcode_BRA(uint8_t opcode) // 80
+void SM_Opcode_BRA(SubMcu* _this, uint8_t opcode) // 80
 {
-    int8_t disp = SM_ReadAdvance();
-    sm.pc += disp;
+    int8_t disp = _this->SM_ReadAdvance();
+    _this->sm.pc += disp;
 }
 
-void SM_Opcode_JSR(uint8_t opcode) // 20, 02, 22
+void SM_Opcode_JSR(SubMcu* _this, uint8_t opcode) // 20, 02, 22
 {
     uint16_t newpc = 0;
     switch (opcode)
     {
         case 0x20:
-            newpc = SM_ReadAdvance16();
+            newpc = _this->SM_ReadAdvance16();
             break;
         case 0x02:
-            newpc = SM_Read16(SM_ReadAdvance());
+            newpc = _this->SM_Read16(_this->SM_ReadAdvance());
             break;
         case 0x22:
-            newpc = 0xff00 | SM_ReadAdvance();
+            newpc = 0xff00 | _this->SM_ReadAdvance();
             break;
     }
 
-    SM_PushStack(sm.pc >> 8);
-    SM_PushStack(sm.pc & 0xff);
-    sm.pc = newpc;
+    _this->SM_PushStack(_this->sm.pc >> 8);
+    _this->SM_PushStack(_this->sm.pc & 0xff);
+    _this->sm.pc = newpc;
 }
 
-void SM_Opcode_CMP(uint8_t opcode) // c9, c5, d5, cd, dd, d9, c1, d1
+void SM_Opcode_CMP(SubMcu* _this, uint8_t opcode) // c9, c5, d5, cd, dd, d9, c1, d1
 {
     uint8_t operand = 0;
     switch (opcode)
     {
         case 0xc9:
-            operand = SM_ReadAdvance();
+            operand = _this->SM_ReadAdvance();
             break;
         case 0xc5:
-            operand = SM_Read(SM_ReadAdvance());
+            operand = _this->SM_Read(_this->SM_ReadAdvance());
             break;
         case 0xd5:
-            operand = SM_Read((SM_ReadAdvance()+sm.x)&0xff);
+            operand = _this->SM_Read((_this->SM_ReadAdvance()+_this->sm.x)&0xff);
             break;
         case 0xcd:
-            operand = SM_Read(SM_ReadAdvance16());
+            operand = _this->SM_Read(_this->SM_ReadAdvance16());
             break;
         case 0xdd:
-            operand = SM_Read(SM_ReadAdvance16() + sm.x);
+            operand = _this->SM_Read(_this->SM_ReadAdvance16() + _this->sm.x);
             break;
         case 0xd9:
-            operand = SM_Read(SM_ReadAdvance16() + sm.y);
+            operand = _this->SM_Read(_this->SM_ReadAdvance16() + _this->sm.y);
             break;
         case 0xc1:
-            operand = SM_Read(SM_Read16((SM_ReadAdvance() + sm.x) & 0xff));
+            operand = _this->SM_Read(_this->SM_Read16((_this->SM_ReadAdvance() + _this->sm.x) & 0xff));
             break;
         case 0xd1:
-            operand = SM_Read(SM_Read16(SM_ReadAdvance()) + sm.y);
+            operand = _this->SM_Read(_this->SM_Read16(_this->SM_ReadAdvance()) + _this->sm.y);
             break;
     }
-    int diff = sm.a - operand;
-    SM_SetStatus((diff & 0x100) == 0, SM_STATUS_C);
-    SM_Update_NZ(diff & 0xff);
+    int diff = _this->sm.a - operand;
+    _this->SM_SetStatus((diff & 0x100) == 0, SM_STATUS_C);
+    _this->SM_Update_NZ(diff & 0xff);
 }
 
-void SM_Opcode_BNE(uint8_t opcode) // d0
+void SM_Opcode_BNE(SubMcu* _this, uint8_t opcode) // d0
 {
-    int8_t diff = SM_ReadAdvance();
-    if ((sm.sr & SM_STATUS_Z) == 0)
-        sm.pc += diff;
+    int8_t diff = _this->SM_ReadAdvance();
+    if ((_this->sm.sr & SM_STATUS_Z) == 0)
+        _this->sm.pc += diff;
 }
 
-void SM_Opcode_RTS(uint8_t opcode) // 60
+void SM_Opcode_RTS(SubMcu* _this, uint8_t opcode) // 60
 {
-    sm.pc = SM_PopStack();
-    sm.pc |= SM_PopStack() << 8;
+    _this->sm.pc = _this->SM_PopStack();
+    _this->sm.pc |= _this->SM_PopStack() << 8;
 }
 
-void SM_Opcode_JMP(uint8_t opcode) // 4c, 6c, b2
+void SM_Opcode_JMP(SubMcu* _this, uint8_t opcode) // 4c, 6c, b2
 {
     switch (opcode)
     {
         case 0x4c:
-            sm.pc = SM_ReadAdvance16();
+            _this->sm.pc = _this->SM_ReadAdvance16();
             break;
         case 0x6c:
-            sm.pc = SM_Read16(SM_ReadAdvance16());
+            _this->sm.pc = _this->SM_Read16(_this->SM_ReadAdvance16());
             break;
         case 0xb2:
-            sm.pc = SM_Read16(SM_ReadAdvance());
+            _this->sm.pc = _this->SM_Read16(_this->SM_ReadAdvance());
             break;
     }
 }
 
-void SM_Opcode_ORA(uint8_t opcode) // 09, 05, 15, 0d, 1d, 01, 11
+void SM_Opcode_ORA(SubMcu* _this, uint8_t opcode) // 09, 05, 15, 0d, 1d, 01, 11
 {
     uint8_t val = 0;
     uint8_t val2 = 0;
 
-    if ((sm.sr & SM_STATUS_T) == 0)
+    if ((_this->sm.sr & SM_STATUS_T) == 0)
     {
-        val = sm.a;
+        val = _this->sm.a;
     }
     else
     {
         // FIXME
-        val = SM_Read(sm.x);
+        val = _this->SM_Read(_this->sm.x);
     }
 
     switch (opcode)
     {
         case 0x09:
-            val2 = SM_ReadAdvance();
+            val2 = _this->SM_ReadAdvance();
             break;
         case 0x05:
-            val2 = SM_Read(SM_ReadAdvance());
+            val2 = _this->SM_Read(_this->SM_ReadAdvance());
             break;
         case 0x15:
-            val2 = SM_Read((SM_ReadAdvance() + sm.x) & 0xff);
+            val2 = _this->SM_Read((_this->SM_ReadAdvance() + _this->sm.x) & 0xff);
             break;
         case 0x0d:
-            val2 = SM_Read(SM_ReadAdvance16());
+            val2 = _this->SM_Read(_this->SM_ReadAdvance16());
             break;
         case 0x1d:
-            val2 = SM_Read(SM_ReadAdvance16() + sm.x);
+            val2 = _this->SM_Read(_this->SM_ReadAdvance16() + _this->sm.x);
             break;
         case 0x19:
-            val2 = SM_Read(SM_ReadAdvance16() + sm.y);
+            val2 = _this->SM_Read(_this->SM_ReadAdvance16() + _this->sm.y);
             break;
         case 0x01:
-            val2 = SM_Read(SM_Read16((SM_ReadAdvance() + sm.x) & 0xff));
+            val2 = _this->SM_Read(_this->SM_Read16((_this->SM_ReadAdvance() + _this->sm.x) & 0xff));
             break;
         case 0x11:
-            val2 = SM_Read(SM_Read16(SM_ReadAdvance()) + sm.y);
+            val2 = _this->SM_Read(_this->SM_Read16(_this->SM_ReadAdvance()) + _this->sm.y);
             break;
     }
 
     val |= val2;
 
-    if ((sm.sr & SM_STATUS_T) == 0)
+    if ((_this->sm.sr & SM_STATUS_T) == 0)
     {
-        sm.a = val;
+        _this->sm.a = val;
 
-        SM_Update_NZ(val);
+        _this->SM_Update_NZ(val);
     }
     else
     {
         // FIXME
-        SM_Write(sm.x, val);
+        _this->SM_Write(_this->sm.x, val);
     }
 }
 
-void SM_Opcode_DEC(uint8_t opcode) // 1a, c6, d6, ce, de
+void SM_Opcode_DEC(SubMcu* _this, uint8_t opcode) // 1a, c6, d6, ce, de
 {
     uint8_t val = 0;
     uint16_t dest = 0;
     switch (opcode)
     {
         case 0x1a:
-            sm.a--;
-            SM_Update_NZ(sm.a);
+            _this->sm.a--;
+            _this->SM_Update_NZ(_this->sm.a);
             return;
         case 0xc6:
-            dest = SM_ReadAdvance();
+            dest = _this->SM_ReadAdvance();
             break;
         case 0xd6:
-            dest = (SM_ReadAdvance() + sm.x) & 0xff;
+            dest = (_this->SM_ReadAdvance() + _this->sm.x) & 0xff;
             break;
         case 0xce:
-            dest = SM_ReadAdvance16();
+            dest = _this->SM_ReadAdvance16();
             break;
         case 0xde:
-            dest = SM_ReadAdvance16() + sm.x;
+            dest = _this->SM_ReadAdvance16() + _this->sm.x;
             break;
     }
-    val = SM_Read(dest);
+    val = _this->SM_Read(dest);
     val--;
-    SM_Write(dest, val);
-    SM_Update_NZ(val);
+    _this->SM_Write(dest, val);
+    _this->SM_Update_NZ(val);
 }
 
-void SM_Opcode_TAX(uint8_t opcode) // aa
+void SM_Opcode_TAX(SubMcu* _this, uint8_t opcode) // aa
 {
-    sm.x = sm.a;
-    SM_Update_NZ(sm.x);
+    _this->sm.x = _this->sm.a;
+    _this->SM_Update_NZ(_this->sm.x);
 }
 
-void SM_Opcode_STX(uint8_t opcode) // 86 96 8e
+void SM_Opcode_STX(SubMcu* _this, uint8_t opcode) // 86 96 8e
 {
     uint16_t dest = 0;
     switch (opcode)
     {
         case 0x86:
-            dest = SM_ReadAdvance();
+            dest = _this->SM_ReadAdvance();
             break;
         case 0x96:
-            dest = SM_ReadAdvance() + sm.x;
+            dest = _this->SM_ReadAdvance() + _this->sm.x;
             break;
         case 0x8e:
-            dest = SM_ReadAdvance16();
+            dest = _this->SM_ReadAdvance16();
             break;
     }
 
-    SM_Write(dest, sm.x);
+    _this->SM_Write(dest, _this->sm.x);
 }
 
-void SM_Opcode_SEC(uint8_t opcode) // 38
+void SM_Opcode_SEC(SubMcu* _this, uint8_t opcode) // 38
 {
-    SM_SetStatus(1, SM_STATUS_C);
+    _this->SM_SetStatus(1, SM_STATUS_C);
 }
 
-void SM_Opcode_NOP(uint8_t opcode) // EA
+void SM_Opcode_NOP(SubMcu* _this, uint8_t opcode) // EA
 {
 }
 
-void SM_Opcode_BPL(uint8_t opcode) // 10
+void SM_Opcode_BPL(SubMcu* _this, uint8_t opcode) // 10
 {
-    int8_t diff = SM_ReadAdvance();
-    if ((sm.sr & SM_STATUS_N) == 0)
-        sm.pc += diff;
+    int8_t diff = _this->SM_ReadAdvance();
+    if ((_this->sm.sr & SM_STATUS_N) == 0)
+        _this->sm.pc += diff;
 }
 
-void SM_Opcode_CLC(uint8_t opcode) // 18
+void SM_Opcode_CLC(SubMcu* _this, uint8_t opcode) // 18
 {
-    SM_SetStatus(0, SM_STATUS_C);
+    _this->SM_SetStatus(0, SM_STATUS_C);
 }
 
-void SM_Opcode_AND(uint8_t opcode) // 29, 25, 35, 2d, 3d, 21, 31
+void SM_Opcode_AND(SubMcu* _this, uint8_t opcode) // 29, 25, 35, 2d, 3d, 21, 31
 {
     uint8_t val = 0;
     uint8_t val2 = 0;
 
-    if ((sm.sr & SM_STATUS_T) == 0)
+    if ((_this->sm.sr & SM_STATUS_T) == 0)
     {
-        val = sm.a;
+        val = _this->sm.a;
     }
     else
     {
         // FIXME
-        val = SM_Read(sm.x);
+        val = _this->SM_Read(_this->sm.x);
     }
 
     switch (opcode)
     {
         case 0x29:
-            val2 = SM_ReadAdvance();
+            val2 = _this->SM_ReadAdvance();
             break;
         case 0x25:
-            val2 = SM_Read(SM_ReadAdvance());
+            val2 = _this->SM_Read(_this->SM_ReadAdvance());
             break;
         case 0x35:
-            val2 = SM_Read((SM_ReadAdvance() + sm.x) & 0xff);
+            val2 = _this->SM_Read((_this->SM_ReadAdvance() + _this->sm.x) & 0xff);
             break;
         case 0x2d:
-            val2 = SM_Read(SM_ReadAdvance16());
+            val2 = _this->SM_Read(_this->SM_ReadAdvance16());
             break;
         case 0x3d:
-            val2 = SM_Read(SM_ReadAdvance16() + sm.x);
+            val2 = _this->SM_Read(_this->SM_ReadAdvance16() + _this->sm.x);
             break;
         case 0x39:
-            val2 = SM_Read(SM_ReadAdvance16() + sm.y);
+            val2 = _this->SM_Read(_this->SM_ReadAdvance16() + _this->sm.y);
             break;
         case 0x21:
-            val2 = SM_Read(SM_Read16((SM_ReadAdvance() + sm.x) & 0xff));
+            val2 = _this->SM_Read(_this->SM_Read16((_this->SM_ReadAdvance() + _this->sm.x) & 0xff));
             break;
         case 0x31:
-            val2 = SM_Read(SM_Read16(SM_ReadAdvance()) + sm.y);
+            val2 = _this->SM_Read(_this->SM_Read16(_this->SM_ReadAdvance()) + _this->sm.y);
             break;
     }
 
     val &= val2;
 
-    if ((sm.sr & SM_STATUS_T) == 0)
+    if ((_this->sm.sr & SM_STATUS_T) == 0)
     {
-        sm.a = val;
+        _this->sm.a = val;
 
-        SM_Update_NZ(val);
+        _this->SM_Update_NZ(val);
     }
     else
     {
         // FIXME
-        SM_Write(sm.x, val);
+        _this->SM_Write(_this->sm.x, val);
     }
 }
 
-void SM_Opcode_INC(uint8_t opcode) // 3a, e6, f6, ee, fe
+void SM_Opcode_INC(SubMcu* _this, uint8_t opcode) // 3a, e6, f6, ee, fe
 {
     uint8_t val = 0;
     uint16_t dest = 0;
     switch (opcode)
     {
         case 0x3a:
-            sm.a++;
-            SM_Update_NZ(sm.a);
+            _this->sm.a++;
+            _this->SM_Update_NZ(_this->sm.a);
             return;
         case 0xe6:
-            dest = SM_ReadAdvance();
+            dest = _this->SM_ReadAdvance();
             break;
         case 0xf6:
-            dest = (SM_ReadAdvance() + sm.x) & 0xff;
+            dest = (_this->SM_ReadAdvance() + _this->sm.x) & 0xff;
             break;
         case 0xee:
-            dest = SM_ReadAdvance16();
+            dest = _this->SM_ReadAdvance16();
             break;
         case 0xfe:
-            dest = SM_ReadAdvance16() + sm.x;
+            dest = _this->SM_ReadAdvance16() + _this->sm.x;
             break;
     }
-    val = SM_Read(dest);
+    val = _this->SM_Read(dest);
     val++;
-    SM_Write(dest, val);
-    SM_Update_NZ(val);
+    _this->SM_Write(dest, val);
+    _this->SM_Update_NZ(val);
 }
 
-void (*SM_Opcode_Table[256])(uint8_t opcode)
+void (*SM_Opcode_Table[256])(SubMcu *_this, uint8_t opcode)
 {
     SM_Opcode_NotImplemented, // 00
     SM_Opcode_ORA, // 01
@@ -1218,21 +1192,21 @@ void (*SM_Opcode_Table[256])(uint8_t opcode)
     SM_Opcode_SEB_CLB, // ff
 };
 
-void SM_StartVector(uint32_t vector)
+void SubMcu::SM_StartVector(uint32_t vector)
 {
     SM_PushStack(sm.pc >> 8);
     SM_PushStack(sm.pc & 0xff);
-    SM_PushStack(sm.sr);
+    SM_PushStack(this->sm.sr);
 
-    sm.sr |= SM_STATUS_I;
-    sm.sleep = 0;
+    this->sm.sr |= SM_STATUS_I;
+    this->sm.sleep = 0;
 
     sm.pc = SM_GetVectorAddress(vector);
 }
 
-void SM_HandleInterrupt(void)
+void SubMcu::SM_HandleInterrupt(void)
 {
-    if (sm.sr & SM_STATUS_I)
+    if (this->sm.sr & SM_STATUS_I)
         return;
     
     if ((sm_device_mode[SM_DEV_UART1_CTRL] & 0x8) != 0
@@ -1310,11 +1284,11 @@ void SM_HandleInterrupt(void)
     }
 }
 
-void SM_UpdateTimer(void)
+void SubMcu::SM_UpdateTimer(void)
 {
     while (sm_timer_cycles < sm.cycles)
     {
-        if ((sm_device_mode[SM_DEV_TIMER_CTRL] & 0x20) == 0 && !sm.sleep)
+        if ((sm_device_mode[SM_DEV_TIMER_CTRL] & 0x20) == 0 && !this->sm.sleep)
         {
             if (sm_timer_prescaler == 0)
             {
@@ -1335,7 +1309,7 @@ void SM_UpdateTimer(void)
     }
 }
 
-void SM_PostUART(uint8_t data)
+void SubMcu::SM_PostUART(uint8_t data)
 {
     //MCU_WorkThread_Lock();
     uart_buffer[uart_write_ptr] = data;
@@ -1343,7 +1317,7 @@ void SM_PostUART(uint8_t data)
     //MCU_WorkThread_Unlock();
 }
 
-void SM_UpdateUART(void)
+void SubMcu::SM_UpdateUART(void)
 {
     if ((sm_device_mode[SM_DEV_UART1_CTRL] & 4) == 0) // RX disabled
         return;
@@ -1364,17 +1338,17 @@ void SM_UpdateUART(void)
     uart_rx_delay = sm.cycles + 3000 * 4;
 }
 
-void SM_Update(uint64_t cycles)
+void SubMcu::SM_Update(uint64_t cycles)
 {
     while (sm.cycles < cycles * 5)
     {
         SM_HandleInterrupt();
 
-        if (!sm.sleep)
+        if (!this->sm.sleep)
         {
             uint8_t opcode = SM_ReadAdvance();
 
-            SM_Opcode_Table[opcode](opcode);
+            SM_Opcode_Table[opcode](this, opcode);
         }
 
         sm.cycles += 12 * 4; // FIXME

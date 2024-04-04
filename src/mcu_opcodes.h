@@ -35,5 +35,7 @@
 
 #include <stdint.h>
 
-extern void (*MCU_Operand_Table[256])(uint8_t operand);
-extern void (*MCU_Opcode_Table[32])(uint8_t opcode, uint8_t opcode_reg);
+struct MCU;
+
+extern void (*MCU_Operand_Table[256])(MCU *_this, uint8_t operand);
+extern void (*MCU_Opcode_Table[32])(MCU *_this, uint8_t opcode, uint8_t opcode_reg);

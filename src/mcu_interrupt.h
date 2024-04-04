@@ -35,10 +35,12 @@
 
 #include <stdint.h>
 
-void MCU_Interrupt_SetRequest(uint32_t interrupt, uint32_t value);
-void MCU_Interrupt_Exception(uint32_t exception);
-void MCU_Interrupt_TRAPA(uint32_t vector);
-void MCU_Interrupt_Handle(void);
+struct MCU;
+
+void MCU_Interrupt_SetRequest(MCU* mcu, uint32_t interrupt, uint32_t value);
+void MCU_Interrupt_Exception(MCU* mcu, uint32_t exception);
+void MCU_Interrupt_TRAPA(MCU* mcu, uint32_t vector);
+void MCU_Interrupt_Handle(MCU* mcu);
 
 enum {
     INTERRUPT_SOURCE_NMI = 0,

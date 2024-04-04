@@ -53,10 +53,24 @@ struct mcu_timer_t {
     uint8_t status_rd;
 };
 
-void TIMER_Write(uint32_t address, uint8_t data);
-uint8_t TIMER_Read(uint32_t address);
-void TIMER_Clock(uint64_t cycles);
+struct MCU;
 
-void TIMER2_Write(uint32_t address, uint8_t data);
-uint8_t TIMER_Read2(uint32_t address);
+struct MCU_Timer {
+    MCU *mcu;
+    MCU_Timer(MCU *mcu): mcu(mcu) {}
+
+    uint64_t timer_cycles;
+    uint8_t timer_tempreg;
+
+    frt_t frt[3];
+    mcu_timer_t timer;
+
+    void TIMER_Reset(void);
+    void TIMER_Write(uint32_t address, uint8_t data);
+    uint8_t TIMER_Read(uint32_t address);
+    void TIMER_Clock(uint64_t cycles);
+
+    void TIMER2_Write(uint32_t address, uint8_t data);
+    uint8_t TIMER_Read2(uint32_t address);
+};
 

@@ -34,8 +34,19 @@
 #pragma once
 
 #include <stdint.h>
+#include <vector>
 #include "mcu_interrupt.h"
-#include "SDL_atomic.h"
+#include <SDL2/SDL_atomic.h>
+#include "SDL.h"
+#include "pcm.h"
+#include "lcd.h"
+#include "mcu_timer.h"
+#include "submcu.h"
+
+#ifdef __APPLE__
+#include <sys/syslimits.h> // PATH_MAX
+#include <mach-o/dyld.h>
+#endif
 
 enum {
     DEV_P1DDR = 0x00,
@@ -99,8 +110,6 @@ enum {
     DEV_P9DDR = 0x7e,
     DEV_P9DR = 0x7f,
 };
-
-extern uint8_t dev_register[0x80];
 
 const uint16_t sr_mask = 0x870f;
 enum {
@@ -186,190 +195,6 @@ struct mcu_t {
     uint64_t cycles;
 };
 
-extern mcu_t mcu;
-
-void MCU_ErrorTrap(void);
-
-uint8_t MCU_Read(uint32_t address);
-uint16_t MCU_Read16(uint32_t address);
-uint32_t MCU_Read32(uint32_t address);
-void MCU_Write(uint32_t address, uint8_t value);
-void MCU_Write16(uint32_t address, uint16_t value);
-
-inline uint32_t MCU_GetAddress(uint8_t page, uint16_t address) {
-    return (page << 16) + address;
-}
-
-inline uint8_t MCU_ReadCode(void) {
-    return MCU_Read(MCU_GetAddress(mcu.cp, mcu.pc));
-}
-
-inline uint8_t MCU_ReadCodeAdvance(void) {
-    uint8_t ret = MCU_ReadCode();
-    mcu.pc++;
-    return ret;
-}
-
-inline void MCU_SetRegisterByte(uint8_t reg, uint8_t val)
-{
-    mcu.r[reg] = val;
-}
-
-inline uint32_t MCU_GetVectorAddress(uint32_t vector)
-{
-    return MCU_Read32(vector * 4);
-}
-
-inline uint32_t MCU_GetPageForRegister(uint32_t reg)
-{
-    if (reg >= 6)
-        return mcu.tp;
-    else if (reg >= 4)
-        return mcu.ep;
-    return mcu.dp;
-}
-
-inline void MCU_ControlRegisterWrite(uint32_t reg, uint32_t siz, uint32_t data)
-{
-    if (siz)
-    {
-        if (reg == 0)
-        {
-            mcu.sr = data;
-            mcu.sr &= sr_mask;
-        }
-        else if (reg == 5) // FIXME: undocumented
-        {
-            mcu.dp = data & 0xff;
-        }
-        else if (reg == 4) // FIXME: undocumented
-        {
-            mcu.ep = data & 0xff;
-        }
-        else if (reg == 3) // FIXME: undocumented
-        {
-            mcu.br = data & 0xff;
-        }
-        else
-        {
-            MCU_ErrorTrap();
-        }
-    }
-    else
-    {
-        if (reg == 1)
-        {
-            mcu.sr &= ~0xff;
-            mcu.sr |= data & 0xff;
-            mcu.sr &= sr_mask;
-        }
-        else if (reg == 3)
-        {
-            mcu.br = data;
-        }
-        else if (reg == 4)
-        {
-            mcu.ep = data;
-        }
-        else if (reg == 5)
-        {
-            mcu.dp = data;
-        }
-        else if (reg == 7)
-        {
-            mcu.tp = data;
-        }
-        else
-        {
-            MCU_ErrorTrap();
-        }
-    }
-}
-
-inline uint32_t MCU_ControlRegisterRead(uint32_t reg, uint32_t siz)
-{
-    uint32_t ret = 0;
-    if (siz)
-    {
-        if (reg == 0)
-        {
-            ret = mcu.sr & sr_mask;
-        }
-        else if (reg == 5) // FIXME: undocumented
-        {
-            ret = mcu.dp | (mcu.dp << 8);
-        }
-        else if (reg == 4) // FIXME: undocumented
-        {
-            ret = mcu.ep | (mcu.ep << 8);
-        }
-        else if (reg == 3) // FIXME: undocumented
-        {
-            ret = mcu.br | (mcu.br << 8);;
-        }
-        else
-        {
-            MCU_ErrorTrap();
-        }
-        ret &= 0xffff;
-    }
-    else
-    {
-        if (reg == 1)
-        {
-            ret = mcu.sr & sr_mask;
-        }
-        else if (reg == 3)
-        {
-            ret = mcu.br;
-        }
-        else if (reg == 4)
-        {
-            ret = mcu.ep;
-        }
-        else if (reg == 5)
-        {
-            ret = mcu.dp;
-        }
-        else if (reg == 7)
-        {
-            ret = mcu.tp;
-        }
-        else
-        {
-            MCU_ErrorTrap();
-        }
-        ret &= 0xff;
-    }
-    return ret;
-}
-
-inline void MCU_SetStatus(uint32_t condition, uint32_t mask)
-{
-    if (condition)
-        mcu.sr |= mask;
-    else
-        mcu.sr &= ~mask;
-}
-
-inline void MCU_PushStack(uint16_t data)
-{
-    if (mcu.r[7] & 1)
-        MCU_Interrupt_Exception(EXCEPTION_SOURCE_ADDRESS_ERROR);
-    mcu.r[7] -= 2;
-    MCU_Write16(mcu.r[7], data);
-}
-
-inline uint16_t MCU_PopStack(void)
-{
-    uint16_t ret;
-    if (mcu.r[7] & 1)
-        MCU_Interrupt_Exception(EXCEPTION_SOURCE_ADDRESS_ERROR);
-    ret = MCU_Read16(mcu.r[7]);
-    mcu.r[7] += 2;
-    return ret;
-}
-
 enum {
     MCU_BUTTON_POWER = 0,
     MCU_BUTTON_INST_L = 3,
@@ -392,17 +217,121 @@ enum {
     MCU_BUTTON_PART_L = 20
 };
 
-extern int mcu_mk1;
+static const int ROM1_SIZE = 0x8000;
+static const int ROM2_SIZE = 0x80000;
+static const int RAM_SIZE = 0x400;
+static const int SRAM_SIZE = 0x8000;
+static const int ROMSM_SIZE = 0x1000;
 
-extern SDL_atomic_t mcu_button_pressed;
+static const int audio_buffer_size = 4096 * 8;
+static const int audio_page_size = 512;
 
-uint8_t MCU_ReadP0(void);
-uint8_t MCU_ReadP1(void);
-void MCU_WriteP0(uint8_t data);
-void MCU_WriteP1(uint8_t data);
-void MCU_GA_SetGAInt(int line, int value);
+const size_t rf_num = 5;
 
-void MCU_PostSample(int *sample);
+struct MCU {
+    int mcu_mk1 = 0; // 0 - SC-55mkII, SC-55ST. 1 - SC-55, CM-300/SCC-1
 
-void MCU_WorkThread_Lock(void);
-void MCU_WorkThread_Unlock(void);
+    SDL_atomic_t mcu_button_pressed = {0};
+
+    uint8_t mcu_p0_data = 0x00;
+    uint8_t mcu_p1_data = 0x00;
+
+    mcu_t mcu;
+
+    uint8_t rom1[ROM1_SIZE];
+    uint8_t rom2[ROM2_SIZE];
+    uint8_t ram[RAM_SIZE];
+    uint8_t sram[SRAM_SIZE];
+
+    int rom2_mask = ROM2_SIZE - 1;
+
+    short sample_buffer[audio_buffer_size] = {0};
+    int sample_write_ptr = 0;
+
+    int ga_int[8] = {0};
+    int ga_int_enable = 0;
+    int ga_int_trigger = 0;
+
+    uint8_t dev_register[0x80] = {0};
+
+    uint16_t ad_val[4] = {0};
+    uint8_t ad_nibble = 0x00;
+    uint8_t sw_pos = 0;
+    uint8_t io_sd = 0x00;
+
+    int adf_rd = 0;
+    uint64_t analog_end_time = 0;
+
+    uint32_t operand_type;
+    uint16_t operand_ea;
+    uint8_t operand_ep;
+    uint8_t operand_size;
+    uint8_t operand_reg;
+    uint8_t operand_status;
+    uint16_t operand_data;
+    uint8_t opcode_extended;
+
+    SDL_mutex *init_lock;
+
+    FILE *s_rf[rf_num] =
+    {
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr
+    };
+
+    Pcm pcm;
+    LCD lcd;
+    MCU_Timer mcu_timer;
+    SubMcu sub_mcu;
+
+    MCU();
+
+    void MCU_ErrorTrap(void);
+
+    uint8_t MCU_Read(uint32_t address);
+    uint16_t MCU_Read16(uint32_t address);
+    uint32_t MCU_Read32(uint32_t address);
+    void MCU_Write(uint32_t address, uint8_t value);
+    void MCU_Write16(uint32_t address, uint16_t value);
+
+    uint8_t MCU_ReadP0(void);
+    uint8_t MCU_ReadP1(void);
+    void MCU_WriteP0(uint8_t data);
+    void MCU_WriteP1(uint8_t data);
+    void MCU_GA_SetGAInt(int line, int value);
+
+    void MCU_PostSample(int *sample);
+
+    int startSC55(std::string *basepath);
+    int updateSC55(int16_t *data, unsigned int dataSize);
+    void postMidiSC55(uint8_t* message, int length);
+    void SC55_Reset();
+
+    uint8_t RCU_Read(void);
+    uint16_t MCU_AnalogReadPin(uint32_t pin);
+    void MCU_AnalogSample(int channel);
+    void MCU_DeviceWrite(uint32_t address, uint8_t data);
+    uint8_t MCU_DeviceRead(uint32_t address);
+    void MCU_DeviceReset(void);
+    void MCU_UpdateAnalog(uint64_t cycles);
+    void MCU_ReadInstruction(void);
+    void MCU_Init(void);
+    void MCU_Reset(void);
+    void MCU_PatchROM(void);
+    void closeAllR();
+
+    uint32_t MCU_GetAddress(uint8_t page, uint16_t address);
+    uint8_t MCU_ReadCode(void);
+    uint8_t MCU_ReadCodeAdvance(void);
+    void MCU_SetRegisterByte(uint8_t reg, uint8_t val);
+    uint32_t MCU_GetVectorAddress(uint32_t vector);
+    uint32_t MCU_GetPageForRegister(uint32_t reg);
+    void MCU_ControlRegisterWrite(uint32_t reg, uint32_t siz, uint32_t data);
+    uint32_t MCU_ControlRegisterRead(uint32_t reg, uint32_t siz);
+    void MCU_SetStatus(uint32_t condition, uint32_t mask);
+    void MCU_PushStack(uint16_t data);
+    uint16_t MCU_PopStack(void);
+};
