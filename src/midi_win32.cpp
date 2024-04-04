@@ -120,7 +120,7 @@ int MIDI_Init(int port)
 
     MIDIINCAPSA caps;
 
-    midiInGetDevCapsA(0, &caps, sizeof(MIDIINCAPSA));
+    midiInGetDevCapsA(port, &caps, sizeof(MIDIINCAPSA));
 
     auto res = midiInOpen(&midi_handle, port, (DWORD_PTR)MIDI_Callback, 0, CALLBACK_FUNCTION);
 
