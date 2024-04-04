@@ -102,7 +102,10 @@ public class AudioUnitViewController: AUViewController, AUAudioUnitFactory {
         guard let observableParameterTree = audioUnit.observableParameterTree else {
             return
         }
-        let content = sc55AU2ExtensionMainView(parameterTree: observableParameterTree, audioUnit: audioUnit as! sc55AU2ExtensionAudioUnit)
+        let content = sc55AU2ExtensionMainView(
+            //parameterTree: observableParameterTree,
+            audioUnit: audioUnit as! sc55AU2ExtensionAudioUnit
+        )
         let host = HostingController(rootView: content)
         self.addChild(host)
         host.view.frame = self.view.bounds

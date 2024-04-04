@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5E0B43372BBEEB600028D51B /* EmulatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E0B43362BBEEB600028D51B /* EmulatorView.swift */; };
 		5E9FCCF42BBC8E25009EE67D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCCF32BBC8E25009EE67D /* ContentView.swift */; };
 		5E9FCCF82BBC8E25009EE67D /* ViewControllerRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCCF72BBC8E25009EE67D /* ViewControllerRepresentable.swift */; };
 		5E9FCCFB2BBC8E25009EE67D /* Synth.aif in Resources */ = {isa = PBXBuildFile; fileRef = 5E9FCCFA2BBC8E25009EE67D /* Synth.aif */; };
@@ -68,6 +69,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		5E0B43362BBEEB600028D51B /* EmulatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmulatorView.swift; sourceTree = "<group>"; };
 		5E9FCCF02BBC8E25009EE67D /* sc55AU2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = sc55AU2.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5E9FCCF32BBC8E25009EE67D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		5E9FCCF72BBC8E25009EE67D /* ViewControllerRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewControllerRepresentable.swift; sourceTree = "<group>"; };
@@ -310,6 +312,7 @@
 			children = (
 				5E9FCD382BBC8E27009EE67D /* sc55AU2ExtensionMainView.swift */,
 				5E9FCD3A2BBC8E27009EE67D /* ParameterSlider.swift */,
+				5E0B43362BBEEB600028D51B /* EmulatorView.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -488,6 +491,7 @@
 				5E9FCD272BBC8E27009EE67D /* String+Utils.swift in Sources */,
 				5E9FCD442BBC8E27009EE67D /* AudioUnitViewController.swift in Sources */,
 				5E9FCD3B2BBC8E27009EE67D /* ParameterSlider.swift in Sources */,
+				5E0B43372BBEEB600028D51B /* EmulatorView.swift in Sources */,
 				5E9FCD392BBC8E27009EE67D /* sc55AU2ExtensionMainView.swift in Sources */,
 				5E9FCD2B2BBC8E27009EE67D /* sc55AU2ExtensionAudioUnit.mm in Sources */,
 			);
