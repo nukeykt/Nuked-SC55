@@ -108,18 +108,9 @@ struct SCButton: View {
     
     var body: some View {
         Button(action: {
-            if code == 0xFF {
-                audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_PART_L), 1)
-                audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_PART_R), 1)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                    audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_PART_L), 0)
-                    audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_PART_R), 0)
-                }
-            } else {
-                audioUnit.lcd_SendButton(UInt8(code), 1)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    audioUnit.lcd_SendButton(UInt8(code), 0)
-                }
+            audioUnit.lcd_SendButton(UInt8(code), 1)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                audioUnit.lcd_SendButton(UInt8(code), 0)
             }
         }){
             Text(text)
@@ -159,8 +150,8 @@ struct sc55AU2ExtensionMainView: View {
                 SCButton(code: MCU_BUTTON_PAN_R, text: "PAN_R", audioUnit: audioUnit)
             }
             HStack {
-                SCButton(code: MCU_BUTTON_PART_R, text: "PART_R", audioUnit: audioUnit)
                 SCButton(code: MCU_BUTTON_PART_L, text: "PART_L", audioUnit: audioUnit)
+                SCButton(code: MCU_BUTTON_PART_R, text: "PART_R", audioUnit: audioUnit)
                 SCButton(code: MCU_BUTTON_KEY_SHIFT_L, text: "KEY_SHIFT_L", audioUnit: audioUnit)
                 SCButton(code: MCU_BUTTON_KEY_SHIFT_R, text: "KEY_SHIFT_R", audioUnit: audioUnit)
             }
@@ -170,7 +161,29 @@ struct sc55AU2ExtensionMainView: View {
                 SCButton(code: MCU_BUTTON_REVERB_L, text: "REVERB_L", audioUnit: audioUnit)
                 SCButton(code: MCU_BUTTON_REVERB_R, text: "REVERB_R", audioUnit: audioUnit)
             }
-            SCButton(code: 0xFF, text: "DEMO", audioUnit: audioUnit)
+            HStack {
+                Button(action: {
+                    audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_PART_L), 1)
+                    audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_PART_R), 1)
+                    audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_POWER), 1)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_PART_L), 0)
+                        audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_PART_R), 0)
+                        audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_POWER), 0)
+                    }
+                }){ Text("DEMO") }
+                
+                Button(action: {
+                    audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_INST_L), 1)
+                    audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_INST_R), 1)
+                    audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_POWER), 1)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_INST_L), 0)
+                        audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_INST_R), 0)
+                        audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_POWER), 0)
+                    }
+                }){ Text("INIT ALL") }
+            }
             Button(action: {
                 audioUnit.sc55_Reset()
             }) {

@@ -148,8 +148,8 @@ public:
             switch (message.type) {
                 case kMIDIMessageTypeChannelVoice1: {
                     thisObject->handleMIDI1VoiceMessage(message);
-                }
                     break;
+                }
                     
                 default:
                     break;
@@ -160,14 +160,20 @@ public:
     }
     
     void handleMIDI1VoiceMessage(const struct MIDIUniversalMessage& message) {
-        uint8_t messageBytes[16];
+        uint8_t messageBytes[8];
         int length = message.channelVoice1.status == kMIDICVStatusNoteOn
-            || message.channelVoice1.status == kMIDICVStatusNoteOff
-            || message.channelVoice1.status == kMIDICVStatusPolyPressure
-            || message.channelVoice1.status == kMIDICVStatusControlChange ? 3 : 2;
+                  || message.channelVoice1.status == kMIDICVStatusNoteOff
+                  || message.channelVoice1.status == kMIDICVStatusPolyPressure
+                  || message.channelVoice1.status == kMIDICVStatusControlChange
+                  || message.channelVoice1.status == kMIDICVStatusPitchBend ? 3 : 2;
         messageBytes[0] = message.channelVoice1.status << 4 | message.channelVoice1.channel;
-        messageBytes[1] = message.channelVoice1.note.number;
-        messageBytes[2] = message.channelVoice1.note.velocity;
+        if (message.channelVoice1.status == kMIDICVStatusPitchBend) {
+            messageBytes[1] = message.channelVoice1.pitchBend & 0x7F;
+            messageBytes[2] = (message.channelVoice1.pitchBend >> 7) & 0x7F;
+        } else {
+            messageBytes[1] = message.channelVoice1.note.number;
+            messageBytes[2] = message.channelVoice1.note.velocity;
+        }
         mcu.postMidiSC55(messageBytes, length);
     }
     
