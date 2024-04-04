@@ -9,10 +9,7 @@
 
 #import <AudioToolbox/AudioToolbox.h>
 #import <CoreMIDI/CoreMIDI.h>
-#import <algorithm>
-#import <vector>
-#import <span>
-#include <chrono>
+//#include <chrono>
 
 #import "sc55AU2Extension-Swift.h"
 #import "sc55AU2ExtensionParameterAddresses.h"
@@ -106,13 +103,9 @@ public:
      This function does the core siginal processing.
      Do your custom DSP here.
      */
-    void process(std::span<float *> outputBuffers, AUEventSampleTime bufferStartTime, AUAudioFrameCount frameCount, AudioBufferList* outBufferList) {
+    void process(AUEventSampleTime bufferStartTime, AUAudioFrameCount frameCount, AudioBufferList* outBufferList) {
         // auto start = std::chrono::high_resolution_clock::now();
 
-        for (UInt32 channel = 0; channel < outputBuffers.size(); ++channel) {
-            std::fill_n(outputBuffers[channel], frameCount, 0.f);
-        }
-        
         UInt32 ioOutputDataPackets = frameCount * destFormat.mFramesPerPacket;
         AudioConverterFillComplexBuffer(audioConverterRef, EncoderDataProc,
                                         (void *)this, &ioOutputDataPackets,
@@ -189,6 +182,7 @@ public:
 
     int16_t *lastBufferData;
     
+public:
     MCU mcu;
 };
 

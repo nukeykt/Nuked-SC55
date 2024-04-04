@@ -18,8 +18,7 @@ class AUProcessHelper
 {
 public:
     AUProcessHelper(sc55AU2ExtensionDSPKernel& kernel, UInt32 outputChannelCount)
-    : mKernel{kernel},
-    mOutputBuffers(outputChannelCount) {
+    : mKernel{kernel}{
     }
     
     /**
@@ -33,11 +32,7 @@ public:
         AURenderEvent const *nextEvent = events; // events is a linked list, at the beginning, the nextEvent is the first event
         
         auto callProcess = [this] (AudioBufferList* outBufferListPtr, AUEventSampleTime now, AUAudioFrameCount frameCount, AUAudioFrameCount const frameOffset) {
-            for (int channel = 0; channel < mOutputBuffers.size(); ++channel) {
-                mOutputBuffers[channel] = (float*)outBufferListPtr->mBuffers[channel].mData + frameOffset;
-            }
-            
-            mKernel.process(mOutputBuffers, now, frameCount, outBufferListPtr);
+            mKernel.process(now, frameCount, outBufferListPtr);
         };
         
         while (framesRemaining > 0) {
@@ -82,5 +77,4 @@ public:
      }
 private:
     sc55AU2ExtensionDSPKernel& mKernel;
-    std::vector<float*> mOutputBuffers;
 };

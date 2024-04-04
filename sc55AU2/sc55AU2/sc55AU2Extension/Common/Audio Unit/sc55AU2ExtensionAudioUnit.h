@@ -10,4 +10,7 @@
 
 @interface sc55AU2ExtensionAudioUnit : AUAudioUnit
 - (void)setupParameterTree:(AUParameterTree *)parameterTree;
+- (void)SC55_Reset;
+- (uint32_t*)LCD_Update;
+- (void)LCD_SendButton:(uint8_t)button :(int)state;
 @end

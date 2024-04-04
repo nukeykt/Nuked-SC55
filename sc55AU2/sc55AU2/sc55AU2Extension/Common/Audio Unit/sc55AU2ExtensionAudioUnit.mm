@@ -185,8 +185,19 @@
         
         return noErr;
     };
-    
 }
+
+- (void)SC55_Reset {
+    _kernel.mcu.SC55_Reset();
+};
+
+- (uint32_t*)LCD_Update {
+    return _kernel.mcu.lcd.LCD_Update();
+};
+
+- (void)LCD_SendButton:(uint8_t) button: (int) state {
+    _kernel.mcu.lcd.LCD_SendButton(button, state);
+};
 
 @end
 

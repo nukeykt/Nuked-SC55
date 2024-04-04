@@ -76,6 +76,7 @@ public struct Bitmap {
 
 public struct Renderer {
     public private(set) var bitmap: Bitmap
+    var audioUnit: sc55AU2ExtensionAudioUnit?
     
     public init(width: Int, height: Int) {
         self.bitmap = Bitmap(width: width, height: height, color: Color.init(
@@ -84,37 +85,40 @@ public struct Renderer {
     }
     
     mutating func draw() {
-        // let lcdResult = LCD_Update();
-        // for x in 0...(741-1) {
-        //     for y in 0...(268-1) {
-        //         bitmap[x, y] = Color.init(
-        //             r: UInt8((lcdResult![x + y * 741] >> 0) & 0xff),
-        //             g: UInt8((lcdResult![x + y * 741] >> 8) & 0xff),
-        //             b: UInt8((lcdResult![x + y * 741] >> 16) & 0xff),
-        //             a: 255
-        //         )
-        //     }
-        // }
+        if let audioUnitR = audioUnit {
+            let lcdResult = audioUnitR.lcd_Update();
+             for x in 0...(741-1) {
+                 for y in 0...(268-1) {
+                     bitmap[x, y] = Color.init(
+                         r: UInt8((lcdResult![x + y * 741] >> 0) & 0xff),
+                         g: UInt8((lcdResult![x + y * 741] >> 8) & 0xff),
+                         b: UInt8((lcdResult![x + y * 741] >> 16) & 0xff),
+                         a: 255
+                     )
+                 }
+             }
+        }
     }
 }
 
 struct SCButton: View {
     let code: Int
     let text: String
+    var audioUnit: sc55AU2ExtensionAudioUnit
     
     var body: some View {
         Button(action: {
             if code == 0xFF {
-                // LCD_SendButton(UInt8(MCU_BUTTON_PART_L), 1)
-                // LCD_SendButton(UInt8(MCU_BUTTON_PART_R), 1)
+                audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_PART_L), 1)
+                audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_PART_R), 1)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                    // LCD_SendButton(UInt8(MCU_BUTTON_PART_L), 0)
-                    // LCD_SendButton(UInt8(MCU_BUTTON_PART_R), 0)
+                    audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_PART_L), 0)
+                    audioUnit.lcd_SendButton(UInt8(MCU_BUTTON_PART_R), 0)
                 }
             } else {
-                // LCD_SendButton(UInt8(code), 1)
+                audioUnit.lcd_SendButton(UInt8(code), 1)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    // LCD_SendButton(UInt8(code), 0)
+                    audioUnit.lcd_SendButton(UInt8(code), 0)
                 }
             }
         }){
@@ -125,6 +129,7 @@ struct SCButton: View {
 
 struct sc55AU2ExtensionMainView: View {
     var parameterTree: ObservableAUParameterGroup
+    var audioUnit: sc55AU2ExtensionAudioUnit
     
     @ObservedObject
     var screen = Screen(width: 741, height: 268)
@@ -135,38 +140,39 @@ struct sc55AU2ExtensionMainView: View {
             .interpolation(.none)
             .frame(width: 741, height: 268, alignment: .center)
             .aspectRatio(contentMode: .fit)
+            .onAppear(perform: { screen.renderer.audioUnit = audioUnit })
         
         VStack {
             HStack {
-                SCButton(code: MCU_BUTTON_POWER, text: "POWER")
-                SCButton(code: MCU_BUTTON_INST_L, text: "INST_L")
-                SCButton(code: MCU_BUTTON_INST_R, text: "INST_R")
-                SCButton(code: MCU_BUTTON_INST_MUTE, text: "INST_MUTE")
-                SCButton(code: MCU_BUTTON_INST_ALL, text: "INST_ALL")
+                SCButton(code: MCU_BUTTON_POWER, text: "POWER", audioUnit: audioUnit)
+                SCButton(code: MCU_BUTTON_INST_L, text: "INST_L", audioUnit: audioUnit)
+                SCButton(code: MCU_BUTTON_INST_R, text: "INST_R", audioUnit: audioUnit)
+                SCButton(code: MCU_BUTTON_INST_MUTE, text: "INST_MUTE", audioUnit: audioUnit)
+                SCButton(code: MCU_BUTTON_INST_ALL, text: "INST_ALL", audioUnit: audioUnit)
             }
             HStack {
-                SCButton(code: MCU_BUTTON_MIDI_CH_L, text: "MIDI_CH_L")
-                SCButton(code: MCU_BUTTON_MIDI_CH_R, text: "MIDI_CH_R")
-                SCButton(code: MCU_BUTTON_CHORUS_L, text: "CHORUS_L")
-                SCButton(code: MCU_BUTTON_CHORUS_R, text: "CHORUS_R")
-                SCButton(code: MCU_BUTTON_PAN_L, text: "PAN_L")
-                SCButton(code: MCU_BUTTON_PAN_R, text: "PAN_R")
+                SCButton(code: MCU_BUTTON_MIDI_CH_L, text: "MIDI_CH_L", audioUnit: audioUnit)
+                SCButton(code: MCU_BUTTON_MIDI_CH_R, text: "MIDI_CH_R", audioUnit: audioUnit)
+                SCButton(code: MCU_BUTTON_CHORUS_L, text: "CHORUS_L", audioUnit: audioUnit)
+                SCButton(code: MCU_BUTTON_CHORUS_R, text: "CHORUS_R", audioUnit: audioUnit)
+                SCButton(code: MCU_BUTTON_PAN_L, text: "PAN_L", audioUnit: audioUnit)
+                SCButton(code: MCU_BUTTON_PAN_R, text: "PAN_R", audioUnit: audioUnit)
             }
             HStack {
-                SCButton(code: MCU_BUTTON_PART_R, text: "PART_R")
-                SCButton(code: MCU_BUTTON_PART_L, text: "PART_L")
-                SCButton(code: MCU_BUTTON_KEY_SHIFT_L, text: "KEY_SHIFT_L")
-                SCButton(code: MCU_BUTTON_KEY_SHIFT_R, text: "KEY_SHIFT_R")
+                SCButton(code: MCU_BUTTON_PART_R, text: "PART_R", audioUnit: audioUnit)
+                SCButton(code: MCU_BUTTON_PART_L, text: "PART_L", audioUnit: audioUnit)
+                SCButton(code: MCU_BUTTON_KEY_SHIFT_L, text: "KEY_SHIFT_L", audioUnit: audioUnit)
+                SCButton(code: MCU_BUTTON_KEY_SHIFT_R, text: "KEY_SHIFT_R", audioUnit: audioUnit)
             }
             HStack {
-                SCButton(code: MCU_BUTTON_LEVEL_L, text: "LEVEL_L")
-                SCButton(code: MCU_BUTTON_LEVEL_R, text: "LEVEL_R")
-                SCButton(code: MCU_BUTTON_REVERB_L, text: "REVERB_L")
-                SCButton(code: MCU_BUTTON_REVERB_R, text: "REVERB_R")
+                SCButton(code: MCU_BUTTON_LEVEL_L, text: "LEVEL_L", audioUnit: audioUnit)
+                SCButton(code: MCU_BUTTON_LEVEL_R, text: "LEVEL_R", audioUnit: audioUnit)
+                SCButton(code: MCU_BUTTON_REVERB_L, text: "REVERB_L", audioUnit: audioUnit)
+                SCButton(code: MCU_BUTTON_REVERB_R, text: "REVERB_R", audioUnit: audioUnit)
             }
-            SCButton(code: 0xFF, text: "DEMO")
+            SCButton(code: 0xFF, text: "DEMO", audioUnit: audioUnit)
             Button(action: {
-                // SC55_Reset()
+                audioUnit.sc55_Reset()
             }) {
                 Text("RESET")
             }
@@ -185,7 +191,7 @@ class Screen : ObservableObject {
         }
     }
     
-    private var renderer: Renderer
+    var renderer: Renderer
     private var displayLink: CVDisplayLink?
     
     let displayCallback: CVDisplayLinkOutputCallback = { displayLink, inNow, inOutputTime, flagsIn, flagsOut, displayLinkContext in
