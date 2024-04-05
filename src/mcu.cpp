@@ -88,6 +88,8 @@ static uint8_t ad_nibble = 0x00;
 static uint8_t sw_pos = 0;
 static uint8_t io_sd = 0x00;
 
+SDL_atomic_t mcu_button_pressed = { 0 };
+
 uint8_t RCU_Read(void)
 {
     return 0;
@@ -446,6 +448,22 @@ uint8_t MCU_Read(uint32_t address)
                 {
                     ret = sram[address & 0x7fff];
                 }
+                else if (address >= 0xf000 && address < 0xf100)
+                {
+                    io_sd = address & 0xff;
+                    LCD_Enable((io_sd & 8) != 0);
+
+                    uint8_t data = 0xff;
+                    uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
+
+                    if ((io_sd & 1) == 0)
+                        data &= 0x80 | (((button_pressed >> 0) & 127) ^ 127);
+                    if ((io_sd & 2) == 0)
+                        data &= 0x80 | (((button_pressed >> 7) & 127) ^ 127);
+                    if ((io_sd & 4) == 0)
+                        data &= 0x80 | (((button_pressed >> 14) & 127) ^ 127);
+                    return data;
+                }
                 else
                 {
                     printf("Unknown read %x\n", address);
@@ -569,7 +587,7 @@ void MCU_Write(uint32_t address, uint8_t value)
                 {
                     PCM_Write(address & 0x3f, value);
                 }
-                else if (!mcu_mk1 && address >= 0xec00 && address < 0xf000)
+                else if (address >= 0xec00 && address < 0xf000)
                 {
                     SM_SysWrite(address & 0xff, value);
                 }
@@ -605,6 +623,19 @@ void MCU_Write(uint32_t address, uint8_t value)
                 else if (address >= 0x8000 && address < 0xe000)
                 {
                     sram[address & 0x7fff] = value;
+                }
+                else if (address >= 0xf000 && address < 0xf100)
+                {
+                    io_sd = address & 0xff;
+                    LCD_Enable((io_sd & 8) != 0);
+                }
+                else if (address == 0xf105)
+                {
+                    LCD_Write(0, value);
+                }
+                else if (address == 0xf104)
+                {
+                    LCD_Write(1, value);
                 }
                 else
                 {
@@ -800,8 +831,6 @@ void MCU_PatchROM(void)
     //rom2[0x1334] = 0x19;
     //rom1[0x622d] = 0x19;
 }
-
-SDL_atomic_t mcu_button_pressed = {0};
 
 uint8_t mcu_p0_data = 0x00;
 uint8_t mcu_p1_data = 0x00;
