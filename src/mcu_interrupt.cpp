@@ -215,6 +215,8 @@ void MCU_Interrupt_Handle(void)
         if ((int32_t)mask < level)
         {
             // mcu.interrupt_pending[INTERRUPT_SOURCE_NMI] = 0;
+            if (vector == VECTOR_INTERNAL_INTERRUPT_D4)
+                vector += 0;
             MCU_Interrupt_StartVector(vector, level);
             return;
         }

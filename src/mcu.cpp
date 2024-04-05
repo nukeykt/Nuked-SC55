@@ -258,7 +258,6 @@ void MCU_DeviceWrite(uint32_t address, uint8_t data)
         }
         if ((data & 0x40) == 0 && (ssr_rd & 0x40) != 0)
         {
-            uart_rx_byte = 0;
             dev_register[address] &= ~0x40;
             MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_UART_RX, 0);
         }
@@ -622,7 +621,7 @@ void MCU_Write(uint32_t address, uint8_t value)
     {
         sram[address & 0x7fff] = value; // FIXME
     }
-    else if (page == 10)
+    else if (page == 10 && !mcu_mk1)
     {
         sram[address & 0x7fff] = value; // FIXME
     }
@@ -702,10 +701,15 @@ void MCU_UpdateUART(void)
     if (dev_register[DEV_SSR] & 0x40)
         return;
 
+    if (mcu.cycles < uart_rx_delay)
+        return;
+
     uart_rx_byte = uart_buffer[uart_read_ptr];
     uart_read_ptr = (uart_read_ptr + 1) % uart_buffer_size;
     dev_register[DEV_SSR] |= 0x40;
     MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_UART_RX, (dev_register[DEV_SCR] & 0x40) != 0);
+
+    uart_rx_delay = mcu.cycles + 3000*6;
 }
 
 static bool work_thread_run = false;
@@ -1022,16 +1026,16 @@ int main(int argc, char *argv[])
 
     if (mcu_mk1)
     {
-        //rpaths[0] = basePath + "/sc55_rom1.bin";
-        //rpaths[1] = basePath + "/sc55_rom2.bin";
-        //rpaths[2] = basePath + "/sc55_waverom1.bin";
-        //rpaths[3] = basePath + "/sc55_waverom2.bin";
-        //rpaths[4] = basePath + "/sc55_waverom3.bin";
-        rpaths[0] = basePath + "/cm300_rom1.bin";
-        rpaths[1] = basePath + "/cm300_rom2.bin";
-        rpaths[2] = basePath + "/cm300_waverom1.bin";
-        rpaths[3] = basePath + "/cm300_waverom2.bin";
-        rpaths[4] = basePath + "/cm300_waverom3.bin";
+        rpaths[0] = basePath + "/sc55_rom1.bin";
+        rpaths[1] = basePath + "/sc55_rom2.bin";
+        rpaths[2] = basePath + "/sc55_waverom1.bin";
+        rpaths[3] = basePath + "/sc55_waverom2.bin";
+        rpaths[4] = basePath + "/sc55_waverom3.bin";
+        //rpaths[0] = basePath + "/cm300_rom1.bin";
+        //rpaths[1] = basePath + "/cm300_rom2.bin";
+        //rpaths[2] = basePath + "/cm300_waverom1.bin";
+        //rpaths[3] = basePath + "/cm300_waverom2.bin";
+        //rpaths[4] = basePath + "/cm300_waverom3.bin";
     }
 
     bool r_ok = true;
