@@ -59,7 +59,7 @@ uint8_t PCM_ReadROM(uint32_t address)
                 return waverom1[address & 0x1fffff];
         case 1:
             return waverom2[address & 0xfffff];
-        case 3:
+        case 2:
             return waverom3[address & 0xfffff];
         default:
             break;

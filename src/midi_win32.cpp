@@ -36,7 +36,6 @@
 #include <Windows.h>
 #include <mmsystem.h>
 #include "mcu.h"
-#include "submcu.h"
 #include "midi.h"
 
 static HMIDIIN midi_handle;
@@ -66,14 +65,14 @@ void CALLBACK MIDI_Callback(
                 case 0xa0:
                 case 0xb0:
                 case 0xe0:
-                    SM_PostUART(b1);
-                    SM_PostUART((dwParam1 >> 8) & 0xff);
-                    SM_PostUART((dwParam1 >> 16) & 0xff);
+                    MCU_PostUART(b1);
+                    MCU_PostUART((dwParam1 >> 8) & 0xff);
+                    MCU_PostUART((dwParam1 >> 16) & 0xff);
                     break;
                 case 0xc0:
                 case 0xd0:
-                    SM_PostUART(b1);
-                    SM_PostUART((dwParam1 >> 8) & 0xff);
+                    MCU_PostUART(b1);
+                    MCU_PostUART((dwParam1 >> 8) & 0xff);
                     break;
             }
             break;
@@ -87,7 +86,7 @@ void CALLBACK MIDI_Callback(
             {
                 for (int i = 0; i < midi_buffer.dwBytesRecorded; i++)
                 {
-                    SM_PostUART(midi_in_buffer[i]);
+                    MCU_PostUART(midi_in_buffer[i]);
                 }
             }
 

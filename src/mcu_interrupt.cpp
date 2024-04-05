@@ -204,6 +204,10 @@ void MCU_Interrupt_Handle(void)
                 vector = VECTOR_INTERNAL_INTERRUPT_E0;
                 level = (dev_register[DEV_IPRD] >> 0) & 7;
                 break;
+            case INTERRUPT_SOURCE_UART_RX:
+                vector = VECTOR_INTERNAL_INTERRUPT_D4;
+                level = (dev_register[DEV_IPRD] >> 4) & 7;
+                break;
             default:
                 break;
         }

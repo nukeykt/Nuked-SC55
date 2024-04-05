@@ -95,14 +95,9 @@ uint8_t sm_timer_counter;
 
 submcu_t sm;
 
-static const uint32_t uart_buffer_size = 8192;
-uint32_t uart_write_ptr;
-uint32_t uart_read_ptr;
-uint8_t uart_buffer[uart_buffer_size];
-
-uint8_t uart_rx_gotbyte;
-uint8_t uart_rx_byte;
-uint64_t uart_rx_delay;
+static uint8_t uart_rx_gotbyte;
+static uint8_t uart_rx_byte;
+static uint64_t uart_rx_delay;
 
 void SM_ErrorTrap(void)
 {
@@ -1333,14 +1328,6 @@ void SM_UpdateTimer(void)
         }
         sm_timer_cycles += 16;
     }
-}
-
-void SM_PostUART(uint8_t data)
-{
-    //MCU_WorkThread_Lock();
-    uart_buffer[uart_write_ptr] = data;
-    uart_write_ptr = (uart_write_ptr + 1) % uart_buffer_size;
-    //MCU_WorkThread_Unlock();
 }
 
 void SM_UpdateUART(void)

@@ -437,17 +437,17 @@ void LCD_Update(void)
                     int kk = sdl_event.key.keysym.scancode - SDL_SCANCODE_1;
                     if (sdl_event.type == SDL_KEYDOWN)
                     {
-                        SM_PostUART(0xc0);
-                        SM_PostUART(118);
-                        SM_PostUART(0x90);
-                        SM_PostUART(0x30 + kk);
-                        SM_PostUART(0x7f);
+                        MCU_PostUART(0xc0);
+                        MCU_PostUART(118);
+                        MCU_PostUART(0x90);
+                        MCU_PostUART(0x30 + kk);
+                        MCU_PostUART(0x7f);
                     }
                     else
                     {
-                        SM_PostUART(0x90);
-                        SM_PostUART(0x30 + kk);
-                        SM_PostUART(0);
+                        MCU_PostUART(0x90);
+                        MCU_PostUART(0x30 + kk);
+                        MCU_PostUART(0);
                     }
 #endif
                     int kk = sdl_event.key.keysym.scancode - SDL_SCANCODE_1;
@@ -457,70 +457,70 @@ void LCD_Update(void)
                         static int bend = 0x2000;
                         if (kk == 4)
                         {
-                            SM_PostUART(0x99);
-                            SM_PostUART(0x32);
-                            SM_PostUART(0x7f);
+                            MCU_PostUART(0x99);
+                            MCU_PostUART(0x32);
+                            MCU_PostUART(0x7f);
                         }
                         else if (kk == 3)
                         {
                             bend += 0x100;
                             if (bend > 0x3fff)
                                 bend = 0x3fff;
-                            SM_PostUART(0xe1);
-                            SM_PostUART(bend & 127);
-                            SM_PostUART((bend >> 7) & 127);
+                            MCU_PostUART(0xe1);
+                            MCU_PostUART(bend & 127);
+                            MCU_PostUART((bend >> 7) & 127);
                         }
                         else if (kk == 2)
                         {
                             bend -= 0x100;
                             if (bend < 0)
                                 bend = 0;
-                            SM_PostUART(0xe1);
-                            SM_PostUART(bend & 127);
-                            SM_PostUART((bend >> 7) & 127);
+                            MCU_PostUART(0xe1);
+                            MCU_PostUART(bend & 127);
+                            MCU_PostUART((bend >> 7) & 127);
                         }
                         else if (kk)
                         {
-                            SM_PostUART(0xc1);
-                            SM_PostUART(patch);
-                            SM_PostUART(0xe1);
-                            SM_PostUART(bend & 127);
-                            SM_PostUART((bend >> 7) & 127);
-                            SM_PostUART(0x91);
-                            SM_PostUART(0x32);
-                            SM_PostUART(0x7f);
+                            MCU_PostUART(0xc1);
+                            MCU_PostUART(patch);
+                            MCU_PostUART(0xe1);
+                            MCU_PostUART(bend & 127);
+                            MCU_PostUART((bend >> 7) & 127);
+                            MCU_PostUART(0x91);
+                            MCU_PostUART(0x32);
+                            MCU_PostUART(0x7f);
                         }
                         else if (kk == 0)
                         {
-                            //SM_PostUART(0xc0);
-                            //SM_PostUART(patch);
-                            SM_PostUART(0xe0);
-                            SM_PostUART(0x00);
-                            SM_PostUART(0x40);
-                            SM_PostUART(0x99);
-                            SM_PostUART(0x37);
-                            SM_PostUART(0x7f);
+                            //MCU_PostUART(0xc0);
+                            //MCU_PostUART(patch);
+                            MCU_PostUART(0xe0);
+                            MCU_PostUART(0x00);
+                            MCU_PostUART(0x40);
+                            MCU_PostUART(0x99);
+                            MCU_PostUART(0x37);
+                            MCU_PostUART(0x7f);
                         }
                     }
                     else
                     {
                         if (kk == 1)
                         {
-                            SM_PostUART(0x91);
-                            SM_PostUART(0x32);
-                            SM_PostUART(0);
+                            MCU_PostUART(0x91);
+                            MCU_PostUART(0x32);
+                            MCU_PostUART(0);
                         }
                         else if (kk == 0)
                         {
-                            SM_PostUART(0x99);
-                            SM_PostUART(0x37);
-                            SM_PostUART(0);
+                            MCU_PostUART(0x99);
+                            MCU_PostUART(0x37);
+                            MCU_PostUART(0);
                         }
                         else if (kk == 4)
                         {
-                            SM_PostUART(0x99);
-                            SM_PostUART(0x32);
-                            SM_PostUART(0);
+                            MCU_PostUART(0x99);
+                            MCU_PostUART(0x32);
+                            MCU_PostUART(0);
                         }
                     }
                 }

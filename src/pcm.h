@@ -65,6 +65,7 @@ struct pcm_t {
 
 extern uint8_t waverom1[];
 extern uint8_t waverom2[];
+extern uint8_t waverom3[];
 
 void PCM_Write(uint32_t address, uint8_t data);
 uint8_t PCM_Read(uint32_t address);

@@ -105,6 +105,8 @@ enum {
 
 uint16_t MCU_AnalogReadPin(uint32_t pin)
 {
+    if (mcu_mk1)
+        return 0x0;
     return 0x3ff;
     uint8_t rcu;
     if (pin == 7)
@@ -150,6 +152,15 @@ void MCU_AnalogSample(int channel)
 int adf_rd = 0;
 
 uint64_t analog_end_time;
+
+int ssr_rd = 0;
+
+uint32_t uart_write_ptr;
+uint32_t uart_read_ptr;
+uint8_t uart_buffer[uart_buffer_size];
+
+static uint8_t uart_rx_byte;
+static uint64_t uart_rx_delay;
 
 void MCU_DeviceWrite(uint32_t address, uint8_t data)
 {
@@ -239,6 +250,28 @@ void MCU_DeviceWrite(uint32_t address, uint8_t data)
             MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_ANALOG, 0);
         return;
     }
+    case DEV_SSR:
+    {
+        if ((data & 0x80) == 0 && (ssr_rd & 0x80) != 0)
+        {
+            dev_register[address] &= ~0x80;
+        }
+        if ((data & 0x40) == 0 && (ssr_rd & 0x40) != 0)
+        {
+            uart_rx_byte = 0;
+            dev_register[address] &= ~0x40;
+            MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_UART_RX, 0);
+        }
+        if ((data & 0x20) == 0 && (ssr_rd & 0x20) != 0)
+        {
+            dev_register[address] &= ~0x20;
+        }
+        if ((data & 0x10) == 0 && (ssr_rd & 0x10) != 0)
+        {
+            dev_register[address] &= ~0x10;
+        }
+        break;
+    }
     default:
         address += 0;
         break;
@@ -271,8 +304,11 @@ uint8_t MCU_DeviceRead(uint32_t address)
     case DEV_ADCSR:
         adf_rd = (dev_register[address] & 0x80) != 0;
         return dev_register[address];
+    case DEV_SSR:
+        ssr_rd = dev_register[address];
+        return dev_register[address];
     case DEV_RDR:
-        return 0x00;
+        return uart_rx_byte;
     case 0x00:
         return 0xff;
     case DEV_P9DR:
@@ -434,12 +470,26 @@ uint8_t MCU_Read(uint32_t address)
         break;
 #endif
     case 1:
+        ret = rom2[address_rom & rom2_mask];
+        break;
     case 2:
+        ret = rom2[address_rom & rom2_mask];
+        break;
     case 3:
+        ret = rom2[address_rom & rom2_mask];
+        break;
     case 4:
+        ret = rom2[address_rom & rom2_mask];
+        break;
     case 8:
+        ret = rom2[address_rom & rom2_mask];
+        break;
     case 9:
+        ret = rom2[address_rom & rom2_mask];
+        break;
     case 14:
+        ret = rom2[address_rom & rom2_mask];
+        break;
     case 15:
         ret = rom2[address_rom & rom2_mask];
         break;
@@ -593,11 +643,6 @@ void MCU_ReadInstruction(void)
 {
     uint8_t operand = MCU_ReadCodeAdvance();
 
-    if (mcu.cycles == 0x45)
-    {
-        mcu.cycles += 0;
-    }
-
     MCU_Operand_Table[operand](operand);
 
     if (mcu.sr & STATUS_T)
@@ -639,6 +684,28 @@ void MCU_Reset(void)
     mcu.exception_pending = -1;
 
     MCU_DeviceReset();
+}
+
+void MCU_PostUART(uint8_t data)
+{
+    uart_buffer[uart_write_ptr] = data;
+    uart_write_ptr = (uart_write_ptr + 1) % uart_buffer_size;
+}
+
+void MCU_UpdateUART(void)
+{
+    if ((dev_register[DEV_SCR] & 16) == 0) // RX disabled
+        return;
+    if (uart_write_ptr == uart_read_ptr) // no byte
+        return;
+
+    if (dev_register[DEV_SSR] & 0x40)
+        return;
+
+    uart_rx_byte = uart_buffer[uart_read_ptr];
+    uart_read_ptr = (uart_read_ptr + 1) % uart_buffer_size;
+    dev_register[DEV_SSR] |= 0x40;
+    MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_UART_RX, (dev_register[DEV_SCR] & 0x40) != 0);
 }
 
 static bool work_thread_run = false;
@@ -691,6 +758,8 @@ int SDLCALL work_thread(void* data)
 
         if (!mcu_mk1)
             SM_Update(mcu.cycles);
+        else
+            MCU_UpdateUART();
 
         MCU_UpdateAnalog(mcu.cycles);
     }
@@ -1046,7 +1115,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        unscramble(tempbuf, waverom2, 0x100000);
+        unscramble(tempbuf, waverom3, 0x100000);
     }
     else
     {

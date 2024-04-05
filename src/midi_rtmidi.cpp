@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include "mcu.h"
-#include "submcu.h"
 #include "midi.h"
 #include <RtMidi.h>
 
@@ -13,7 +12,7 @@ static void MidiOnReceive(double, std::vector<uint8_t> *message, void *)
     uint8_t *end = message->data() + message->size();
 
     while(beg < end)
-        SM_PostUART(*beg++);
+        MCU_PostUART(*beg++);
 }
 
 static void MidiOnError(RtMidiError::Type, const std::string &errorText, void *)

@@ -75,6 +75,7 @@ enum {
     DEV_SMR = 0x58,
     DEV_BRR = 0x59,
     DEV_SCR = 0x5a,
+    DEV_SSR = 0x5c,
     DEV_RDR = 0x5d,
     DEV_ADDRAH = 0x60,
     DEV_ADDRAL = 0x61,
@@ -396,6 +397,11 @@ extern int mcu_mk1;
 
 extern SDL_atomic_t mcu_button_pressed;
 
+static const uint32_t uart_buffer_size = 8192;
+extern uint32_t uart_write_ptr;
+extern uint32_t uart_read_ptr;
+extern uint8_t uart_buffer[uart_buffer_size];
+
 uint8_t MCU_ReadP0(void);
 uint8_t MCU_ReadP1(void);
 void MCU_WriteP0(uint8_t data);
@@ -403,6 +409,7 @@ void MCU_WriteP1(uint8_t data);
 void MCU_GA_SetGAInt(int line, int value);
 
 void MCU_PostSample(int *sample);
+void MCU_PostUART(uint8_t data);
 
 void MCU_WorkThread_Lock(void);
 void MCU_WorkThread_Unlock(void);
