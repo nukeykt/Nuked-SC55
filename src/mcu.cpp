@@ -75,6 +75,7 @@ void MCU_ErrorTrap(void)
 }
 
 int mcu_mk1 = 0; // 0 - SC-55mkII, SC-55ST. 1 - SC-55, CM-300/SCC-1
+int mcu_cm300 = 0; // 0 - SC-55, 1 - CM-300/SCC-1
 
 static int ga_int[8];
 static int ga_int_enable = 0;
@@ -260,6 +261,7 @@ void MCU_DeviceWrite(uint32_t address, uint8_t data)
         }
         if ((data & 0x40) == 0 && (ssr_rd & 0x40) != 0)
         {
+            uart_rx_delay = mcu.cycles + 100;
             dev_register[address] &= ~0x40;
             MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_UART_RX, 0);
         }
@@ -739,8 +741,6 @@ void MCU_UpdateUART(void)
     uart_read_ptr = (uart_read_ptr + 1) % uart_buffer_size;
     dev_register[DEV_SSR] |= 0x40;
     MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_UART_RX, (dev_register[DEV_SCR] & 0x40) != 0);
-
-    uart_rx_delay = mcu.cycles + 3000*6;
 }
 
 static bool work_thread_run = false;
@@ -1027,6 +1027,29 @@ int main(int argc, char *argv[])
     (void)argc;
     std::string basePath;
 
+    int port = 0;
+    {
+        for (int i = 1; i < argc; i++)
+        {
+            if (!strncmp(argv[i], "-p:", 3))
+            {
+                port = atoi(argv[i] + 3);
+                break;
+            }
+            else if (!strcmp(argv[i], "-mk1"))
+            {
+                mcu_mk1 = 1;
+                break;
+            }
+            else if (!strcmp(argv[i], "-cm300"))
+            {
+                mcu_mk1 = 1;
+                mcu_cm300 = 1;
+                break;
+            }
+        }
+    }
+
 #if __linux__
     char self_path[PATH_MAX];
     memset(&self_path[0], 0, PATH_MAX);
@@ -1055,16 +1078,22 @@ int main(int argc, char *argv[])
 
     if (mcu_mk1)
     {
-        rpaths[0] = basePath + "/sc55_rom1.bin";
-        rpaths[1] = basePath + "/sc55_rom2.bin";
-        rpaths[2] = basePath + "/sc55_waverom1.bin";
-        rpaths[3] = basePath + "/sc55_waverom2.bin";
-        rpaths[4] = basePath + "/sc55_waverom3.bin";
-        //rpaths[0] = basePath + "/cm300_rom1.bin";
-        //rpaths[1] = basePath + "/cm300_rom2.bin";
-        //rpaths[2] = basePath + "/cm300_waverom1.bin";
-        //rpaths[3] = basePath + "/cm300_waverom2.bin";
-        //rpaths[4] = basePath + "/cm300_waverom3.bin";
+        if (mcu_cm300)
+        {
+            rpaths[0] = basePath + "/cm300_rom1.bin";
+            rpaths[1] = basePath + "/cm300_rom2.bin";
+            rpaths[2] = basePath + "/cm300_waverom1.bin";
+            rpaths[3] = basePath + "/cm300_waverom2.bin";
+            rpaths[4] = basePath + "/cm300_waverom3.bin";
+        }
+        else
+        {
+            rpaths[0] = basePath + "/sc55_rom1.bin";
+            rpaths[1] = basePath + "/sc55_rom2.bin";
+            rpaths[2] = basePath + "/sc55_waverom1.bin";
+            rpaths[3] = basePath + "/sc55_waverom2.bin";
+            rpaths[4] = basePath + "/sc55_waverom3.bin";
+        }
     }
 
     bool r_ok = true;
@@ -1196,18 +1225,6 @@ int main(int argc, char *argv[])
         fprintf(stderr, "FATAL ERROR: Failed to open the audio stream.\n");
         fflush(stderr);
         return 2;
-    }
-
-    int port = 0;
-    {
-        for (int i = 1; i < argc; i++)
-        {
-            if (!strncmp(argv[i], "-p:", 3))
-            {
-                port = atoi(argv[i] + 3);
-                break;
-            }
-        }
     }
 
     if(!MIDI_Init(port))
