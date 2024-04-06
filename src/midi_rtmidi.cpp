@@ -30,6 +30,7 @@ int MIDI_Init(int port)
     }
 
     s_midi_in = new RtMidiIn(RtMidi::UNSPECIFIED, "Nuked SC55", 1024);
+    s_midi_in->ignoreTypes(false, false, false); // SysEx disabled by default
     s_midi_in->setCallback(&MidiOnReceive, nullptr); // FIXME: (local bug) Fix the linking error
     s_midi_in->setErrorCallback(&MidiOnError, nullptr);
 
