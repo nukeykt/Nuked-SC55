@@ -75,6 +75,7 @@ enum {
     DEV_SMR = 0x58,
     DEV_BRR = 0x59,
     DEV_SCR = 0x5a,
+    DEV_TDR = 0x5b,
     DEV_SSR = 0x5c,
     DEV_RDR = 0x5d,
     DEV_ADDRAH = 0x60,

@@ -208,6 +208,10 @@ void MCU_Interrupt_Handle(void)
                 vector = VECTOR_INTERNAL_INTERRUPT_D4;
                 level = (dev_register[DEV_IPRD] >> 4) & 7;
                 break;
+            case INTERRUPT_SOURCE_UART_TX:
+                vector = VECTOR_INTERNAL_INTERRUPT_D8;
+                level = (dev_register[DEV_IPRD] >> 4) & 7;
+                break;
             default:
                 break;
         }
@@ -215,8 +219,6 @@ void MCU_Interrupt_Handle(void)
         if ((int32_t)mask < level)
         {
             // mcu.interrupt_pending[INTERRUPT_SOURCE_NMI] = 0;
-            if (vector == VECTOR_INTERNAL_INTERRUPT_D4)
-                vector += 0;
             MCU_Interrupt_StartVector(vector, level);
             return;
         }

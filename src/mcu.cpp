@@ -80,6 +80,7 @@ int mcu_cm300 = 0; // 0 - SC-55, 1 - CM-300/SCC-1
 static int ga_int[8];
 static int ga_int_enable = 0;
 static int ga_int_trigger = 0;
+static int ga_counter = 0;
 
 
 uint8_t dev_register[0x80];
@@ -164,6 +165,7 @@ uint8_t uart_buffer[uart_buffer_size];
 
 static uint8_t uart_rx_byte;
 static uint64_t uart_rx_delay;
+static uint64_t uart_tx_delay;
 
 void MCU_DeviceWrite(uint32_t address, uint8_t data)
 {
@@ -240,6 +242,8 @@ void MCU_DeviceWrite(uint32_t address, uint8_t data)
         break;
     case DEV_TMR_TCORA:
         break;
+    case DEV_TDR:
+        break;
     case DEV_ADCSR:
     {
         dev_register[address] &= ~0x7f;
@@ -258,6 +262,8 @@ void MCU_DeviceWrite(uint32_t address, uint8_t data)
         if ((data & 0x80) == 0 && (ssr_rd & 0x80) != 0)
         {
             dev_register[address] &= ~0x80;
+            uart_tx_delay = mcu.cycles + 1000;
+            MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_UART_TX, 0);
         }
         if ((data & 0x40) == 0 && (ssr_rd & 0x40) != 0)
         {
@@ -315,7 +321,19 @@ uint8_t MCU_DeviceRead(uint32_t address)
     case 0x00:
         return 0xff;
     case DEV_P9DR:
-        return 0x02;
+    {
+        int cfg = 0;
+        if (!mcu_mk1)
+            cfg = 2; // bit 1: 0 - SC-155mk2 (???), 1 - SC-55mk2
+
+        int dir = dev_register[DEV_P9DDR];
+
+        int val = cfg & (dir ^ 0xff);
+        val |= dev_register[DEV_P9DR] & dir;
+        return val;
+    }
+    case DEV_SCR:
+        return dev_register[address];
     case DEV_IPRC:
     case DEV_IPRD:
     case DEV_DTEC:
@@ -338,6 +356,7 @@ void MCU_DeviceReset(void)
     // dev_register[0x00] = 0x03;
     // dev_register[0x7c] = 0x87;
     dev_register[DEV_RAME] = 0x80;
+    dev_register[DEV_SSR] = 0x80;
 }
 
 void MCU_UpdateAnalog(uint64_t cycles)
@@ -445,7 +464,9 @@ uint8_t MCU_Read(uint32_t address)
                 }
                 else if (address >= 0xfb80 && address < 0xff80
                     && (dev_register[DEV_RAME] & 0x80) != 0)
+                {
                     ret = ram[(address - 0xfb80) & 0x3ff];
+                }
                 else if (address >= 0x8000 && address < 0xe000)
                 {
                     ret = sram[address & 0x7fff];
@@ -466,11 +487,20 @@ uint8_t MCU_Read(uint32_t address)
                         data &= 0x80 | (((button_pressed >> 14) & 127) ^ 127);
                     return data;
                 }
+                else if (address == 0xf106)
+                {
+                    ret = ga_int_trigger;
+                    ga_int_trigger = 0;
+                    MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ1, 0);
+                }
                 else
                 {
                     printf("Unknown read %x\n", address);
                     ret = 0xff;
                 }
+                //
+                // f106:2-0 irq source
+                //
             }
         }
         break;
@@ -599,7 +629,9 @@ void MCU_Write(uint32_t address, uint8_t value)
                 }
                 else if (address >= 0xfb80 && address < 0xff80
                     && (dev_register[DEV_RAME] & 0x80) != 0)
+                {
                     ram[(address - 0xfb80) & 0x3ff] = value;
+                }
                 else if (address >= 0x8000 && address < 0xe000)
                 {
                     sram[address & 0x7fff] = value;
@@ -621,7 +653,9 @@ void MCU_Write(uint32_t address, uint8_t value)
                 }
                 else if (address >= 0xfb80 && address < 0xff80
                     && (dev_register[DEV_RAME] & 0x80) != 0)
+                {
                     ram[(address - 0xfb80) & 0x3ff] = value;
+                }
                 else if (address >= 0x8000 && address < 0xe000)
                 {
                     sram[address & 0x7fff] = value;
@@ -638,6 +672,14 @@ void MCU_Write(uint32_t address, uint8_t value)
                 else if (address == 0xf104)
                 {
                     LCD_Write(1, value);
+                }
+                else if (address == 0xf107)
+                {
+                    io_sd = value;
+                }
+                else if (address == 0xf103)
+                {
+                    ga_int_enable = value << 1; // fixme
                 }
                 else
                 {
@@ -724,7 +766,7 @@ void MCU_PostUART(uint8_t data)
     uart_write_ptr = (uart_write_ptr + 1) % uart_buffer_size;
 }
 
-void MCU_UpdateUART(void)
+void MCU_UpdateUART_RX(void)
 {
     if ((dev_register[DEV_SCR] & 16) == 0) // RX disabled
         return;
@@ -741,6 +783,24 @@ void MCU_UpdateUART(void)
     uart_read_ptr = (uart_read_ptr + 1) % uart_buffer_size;
     dev_register[DEV_SSR] |= 0x40;
     MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_UART_RX, (dev_register[DEV_SCR] & 0x40) != 0);
+}
+
+// dummy TX
+void MCU_UpdateUART_TX(void)
+{
+    if ((dev_register[DEV_SCR] & 32) == 0) // TX disabled
+        return;
+
+    if (dev_register[DEV_SSR] & 0x80)
+        return;
+
+    if (mcu.cycles < uart_tx_delay)
+        return;
+
+    dev_register[DEV_SSR] |= 0x80;
+    MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_UART_TX, (dev_register[DEV_SCR] & 0x80) != 0);
+
+    // printf("tx:%x\n", dev_register[DEV_TDR]);
 }
 
 static bool work_thread_run = false;
@@ -794,9 +854,25 @@ int SDLCALL work_thread(void* data)
         if (!mcu_mk1)
             SM_Update(mcu.cycles);
         else
-            MCU_UpdateUART();
+        {
+            MCU_UpdateUART_RX();
+            MCU_UpdateUART_TX();
+        }
 
         MCU_UpdateAnalog(mcu.cycles);
+
+        if (mcu_mk1)
+        {
+            ga_counter++;
+            if ((ga_counter & 0x3ff) == 0)
+            {
+                MCU_GA_SetGAInt(1, 1);
+            }
+            else
+            {
+                MCU_GA_SetGAInt(1, 0);
+            }
+        }
     }
     MCU_WorkThread_Unlock();
 
