@@ -395,6 +395,7 @@ enum {
 };
 
 extern int mcu_mk1;
+extern int mcu_cm300;
 
 extern SDL_atomic_t mcu_button_pressed;
 

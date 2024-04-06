@@ -215,7 +215,13 @@ void LCD_Init(void)
 
     lcd_quit_requested = false;
 
-    window = SDL_CreateWindow("SC-55mkII", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, lcd_width, lcd_height, SDL_WINDOW_SHOWN);
+    const char *title = "Nuked SC-55: SC-55mk2";
+    if (mcu_cm300)
+        title = "Nuked SC-55: CM-300/SCC-1";
+    else if (mcu_mk1)
+        title = "Nuked SC-55: SC-55mk1";
+
+    window = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, lcd_width, lcd_height, SDL_WINDOW_SHOWN);
     if (!window)
         return;
 
@@ -318,86 +324,89 @@ void LCD_Update(void)
     if (!lcd_init)
         return;
 
-    MCU_WorkThread_Lock();
-
-    if (!lcd_enable)
+    if (!mcu_cm300)
     {
-        memset(lcd_buffer, 0, sizeof(lcd_buffer));
-    }
-    else
-    {
-        memcpy(lcd_buffer, lcd_background, sizeof(lcd_buffer));
+        MCU_WorkThread_Lock();
 
-        if (0)
+        if (!lcd_enable)
         {
-            for (int i = 0; i < 4; i++)
-            {
-                for (int j = 0; j < 20; j++)
-                {
-                    uint8_t ch = LCD_Data[i * 20 + j];
-                    LCD_FontRenderStandard(i * 50, j * 34, ch);
-                }
-            }
+            memset(lcd_buffer, 0, sizeof(lcd_buffer));
         }
         else
         {
-            for (int i = 0; i < 3; i++)
-            {
-                uint8_t ch = LCD_Data[0 + i];
-                LCD_FontRenderStandard(11, 34 + i * 35, ch);
-            }
-            for (int i = 0; i < 16; i++)
-            {
-                uint8_t ch = LCD_Data[3 + i];
-                LCD_FontRenderStandard(11, 153 + i * 35, ch);
-            }
-            for (int i = 0; i < 3; i++)
-            {
-                uint8_t ch = LCD_Data[40 + i];
-                LCD_FontRenderStandard(75, 34 + i * 35, ch);
-            }
-            for (int i = 0; i < 3; i++)
-            {
-                uint8_t ch = LCD_Data[43 + i];
-                LCD_FontRenderStandard(75, 153 + i * 35, ch);
-            }
-            for (int i = 0; i < 3; i++)
-            {
-                uint8_t ch = LCD_Data[49 + i];
-                LCD_FontRenderStandard(139, 34 + i * 35, ch);
-            }
-            for (int i = 0; i < 3; i++)
-            {
-                uint8_t ch = LCD_Data[46 + i];
-                LCD_FontRenderStandard(139, 153 + i * 35, ch);
-            }
-            for (int i = 0; i < 3; i++)
-            {
-                uint8_t ch = LCD_Data[52 + i];
-                LCD_FontRenderStandard(203, 34 + i * 35, ch);
-            }
-            for (int i = 0; i < 3; i++)
-            {
-                uint8_t ch = LCD_Data[55 + i];
-                LCD_FontRenderStandard(203, 153 + i * 35, ch);
-            }
+            memcpy(lcd_buffer, lcd_background, sizeof(lcd_buffer));
 
-            for (int i = 0; i < 2; i++)
+            if (0)
             {
-                for (int j = 0; j < 4; j++)
+                for (int i = 0; i < 4; i++)
                 {
-                    uint8_t ch = LCD_Data[20 + j + i * 40];
-                    LCD_FontRenderLevel(71 + i * 88, 293 + j * 130, ch, j == 3 ? 1 : 5);
+                    for (int j = 0; j < 20; j++)
+                    {
+                        uint8_t ch = LCD_Data[i * 20 + j];
+                        LCD_FontRenderStandard(i * 50, j * 34, ch);
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 0; i < 3; i++)
+                {
+                    uint8_t ch = LCD_Data[0 + i];
+                    LCD_FontRenderStandard(11, 34 + i * 35, ch);
+                }
+                for (int i = 0; i < 16; i++)
+                {
+                    uint8_t ch = LCD_Data[3 + i];
+                    LCD_FontRenderStandard(11, 153 + i * 35, ch);
+                }
+                for (int i = 0; i < 3; i++)
+                {
+                    uint8_t ch = LCD_Data[40 + i];
+                    LCD_FontRenderStandard(75, 34 + i * 35, ch);
+                }
+                for (int i = 0; i < 3; i++)
+                {
+                    uint8_t ch = LCD_Data[43 + i];
+                    LCD_FontRenderStandard(75, 153 + i * 35, ch);
+                }
+                for (int i = 0; i < 3; i++)
+                {
+                    uint8_t ch = LCD_Data[49 + i];
+                    LCD_FontRenderStandard(139, 34 + i * 35, ch);
+                }
+                for (int i = 0; i < 3; i++)
+                {
+                    uint8_t ch = LCD_Data[46 + i];
+                    LCD_FontRenderStandard(139, 153 + i * 35, ch);
+                }
+                for (int i = 0; i < 3; i++)
+                {
+                    uint8_t ch = LCD_Data[52 + i];
+                    LCD_FontRenderStandard(203, 34 + i * 35, ch);
+                }
+                for (int i = 0; i < 3; i++)
+                {
+                    uint8_t ch = LCD_Data[55 + i];
+                    LCD_FontRenderStandard(203, 153 + i * 35, ch);
+                }
+
+                for (int i = 0; i < 2; i++)
+                {
+                    for (int j = 0; j < 4; j++)
+                    {
+                        uint8_t ch = LCD_Data[20 + j + i * 40];
+                        LCD_FontRenderLevel(71 + i * 88, 293 + j * 130, ch, j == 3 ? 1 : 5);
+                    }
                 }
             }
         }
+
+        MCU_WorkThread_Unlock();
+
+        SDL_UpdateTexture(texture, NULL, lcd_buffer, lcd_width * 4);
+        SDL_RenderCopy(renderer, texture, NULL, NULL);
+        SDL_RenderPresent(renderer);
     }
-
-    MCU_WorkThread_Unlock();
-
-    SDL_UpdateTexture(texture, NULL, lcd_buffer, lcd_width * 4);
-    SDL_RenderCopy(renderer, texture, NULL, NULL);
-    SDL_RenderPresent(renderer);
 
     SDL_Event sdl_event;
     while (SDL_PollEvent(&sdl_event))
@@ -430,7 +439,7 @@ void LCD_Update(void)
 
                 SDL_AtomicSet(&mcu_button_pressed, (int)button_pressed);
 
-#if 1
+#if 0
                 if (sdl_event.key.keysym.scancode >= SDL_SCANCODE_1 && sdl_event.key.keysym.scancode < SDL_SCANCODE_0)
                 {
 #if 0
