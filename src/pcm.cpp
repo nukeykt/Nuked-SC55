@@ -1356,26 +1356,58 @@ void PCM_Update(uint64_t cycles)
             test = addclip20(test, step2 >> 1, step2 & 1);
 
             int filter = ram2[11];
+            int v3;
 
-            int mult1 = multi(reg1, filter >> 8); // 8
-            int mult2 = multi(reg1, (filter >> 1) & 127); // 9
-            int mult3 = multi(reg1, reg2_6); // 10
+            if (mcu_mk1)
+            {
+                int mult1 = multi(reg1, filter >> 8); // 8
+                int mult2 = multi(reg1, (filter >> 1) & 127); // 9
+                int mult3 = multi(reg1, reg2_6); // 10
 
-            int v2 = addclip20(reg3, mult1 >> 6, (mult1 >> 5) & 1); // 9
-            int v1 = addclip20(v2, mult2 >> 13, (mult2 >> 12) & 1); // 10
-            int subvar = addclip20(v1, (mult3 >> 6), (mult3 >> 5) & 1); // 11
+                int v2 = addclip20(reg3, mult1 >> 6, (mult1 >> 5) & 1); // 9
+                int v1 = addclip20(v2, mult2 >> 13, (mult2 >> 12) & 1); // 10
+                int subvar = addclip20(v1, (mult3 >> 6), (mult3 >> 5) & 1); // 11
 
-            ram1[3] = v1;
+                ram1[3] = v1;
 
-            int v3 = addclip20(test, subvar ^ 0xfffff, 1); // 12
+                v3 = addclip20(test, subvar ^ 0xfffff, 1); // 12
 
-            int mult4 = multi(v3, filter >> 8);
-            int mult5 = multi(v3, (filter >> 1) & 127);
-            int v4 = addclip20(reg1, mult4 >> 6, (mult4 >> 5) & 1); // 14
-            int v5 = addclip20(v4, mult5 >> 13, (mult5 >> 12) & 1); // 15
+                int mult4 = multi(v3, filter >> 8);
+                int mult5 = multi(v3, (filter >> 1) & 127);
+                int v4 = addclip20(reg1, mult4 >> 6, (mult4 >> 5) & 1); // 14
+                int v5 = addclip20(v4, mult5 >> 13, (mult5 >> 12) & 1); // 15
+
+                ram1[1] = v5;
+            }
+            else
+            {
+                // hack: use 32-bit math to avoid overflow
+                int mult1 = reg1 * (int8_t)(filter >> 8); // 8
+                int mult2 = reg1 * (int8_t)((filter >> 1) & 127); // 9
+                int mult3 = reg1 * (int8_t)reg2_6; // 10
+
+                int v2 = reg3 + (mult1 >> 6) + ((mult1 >> 5) & 1); // 9
+                int v1 = v2 + (mult2 >> 13) + ((mult2 >> 12) & 1); // 10
+                int subvar = v1 + (mult3 >> 6) + ((mult3 >> 5) & 1); // 11
+
+                ram1[3] = v1;
+
+                int tests = test;
+                tests <<= 12;
+                tests >>= 12;
+
+                v3 = tests - subvar; // 12
+
+                int mult4 = v3 * (int8_t)(filter >> 8);
+                int mult5 = v3 * (int8_t)((filter >> 1) & 127);
+                int v4 = reg1 + (mult4 >> 6) + ((mult4 >> 5) & 1); // 14
+                int v5 = v4 + (mult5 >> 13) + ((mult5 >> 12) & 1); // 15
+
+                ram1[1] = v5;
+            }
+
 
             ram1[5] = reference;
-            ram1[1] = v5;
 
             if (active && (ram2[6] & 1) != 0 && (ram2[8] & 0x4000) == 0 && !pcm.irq_assert && irq_flag)
             {
