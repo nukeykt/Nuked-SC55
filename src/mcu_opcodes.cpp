@@ -697,6 +697,48 @@ void MCU_Opcode_Short_MOVI(uint8_t opcode)
     MCU_SetStatusCommon(data, 1);
 }
 
+void MCU_Opcode_Short_MOVF(uint8_t opcode)
+{
+    uint32_t reg = opcode & 0x07;
+    uint32_t siz = (opcode & 0x08) != 0;
+    int8_t disp = MCU_ReadCodeAdvance();
+    uint32_t addr = (mcu.r[6] + disp) & 0xffff;
+    addr |= mcu.tp << 16;
+    if ((opcode & 0x10) == 0)
+    {
+        uint16_t data;
+        if (siz)
+        {
+            data = MCU_Read16(addr);
+            mcu.r[reg] &= ~0xff;
+            mcu.r[reg] |= data;
+            MCU_SetStatusCommon(data, 0);
+        }
+        else
+        {
+            data = MCU_Read(addr);
+            mcu.r[reg] = data;
+            MCU_SetStatusCommon(data, 1);
+        }
+    }
+    else
+    {
+        uint16_t data;
+        if (siz)
+        {
+            data = mcu.r[reg] & 0xff;
+            MCU_Write(addr, data);
+            MCU_SetStatusCommon(data, 0);
+        }
+        else
+        {
+            data = mcu.r[reg];
+            MCU_Write16(addr, data);
+            MCU_SetStatusCommon(data, 1);
+        }
+    }
+}
+
 void MCU_Opcode_Short_MOVL(uint8_t opcode)
 {
     uint32_t reg = opcode & 0x07;
@@ -1212,6 +1254,19 @@ void MCU_Opcode_SHLR(uint8_t opcode, uint8_t opcode_reg)
         MCU_SetStatus(C, STATUS_C);
         MCU_SetStatusCommon(data, operand_size);
     }
+    else if (opcode_reg == 0x05 && operand_type != GENERAL_IMMEDIATE) // ROTR
+    {
+        uint32_t data = MCU_Operand_Read();
+        uint32_t C = (data & 0x1) != 0;
+        data >>= 1;
+        if (operand_size)
+            data |= C << 15;
+        else
+            data |= C << 7;
+        MCU_Operand_Write(data);
+        MCU_SetStatus(C, STATUS_C);
+        MCU_SetStatusCommon(data, operand_size);
+    }
     else
     {
         MCU_ErrorTrap();
@@ -1490,38 +1545,38 @@ void (*MCU_Operand_Table[256])(uint8_t operand) = {
     MCU_Opcode_Short_MOVS, // 7D
     MCU_Opcode_Short_MOVS, // 7E
     MCU_Opcode_Short_MOVS, // 7F
-    MCU_Opcode_Short_NotImplemented, // 80
-    MCU_Opcode_Short_NotImplemented, // 81
-    MCU_Opcode_Short_NotImplemented, // 82
-    MCU_Opcode_Short_NotImplemented, // 83
-    MCU_Opcode_Short_NotImplemented, // 84
-    MCU_Opcode_Short_NotImplemented, // 85
-    MCU_Opcode_Short_NotImplemented, // 86
-    MCU_Opcode_Short_NotImplemented, // 87
-    MCU_Opcode_Short_NotImplemented, // 88
-    MCU_Opcode_Short_NotImplemented, // 89
-    MCU_Opcode_Short_NotImplemented, // 8A
-    MCU_Opcode_Short_NotImplemented, // 8B
-    MCU_Opcode_Short_NotImplemented, // 8C
-    MCU_Opcode_Short_NotImplemented, // 8D
-    MCU_Opcode_Short_NotImplemented, // 8E
-    MCU_Opcode_Short_NotImplemented, // 8F
-    MCU_Opcode_Short_NotImplemented, // 90
-    MCU_Opcode_Short_NotImplemented, // 91
-    MCU_Opcode_Short_NotImplemented, // 92
-    MCU_Opcode_Short_NotImplemented, // 93
-    MCU_Opcode_Short_NotImplemented, // 94
-    MCU_Opcode_Short_NotImplemented, // 95
-    MCU_Opcode_Short_NotImplemented, // 96
-    MCU_Opcode_Short_NotImplemented, // 97
-    MCU_Opcode_Short_NotImplemented, // 98
-    MCU_Opcode_Short_NotImplemented, // 99
-    MCU_Opcode_Short_NotImplemented, // 9A
-    MCU_Opcode_Short_NotImplemented, // 9B
-    MCU_Opcode_Short_NotImplemented, // 9C
-    MCU_Opcode_Short_NotImplemented, // 9D
-    MCU_Opcode_Short_NotImplemented, // 9E
-    MCU_Opcode_Short_NotImplemented, // 9F
+    MCU_Opcode_Short_MOVF, // 80
+    MCU_Opcode_Short_MOVF, // 81
+    MCU_Opcode_Short_MOVF, // 82
+    MCU_Opcode_Short_MOVF, // 83
+    MCU_Opcode_Short_MOVF, // 84
+    MCU_Opcode_Short_MOVF, // 85
+    MCU_Opcode_Short_MOVF, // 86
+    MCU_Opcode_Short_MOVF, // 87
+    MCU_Opcode_Short_MOVF, // 88
+    MCU_Opcode_Short_MOVF, // 89
+    MCU_Opcode_Short_MOVF, // 8A
+    MCU_Opcode_Short_MOVF, // 8B
+    MCU_Opcode_Short_MOVF, // 8C
+    MCU_Opcode_Short_MOVF, // 8D
+    MCU_Opcode_Short_MOVF, // 8E
+    MCU_Opcode_Short_MOVF, // 8F
+    MCU_Opcode_Short_MOVF, // 90
+    MCU_Opcode_Short_MOVF, // 91
+    MCU_Opcode_Short_MOVF, // 92
+    MCU_Opcode_Short_MOVF, // 93
+    MCU_Opcode_Short_MOVF, // 94
+    MCU_Opcode_Short_MOVF, // 95
+    MCU_Opcode_Short_MOVF, // 96
+    MCU_Opcode_Short_MOVF, // 97
+    MCU_Opcode_Short_MOVF, // 98
+    MCU_Opcode_Short_MOVF, // 99
+    MCU_Opcode_Short_MOVF, // 9A
+    MCU_Opcode_Short_MOVF, // 9B
+    MCU_Opcode_Short_MOVF, // 9C
+    MCU_Opcode_Short_MOVF, // 9D
+    MCU_Opcode_Short_MOVF, // 9E
+    MCU_Opcode_Short_MOVF, // 9F
     MCU_Operand_General, // A0
     MCU_Operand_General, // A1
     MCU_Operand_General, // A2

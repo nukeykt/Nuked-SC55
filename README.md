@@ -6,7 +6,8 @@ Special thanks:
 - org/ogamespec: deroute tool.
 - SDL team.
 - Wohlstand: linux/macos port.
-- mattw
+- mattw.
+- HardWareMan.
 
 ## Status
 
