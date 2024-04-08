@@ -27,6 +27,9 @@ OSStatus EncoderDataProc(AudioConverterRef inAudioConverter, UInt32 *ioNumberDat
 class sc55AU2ExtensionDSPKernel {
 public:
     void initialize(int channelCount, double inSampleRate, const AudioStreamBasicDescription *outputFormat) {
+        nInits++;
+        printf("Init %d\n", nInits);
+
         destFormat = *outputFormat;
 
         AudioStreamBasicDescription sourceDescription;
@@ -43,10 +46,13 @@ public:
         AudioConverterNew(&sourceDescription, &destFormat, &audioConverterRef);
 
         auto path = std::string(NSBundle.mainBundle.bundleURL.absoluteString.UTF8String).substr(7) + "Contents/Resources";
-        mcu.startSC55(&path);
+        mcu = new MCU();
+        mcu->startSC55(&path);
     }
     
     void deInitialize() {
+        printf("Deinit %d\n", nInits);
+        delete mcu;
     }
     
     // MARK: - Bypass
@@ -174,7 +180,7 @@ public:
             messageBytes[1] = message.channelVoice1.note.number;
             messageBytes[2] = message.channelVoice1.note.velocity;
         }
-        mcu.postMidiSC55(messageBytes, length);
+        mcu->postMidiSC55(messageBytes, length);
     }
     
     // MARK: - Member Variables
@@ -187,9 +193,11 @@ public:
     AudioStreamBasicDescription destFormat;
 
     int16_t *lastBufferData;
+
+    int nInits = 0;
     
 public:
-    MCU mcu;
+    MCU *mcu;
 };
 
 OSStatus EncoderDataProc(AudioConverterRef inAudioConverter, UInt32 *ioNumberDataPackets,
@@ -207,7 +215,7 @@ OSStatus EncoderDataProc(AudioConverterRef inAudioConverter, UInt32 *ioNumberDat
   unsigned int dataSize = amountToWrite * 2 * 2;
   int16_t *dataBuff = (int16_t *)malloc(dataSize);
 //   memset(dataBuff, 0, dataSize);
-  _this->mcu.updateSC55(dataBuff, dataSize);
+  _this->mcu->updateSC55(dataBuff, dataSize);
   _this->lastBufferData = dataBuff;
 
   ioData->mNumberBuffers = 1;

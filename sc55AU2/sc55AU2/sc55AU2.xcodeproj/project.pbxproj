@@ -8,6 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		5E0B43372BBEEB600028D51B /* EmulatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E0B43362BBEEB600028D51B /* EmulatorView.swift */; };
+		5E0B43B72BC45C3C0028D51B /* jv880_waverom1.bin in Resources */ = {isa = PBXBuildFile; fileRef = 5E0B43B32BC45C3B0028D51B /* jv880_waverom1.bin */; };
+		5E0B43B82BC45C3C0028D51B /* jv880_rom1.bin in Resources */ = {isa = PBXBuildFile; fileRef = 5E0B43B42BC45C3C0028D51B /* jv880_rom1.bin */; };
+		5E0B43B92BC45C3C0028D51B /* jv880_waverom2.bin in Resources */ = {isa = PBXBuildFile; fileRef = 5E0B43B52BC45C3C0028D51B /* jv880_waverom2.bin */; };
+		5E0B43BA2BC45C3C0028D51B /* jv880_rom2.bin in Resources */ = {isa = PBXBuildFile; fileRef = 5E0B43B62BC45C3C0028D51B /* jv880_rom2.bin */; };
 		5E9FCCF42BBC8E25009EE67D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCCF32BBC8E25009EE67D /* ContentView.swift */; };
 		5E9FCCF82BBC8E25009EE67D /* ViewControllerRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9FCCF72BBC8E25009EE67D /* ViewControllerRepresentable.swift */; };
 		5E9FCCFB2BBC8E25009EE67D /* Synth.aif in Resources */ = {isa = PBXBuildFile; fileRef = 5E9FCCFA2BBC8E25009EE67D /* Synth.aif */; };
@@ -70,6 +74,10 @@
 
 /* Begin PBXFileReference section */
 		5E0B43362BBEEB600028D51B /* EmulatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmulatorView.swift; sourceTree = "<group>"; };
+		5E0B43B32BC45C3B0028D51B /* jv880_waverom1.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; name = jv880_waverom1.bin; path = ../../../../build/jv880_waverom1.bin; sourceTree = "<group>"; };
+		5E0B43B42BC45C3C0028D51B /* jv880_rom1.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; name = jv880_rom1.bin; path = ../../../../build/jv880_rom1.bin; sourceTree = "<group>"; };
+		5E0B43B52BC45C3C0028D51B /* jv880_waverom2.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; name = jv880_waverom2.bin; path = ../../../../build/jv880_waverom2.bin; sourceTree = "<group>"; };
+		5E0B43B62BC45C3C0028D51B /* jv880_rom2.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; name = jv880_rom2.bin; path = ../../../../build/jv880_rom2.bin; sourceTree = "<group>"; };
 		5E9FCCF02BBC8E25009EE67D /* sc55AU2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = sc55AU2.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5E9FCCF32BBC8E25009EE67D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		5E9FCCF72BBC8E25009EE67D /* ViewControllerRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewControllerRepresentable.swift; sourceTree = "<group>"; };
@@ -347,6 +355,10 @@
 		5E9FCD5D2BBCB1E8009EE67D /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				5E0B43B42BC45C3C0028D51B /* jv880_rom1.bin */,
+				5E0B43B62BC45C3C0028D51B /* jv880_rom2.bin */,
+				5E0B43B32BC45C3B0028D51B /* jv880_waverom1.bin */,
+				5E0B43B52BC45C3C0028D51B /* jv880_waverom2.bin */,
 				5E9FCD602BBCB206009EE67D /* rom_sm.bin */,
 				5E9FCD642BBCB206009EE67D /* rom1.bin */,
 				5E9FCD612BBCB206009EE67D /* rom2.bin */,
@@ -450,14 +462,18 @@
 			files = (
 				5E9FCD1D2BBC8E27009EE67D /* README.md in Resources */,
 				5E9FCD5F2BBCB1F6009EE67D /* back.data in Resources */,
+				5E0B43BA2BC45C3C0028D51B /* jv880_rom2.bin in Resources */,
 				5E9FCD362BBC8E27009EE67D /* sc55AU2ExtensionDSPKernel.hpp in Resources */,
 				5E9FCD2E2BBC8E27009EE67D /* sc55AU2ExtensionAUProcessHelper.hpp in Resources */,
 				5E9FCD662BBCB206009EE67D /* rom2.bin in Resources */,
 				5E9FCD682BBCB206009EE67D /* waverom2.bin in Resources */,
 				5E9FCD672BBCB206009EE67D /* waverom1.bin in Resources */,
+				5E0B43B72BC45C3C0028D51B /* jv880_waverom1.bin in Resources */,
 				5E9FCD652BBCB206009EE67D /* rom_sm.bin in Resources */,
 				5E9FCD692BBCB206009EE67D /* rom1.bin in Resources */,
 				5E9FCD402BBC8E27009EE67D /* Base in Resources */,
+				5E0B43B92BC45C3C0028D51B /* jv880_waverom2.bin in Resources */,
+				5E0B43B82BC45C3C0028D51B /* jv880_rom1.bin in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -651,7 +667,7 @@
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
-					"/Users/giuliozausa/personal/programming/Nuked-SC55/src/**",
+					"/Users/giuliozausa/personal/programming/Nuked-SC55/src",
 					"/opt/homebrew/Cellar/sdl2/2.28.5/include/**",
 				);
 				INFOPLIST_FILE = sc55AU2Extension/Info.plist;
@@ -690,7 +706,7 @@
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
-					"/Users/giuliozausa/personal/programming/Nuked-SC55/src/**",
+					"/Users/giuliozausa/personal/programming/Nuked-SC55/src",
 					"/opt/homebrew/Cellar/sdl2/2.28.5/include/**",
 				);
 				INFOPLIST_FILE = sc55AU2Extension/Info.plist;

@@ -1032,6 +1032,30 @@ int MCU::startSC55(std::string *basePath)
     sub_mcu.SM_Reset();
     pcm.PCM_Reset();
 
+    for (int i = 0; i < 1024 * 4; i++) {
+        if (!mcu.ex_ignore)
+            MCU_Interrupt_Handle(this);
+        else
+            mcu.ex_ignore = 0;
+
+        if (!mcu.sleep)
+            MCU_ReadInstruction();
+
+        mcu.cycles += 12; // FIXME: assume 12 cycles per instruction
+
+        // if (mcu.cycles % 24000000 == 0)
+        //     printf("seconds: %i\n", (int)(mcu.cycles / 24000000));
+
+        pcm.PCM_Update(mcu.cycles);
+
+        mcu_timer.TIMER_Clock(mcu.cycles);
+
+        if (!mcu_mk1)
+            sub_mcu.SM_Update(mcu.cycles);
+
+        MCU_UpdateAnalog(mcu.cycles);
+    }
+
     sample_write_ptr = 0;
 
     free(tempbuf);

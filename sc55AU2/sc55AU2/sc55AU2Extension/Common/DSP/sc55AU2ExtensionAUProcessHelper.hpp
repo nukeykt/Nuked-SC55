@@ -39,10 +39,12 @@ public:
             // If there are no more events, we can process the entire remaining segment and exit.
             if (nextEvent == nullptr) {
                 AUAudioFrameCount const frameOffset = frameCount - framesRemaining;
-                callProcess(outBufferList, now, framesRemaining, frameOffset);
+                callProcess(outBufferList, now, frameCount, frameOffset);
                 return;
             }
             
+            // HACK
+
             // // **** start late events late.
             // auto timeZero = AUEventSampleTime(0);
             // auto headEventTime = nextEvent->head.eventSampleTime;
