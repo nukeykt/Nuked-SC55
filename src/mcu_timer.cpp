@@ -322,9 +322,9 @@ void TIMER_Clock(uint64_t cycles)
             uint32_t value = timer.tcnt;
             uint32_t matcha = value == timer.tcora;
             uint32_t matchb = value == timer.tcorb;
-            if ((timer.tcsr & 24) == 8 && matcha)
+            if ((timer.tcr & 24) == 8 && matcha)
                 value = 0;
-            else if ((timer.tcsr & 24) == 16 && matchb)
+            else if ((timer.tcr & 24) == 16 && matchb)
                 value = 0;
             else
                 value++;
