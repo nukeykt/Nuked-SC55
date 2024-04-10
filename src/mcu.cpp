@@ -80,7 +80,7 @@ int mcu_cm300 = 0; // 0 - SC-55, 1 - CM-300/SCC-1
 static int ga_int[8];
 static int ga_int_enable = 0;
 static int ga_int_trigger = 0;
-static int ga_counter = 0;
+static int ga_lcd_counter = 0;
 
 
 uint8_t dev_register[0x80];
@@ -668,10 +668,12 @@ void MCU_Write(uint32_t address, uint8_t value)
                 else if (address == 0xf105)
                 {
                     LCD_Write(0, value);
+                    ga_lcd_counter = 500;
                 }
                 else if (address == 0xf104)
                 {
                     LCD_Write(1, value);
+                    ga_lcd_counter = 500;
                 }
                 else if (address == 0xf107)
                 {
@@ -863,14 +865,14 @@ int SDLCALL work_thread(void* data)
 
         if (mcu_mk1)
         {
-            ga_counter++;
-            if ((ga_counter & 0x3ff) == 0)
+            if (ga_lcd_counter)
             {
-                MCU_GA_SetGAInt(1, 1);
-            }
-            else
-            {
-                MCU_GA_SetGAInt(1, 0);
+                ga_lcd_counter--;
+                if (ga_lcd_counter == 0)
+                {
+                    MCU_GA_SetGAInt(1, 0);
+                    MCU_GA_SetGAInt(1, 1);
+                }
             }
         }
     }
