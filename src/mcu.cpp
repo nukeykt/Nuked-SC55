@@ -297,7 +297,7 @@ uint8_t MCU_DeviceRead(uint32_t address)
     }
     if (address >= 0x50 && address < 0x55)
     {
-        return TIMER_Read(address);
+        return TIMER_Read2(address);
     }
     switch (address)
     {
@@ -474,6 +474,10 @@ uint8_t MCU_Read(uint32_t address)
                 else if (address >= 0xf000 && address < 0xf100)
                 {
                     io_sd = address & 0xff;
+
+                    if (mcu_cm300)
+                        return 0xff;
+
                     LCD_Enable((io_sd & 8) != 0);
 
                     uint8_t data = 0xff;
@@ -679,10 +683,6 @@ void MCU_Write(uint32_t address, uint8_t value)
                 {
                     io_sd = value;
                 }
-                else if (address == 0xf103)
-                {
-                    ga_int_enable = value << 1; // fixme
-                }
                 else
                 {
                     printf("Unknown write %x %x\n", address, value);
@@ -760,6 +760,11 @@ void MCU_Reset(void)
     mcu.exception_pending = -1;
 
     MCU_DeviceReset();
+
+    if (mcu_mk1)
+    {
+        ga_int_enable = 255;
+    }
 }
 
 void MCU_PostUART(uint8_t data)
