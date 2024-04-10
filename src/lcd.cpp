@@ -322,7 +322,7 @@ void LCD_Update(void)
     if (!lcd_init)
         return;
 
-    if (!mcu_cm300)
+    if (!mcu_cm300 && !mcu_st)
     {
         MCU_WorkThread_Lock();
 

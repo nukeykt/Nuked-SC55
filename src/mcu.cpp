@@ -111,6 +111,7 @@ void MCU_ErrorTrap(void)
 
 int mcu_mk1 = 0; // 0 - SC-55mkII, SC-55ST. 1 - SC-55, CM-300/SCC-1
 int mcu_cm300 = 0; // 0 - SC-55, 1 - CM-300/SCC-1
+int mcu_st = 0; // 0 - SC-55mk2, 1 - SC-55ST
 
 static int ga_int[8];
 static int ga_int_enable = 0;
@@ -866,6 +867,10 @@ int SDLCALL work_thread(void* data)
     MCU_WorkThread_Lock();
     while (work_thread_run)
     {
+        if (pcm.config_reg_3c & 0x40)
+            sample_write_ptr &= ~3;
+        else
+            sample_write_ptr &= ~1;
         if (sample_read_ptr == sample_write_ptr)
         {
             MCU_WorkThread_Unlock();
@@ -1226,28 +1231,18 @@ int main(int argc, char *argv[])
         }
         printf("ROM set autodetect: %s\n", rs_name[romset]);
     }
-    else
-    {
-        if (mcu_mk1)
-        {
-            if (mcu_cm300)
-                romset = ROM_SET_CM300;
-            else
-                romset = ROM_SET_MK2;
-        }
-    }
 
+    mcu_mk1 = false;
+    mcu_cm300 = false;
+    mcu_st = false;
     switch (romset)
     {
-        case ROM_SET_MK2:
         case ROM_SET_ST:
-        default:
-            mcu_mk1 = false;
-            mcu_cm300 = false;
+            mcu_st = true;
             break;
         case ROM_SET_MK1:
             mcu_mk1 = true;
-            mcu_cm300 = false;
+            mcu_st = false;
             break;
         case ROM_SET_CM300:
             mcu_mk1 = true;

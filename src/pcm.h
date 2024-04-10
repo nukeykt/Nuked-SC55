@@ -63,6 +63,7 @@ struct pcm_t {
     int rcsum[2];
 };
 
+extern pcm_t pcm;
 extern uint8_t waverom1[];
 extern uint8_t waverom2[];
 extern uint8_t waverom3[];
