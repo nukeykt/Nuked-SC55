@@ -215,13 +215,11 @@ void LCD_Init(void)
 
     lcd_quit_requested = false;
 
-    const char *title = "Nuked SC-55: SC-55mk2";
-    if (mcu_cm300)
-        title = "Nuked SC-55: CM-300/SCC-1";
-    else if (mcu_mk1)
-        title = "Nuked SC-55: SC-55mk1";
+    std::string title = "Nuked SC-55: ";
 
-    window = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, lcd_width, lcd_height, SDL_WINDOW_SHOWN);
+    title += rs_name[romset];
+
+    window = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, lcd_width, lcd_height, SDL_WINDOW_SHOWN);
     if (!window)
         return;
 

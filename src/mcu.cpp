@@ -51,6 +51,41 @@
 #include <limits.h>
 #endif
 
+const char* rs_name[ROM_SET_COUNT] = {
+    "SC-55mk2",
+    "SC-55st",
+    "SC-55mk1",
+    "CM-300/SCC-1"
+};
+
+const char* roms[ROM_SET_COUNT][5] =
+{
+    "rom1.bin",
+    "rom2.bin",
+    "waverom1.bin",
+    "waverom2.bin",
+    "rom_sm.bin",
+
+    "rom1.bin",
+    "rom2_st.bin",
+    "waverom1.bin",
+    "waverom2.bin",
+    "rom_sm.bin",
+
+    "sc55_rom1.bin",
+    "sc55_rom2.bin",
+    "sc55_waverom1.bin",
+    "sc55_waverom2.bin",
+    "sc55_waverom3.bin",
+
+    "cm300_rom1.bin",
+    "cm300_rom2.bin",
+    "cm300_waverom1.bin",
+    "cm300_waverom2.bin",
+    "cm300_waverom3.bin",
+};
+
+int romset = ROM_SET_MK2;
 
 static const int ROM1_SIZE = 0x8000;
 static const int ROM2_SIZE = 0x80000;
@@ -1111,6 +1146,10 @@ int main(int argc, char *argv[])
     std::string basePath;
 
     int port = 0;
+    bool autodetect = true;
+
+    romset = ROM_SET_MK2;
+
     {
         for (int i = 1; i < argc; i++)
         {
@@ -1119,15 +1158,28 @@ int main(int argc, char *argv[])
                 port = atoi(argv[i] + 3);
                 break;
             }
+            else if (!strcmp(argv[i], "-mk2"))
+            {
+                romset = ROM_SET_MK2;
+                autodetect = false;
+                break;
+            }
+            else if (!strcmp(argv[i], "-st"))
+            {
+                romset = ROM_SET_ST;
+                autodetect = false;
+                break;
+            }
             else if (!strcmp(argv[i], "-mk1"))
             {
-                mcu_mk1 = 1;
+                romset = ROM_SET_MK1;
+                autodetect = false;
                 break;
             }
             else if (!strcmp(argv[i], "-cm300"))
             {
-                mcu_mk1 = 1;
-                mcu_cm300 = 1;
+                romset = ROM_SET_CM300;
+                autodetect = false;
                 break;
             }
         }
@@ -1150,34 +1202,67 @@ int main(int argc, char *argv[])
     if(Files::dirExists(basePath + "/../share/nuked-sc55"))
         basePath += "/../share/nuked-sc55";
 
-    std::string rpaths[5] =
+    if (autodetect)
     {
-        basePath + "/rom1.bin",
-        basePath + "/rom2.bin",
-        basePath + "/waverom1.bin",
-        basePath + "/waverom2.bin",
-        basePath + "/rom_sm.bin"
-    };
-
-    if (mcu_mk1)
-    {
-        if (mcu_cm300)
+        for (size_t i = 0; i < ROM_SET_COUNT; i++)
         {
-            rpaths[0] = basePath + "/cm300_rom1.bin";
-            rpaths[1] = basePath + "/cm300_rom2.bin";
-            rpaths[2] = basePath + "/cm300_waverom1.bin";
-            rpaths[3] = basePath + "/cm300_waverom2.bin";
-            rpaths[4] = basePath + "/cm300_waverom3.bin";
+            bool good = true;
+            for (size_t j = 0; j < 5; j++)
+            {
+                std::string path = basePath + "/" + roms[i][j];
+                auto h = Files::utf8_fopen(path.c_str(), "rb");
+                if (!h)
+                {
+                    good = false;
+                    break;
+                }
+                fclose(h);
+            }
+            if (good)
+            {
+                romset = i;
+                break;
+            }
         }
-        else
+        printf("ROM set autodetect: %s\n", rs_name[romset]);
+    }
+    else
+    {
+        if (mcu_mk1)
         {
-            rpaths[0] = basePath + "/sc55_rom1.bin";
-            rpaths[1] = basePath + "/sc55_rom2.bin";
-            rpaths[2] = basePath + "/sc55_waverom1.bin";
-            rpaths[3] = basePath + "/sc55_waverom2.bin";
-            rpaths[4] = basePath + "/sc55_waverom3.bin";
+            if (mcu_cm300)
+                romset = ROM_SET_CM300;
+            else
+                romset = ROM_SET_MK2;
         }
     }
+
+    switch (romset)
+    {
+        case ROM_SET_MK2:
+        case ROM_SET_ST:
+        default:
+            mcu_mk1 = false;
+            mcu_cm300 = false;
+            break;
+        case ROM_SET_MK1:
+            mcu_mk1 = true;
+            mcu_cm300 = false;
+            break;
+        case ROM_SET_CM300:
+            mcu_mk1 = true;
+            mcu_cm300 = true;
+            break;
+    }
+
+    std::string rpaths[5] =
+    {
+        basePath + "/" + roms[romset][0],
+        basePath + "/" + roms[romset][1],
+        basePath + "/" + roms[romset][2],
+        basePath + "/" + roms[romset][3],
+        basePath + "/" + roms[romset][4]
+    };
 
     bool r_ok = true;
     std::string errors_list;

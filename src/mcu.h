@@ -394,6 +394,19 @@ enum {
     MCU_BUTTON_PART_L = 20
 };
 
+
+enum {
+    ROM_SET_MK2 = 0,
+    ROM_SET_ST,
+    ROM_SET_MK1,
+    ROM_SET_CM300,
+    ROM_SET_COUNT
+};
+
+extern const char* rs_name[ROM_SET_COUNT];
+
+extern int romset;
+
 extern int mcu_mk1;
 extern int mcu_cm300;
 
