@@ -1161,31 +1161,26 @@ int main(int argc, char *argv[])
             if (!strncmp(argv[i], "-p:", 3))
             {
                 port = atoi(argv[i] + 3);
-                break;
             }
             else if (!strcmp(argv[i], "-mk2"))
             {
                 romset = ROM_SET_MK2;
                 autodetect = false;
-                break;
             }
             else if (!strcmp(argv[i], "-st"))
             {
                 romset = ROM_SET_ST;
                 autodetect = false;
-                break;
             }
             else if (!strcmp(argv[i], "-mk1"))
             {
                 romset = ROM_SET_MK1;
                 autodetect = false;
-                break;
             }
             else if (!strcmp(argv[i], "-cm300"))
             {
                 romset = ROM_SET_CM300;
                 autodetect = false;
-                break;
             }
         }
     }
