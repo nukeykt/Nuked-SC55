@@ -198,7 +198,10 @@ uint8_t PCM_Read(uint32_t address)
         if (address == 0x3e && pcm.irq_assert)
         {
             pcm.irq_assert = 0;
-            MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ0, 0);
+            if (mcu_jv880)
+                MCU_GA_SetGAInt(5, 0);
+            else
+                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ0, 0);
         }
 
         status |= pcm.irq_channel;
@@ -1416,7 +1419,10 @@ void PCM_Update(uint64_t cycles)
                     ram2[8] |= 0x4000;
                 pcm.irq_assert = 1;
                 pcm.irq_channel = slot;
-                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ0, 1);
+                if (mcu_jv880)
+                    MCU_GA_SetGAInt(5, 1);
+                else
+                    MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ0, 1);
             }
 
             int volmul1 = 0;

@@ -366,6 +366,21 @@ uint8_t MCU_DeviceRead(uint32_t address)
         return uart_rx_byte;
     case 0x00:
         return 0xff;
+    case DEV_P7DR:
+    {
+        if (!mcu_jv880) return 0xff;
+
+        uint8_t data = 0xff;
+        uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
+
+        if (io_sd == 0b11111011)
+            data &= ((button_pressed >> 0) & 0b11111) ^ 0xFF;
+        if (io_sd == 0b11110111)
+            data &= ((button_pressed >> 5) & 0b11111) ^ 0xFF;
+        if (io_sd == 0b11101111)
+            data &= ((button_pressed >> 10) & 0b1111) ^ 0xFF;
+        return data;
+    }
     case DEV_P9DR:
     {
         int cfg = 0;
@@ -485,11 +500,11 @@ uint8_t MCU_Read(uint32_t address)
                 {
                     ret = sram[address & 0x7fff];
                 }
-                else if (address == 0xe402)
+                else if (mcu_jv880 ? (address == 0xf402) : (address == 0xe402))
                 {
                     ret = ga_int_trigger;
                     ga_int_trigger = 0;
-                    MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ1, 0);
+                    MCU_Interrupt_SetRequest(mcu_jv880 ? INTERRUPT_SOURCE_IRQ0 : INTERRUPT_SOURCE_IRQ1, 0);
                 }
                 else
                 {
@@ -1157,7 +1172,17 @@ void MCU_GA_SetGAInt(int line, int value)
         ga_int_trigger = line;
     ga_int[line] = value;
 
-    MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ1, ga_int_trigger != 0);
+    if (mcu_jv880)
+        MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ0, ga_int_trigger != 0);
+    else
+        MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ1, ga_int_trigger != 0);
+}
+
+void MCU_EncoderTrigger(int dir)
+{
+    if (!mcu_jv880) return;
+    MCU_GA_SetGAInt(dir == 0 ? 3 : 4, 0);
+    MCU_GA_SetGAInt(dir == 0 ? 3 : 4, 1);
 }
 
 
