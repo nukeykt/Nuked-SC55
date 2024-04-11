@@ -400,6 +400,7 @@ enum {
     ROM_SET_ST,
     ROM_SET_MK1,
     ROM_SET_CM300,
+    ROM_SET_JV880,
     ROM_SET_COUNT
 };
 
@@ -410,6 +411,7 @@ extern int romset;
 extern int mcu_mk1;
 extern int mcu_cm300;
 extern int mcu_st;
+extern int mcu_jv880;
 
 extern SDL_atomic_t mcu_button_pressed;
 

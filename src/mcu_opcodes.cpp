@@ -1096,6 +1096,22 @@ void MCU_Opcode_BTSTI(uint8_t opcode, uint8_t opcode_reg)
     }
 }
 
+void MCU_Opcode_BNOTI(uint8_t opcode, uint8_t opcode_reg)
+{
+    if (operand_type != GENERAL_IMMEDIATE)
+    {
+        uint32_t data = MCU_Operand_Read();
+        uint32_t bit = opcode_reg | ((opcode & 1) << 3);
+        MCU_SetStatus((data & (1 << bit)) == 0, STATUS_Z);
+        data ^= ~(1 << bit);
+        MCU_Operand_Write(data);
+    }
+    else
+    {
+        MCU_ErrorTrap();
+    }
+}
+
 void MCU_Opcode_OR(uint8_t opcode, uint8_t opcode_reg)
 {
     uint32_t data = MCU_Operand_Read();
@@ -1250,6 +1266,19 @@ void MCU_Opcode_SHLR(uint8_t opcode, uint8_t opcode_reg)
         else
             C = (data & 0x80) != 0;
         data <<= 1;
+        MCU_Operand_Write(data);
+        MCU_SetStatus(C, STATUS_C);
+        MCU_SetStatusCommon(data, operand_size);
+    }
+    else if (opcode_reg == 0x01 && operand_type != GENERAL_IMMEDIATE) // SHAR
+    {
+        uint32_t data = MCU_Operand_Read();
+        uint32_t C;
+        if (operand_size)
+            C = (data & 0x8000) != 0;
+        else
+            C = (data & 0x80) != 0;
+        data >>= 1;
         MCU_Operand_Write(data);
         MCU_SetStatus(C, STATUS_C);
         MCU_SetStatusCommon(data, operand_size);
@@ -1704,8 +1733,8 @@ void (*MCU_Opcode_Table[32])(uint8_t opcode, uint8_t opcode_reg) = {
     MCU_Opcode_BSET, // 19
     MCU_Opcode_BCLR, // 1A
     MCU_Opcode_BCLR, // 1B
-    MCU_Opcode_NotImplemented, // 1C
-    MCU_Opcode_NotImplemented, // 1D
+    MCU_Opcode_BNOTI, // 1C
+    MCU_Opcode_BNOTI, // 1D
     MCU_Opcode_BTSTI, // 1E
     MCU_Opcode_BTSTI, // 1F
 };

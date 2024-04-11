@@ -162,16 +162,18 @@ void LCD_Write(uint32_t address, uint8_t data)
     //    printf("\n");
 }
 
-static const int lcd_width = 741;
-static const int lcd_height = 268;
+int lcd_width = 741;
+int lcd_height = 268;
+static const int lcd_width_max = 1024;
+static const int lcd_height_max = 1024;
 static SDL_Window *window;
 static SDL_Renderer *renderer;
 static SDL_Texture *texture;
 
 static std::string m_back_path = "back.data";
 
-static uint32_t lcd_buffer[lcd_height][lcd_width];
-static uint32_t lcd_background[lcd_height][lcd_width];
+static uint32_t lcd_buffer[lcd_width_max][lcd_height_max];
+static uint32_t lcd_background[741][268];
 
 static uint32_t lcd_init = 0;
 
@@ -326,22 +328,33 @@ void LCD_Update(void)
     {
         MCU_WorkThread_Lock();
 
-        if (!lcd_enable)
+        if (!lcd_enable && !mcu_jv880)
         {
             memset(lcd_buffer, 0, sizeof(lcd_buffer));
         }
         else
         {
-            memcpy(lcd_buffer, lcd_background, sizeof(lcd_buffer));
-
-            if (0)
+            if (mcu_jv880)
             {
-                for (int i = 0; i < 4; i++)
+                for (size_t i = 0; i < lcd_height; i++) {
+                    for (size_t j = 0; j < lcd_width; j++) {
+                        lcd_buffer[i][j] = 0xFF0F6FFF;
+                    }
+                }
+            }
+            else
+            {
+                memcpy(lcd_buffer, lcd_background, sizeof(lcd_buffer));
+            }
+
+            if (mcu_jv880)
+            {
+                for (int i = 0; i < 2; i++)
                 {
-                    for (int j = 0; j < 20; j++)
+                    for (int j = 0; j < 24; j++)
                     {
-                        uint8_t ch = LCD_Data[i * 20 + j];
-                        LCD_FontRenderStandard(i * 50, j * 34, ch);
+                        uint8_t ch = LCD_Data[i * 40 + j];
+                        LCD_FontRenderStandard(4 + i * 50, 4 + j * 34, ch);
                     }
                 }
             }
@@ -401,7 +414,7 @@ void LCD_Update(void)
 
         MCU_WorkThread_Unlock();
 
-        SDL_UpdateTexture(texture, NULL, lcd_buffer, lcd_width * 4);
+        SDL_UpdateTexture(texture, NULL, lcd_buffer, lcd_width_max * 4);
         SDL_RenderCopy(renderer, texture, NULL, NULL);
         SDL_RenderPresent(renderer);
     }
