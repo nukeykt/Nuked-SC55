@@ -330,6 +330,21 @@ void MCU_Jump_RTS(uint8_t operand)
     mcu.pc = MCU_PopStack();
 }
 
+void MCU_Jump_RTD(uint8_t operand)
+{
+    int16_t imm = (int8_t)MCU_ReadCodeAdvance();
+    mcu.pc = MCU_PopStack();
+
+    if (operand == 0x14)
+    {
+        mcu.r[7] += imm;
+    }
+    else if (operand == 0x1c)
+    {
+        MCU_ErrorTrap();
+    }
+}
+
 void MCU_Jump_JMP(uint8_t operand)
 {
     if (operand == 0x11)
@@ -341,6 +356,18 @@ void MCU_Jump_JMP(uint8_t operand)
         {
             mcu.cp = (uint8_t)MCU_PopStack();
             mcu.pc = MCU_PopStack();
+        }
+        else if (opcode_h == 0x19)
+        {
+            MCU_PushStack(mcu.pc);
+            MCU_PushStack(mcu.cp);
+            if (opcode_l >= 0 && opcode_l <= 3)
+                mcu.cp = mcu.dp;
+            else if (opcode_l >= 4 && opcode_l <= 5)
+                mcu.cp = mcu.ep;
+            else if (opcode_l >= 6 && opcode_l <= 7)
+                mcu.cp = mcu.tp;
+            mcu.pc = mcu.r[opcode_l];
         }
         else if (opcode_h == 0x1a)
         {
@@ -1466,7 +1493,7 @@ void (*MCU_Operand_Table[256])(uint8_t operand) = {
     MCU_Jump_JMP, // 11
     MCU_STM, // 12
     MCU_Jump_PJMP, // 13
-    MCU_Operand_NotImplemented, // 14
+    MCU_Jump_RTD, // 14
     MCU_Operand_General, // 15
     MCU_Operand_NotImplemented, // 16
     MCU_Operand_NotImplemented, // 17
@@ -1474,7 +1501,7 @@ void (*MCU_Operand_Table[256])(uint8_t operand) = {
     MCU_Jump_RTS, // 19
     MCU_Operand_Sleep, // 1A
     MCU_Operand_NotImplemented, // 1B
-    MCU_Operand_NotImplemented, // 1C
+    MCU_Jump_RTD, // 1C
     MCU_Operand_General, // 1D
     MCU_Jump_BSR, // 1E
     MCU_Operand_NotImplemented, // 1F

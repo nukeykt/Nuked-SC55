@@ -85,10 +85,10 @@ const char* roms[ROM_SET_COUNT][5] =
     "cm300_waverom2.bin",
     "cm300_waverom3.bin",
 
-    "JV880_rom1.bin",
-    "JV880_rom2.bin",
-    "JV880_waverom1.bin",
-    "JV880_waverom2.bin",
+    "jv880_rom1.bin",
+    "jv880_rom2.bin",
+    "jv880_waverom1.bin",
+    "jv880_waverom2.bin",
     "rom_sm.bin", // dummy to reach size 5
 };
 
@@ -155,7 +155,7 @@ enum {
 
 uint16_t MCU_AnalogReadPin(uint32_t pin)
 {
-    if (mcu_mk1 || mcu_jv880)
+    if (mcu_mk1)
         return 0x0;
     return 0x3ff;
     uint8_t rcu;
@@ -394,6 +394,8 @@ uint8_t MCU_DeviceRead(uint32_t address)
         return val;
     }
     case DEV_SCR:
+        if (mcu_jv880) // fixme for test mode
+            return 0x00;
         return dev_register[address];
     case DEV_IPRC:
     case DEV_IPRD:
@@ -614,7 +616,7 @@ uint8_t MCU_Read(uint32_t address)
         if (!mcu_jv880)
             ret = rom2[address_rom & rom2_mask];
         else
-            ret = cardram[address & 0x7fff]; // unsure
+            ret = cardram[address & 0x7fff]; // FIXME
         break;
     case 10:
     case 11:
@@ -626,7 +628,7 @@ uint8_t MCU_Read(uint32_t address)
     case 12:
     case 13:
         if (mcu_jv880)
-            ret = nvram[address & 0x7fff]; // unsure
+            ret = nvram[address & 0x7fff]; // FIXME
         else
             ret = 0xff;
         break;
@@ -783,11 +785,11 @@ void MCU_Write(uint32_t address, uint8_t value)
     }
     else if (page == 12 && mcu_jv880)
     {
-        nvram[address & 0x7fff] = value; // unsure
+        nvram[address & 0x7fff] = value; // FIXME
     }
     else if (page == 14 && mcu_jv880)
     {
-        cardram[address & 0x7fff] = value; // unsure
+        cardram[address & 0x7fff] = value; // FIXME
     }
     else
     {
