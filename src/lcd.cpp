@@ -172,8 +172,8 @@ static SDL_Texture *texture;
 
 static std::string m_back_path = "back.data";
 
-static uint32_t lcd_buffer[lcd_width_max][lcd_height_max];
-static uint32_t lcd_background[741][268];
+static uint32_t lcd_buffer[lcd_height_max][lcd_width_max];
+static uint32_t lcd_background[268][741];
 
 static uint32_t lcd_init = 0;
 
@@ -344,7 +344,11 @@ void LCD_Update(void)
             }
             else
             {
-                memcpy(lcd_buffer, lcd_background, sizeof(lcd_buffer));
+                for (size_t i = 0; i < lcd_height; i++) {
+                    for (size_t j = 0; j < lcd_width; j++) {
+                        lcd_buffer[i][j] = lcd_background[i][j];
+                    }
+                }
             }
 
             if (mcu_jv880)
