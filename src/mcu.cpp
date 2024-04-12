@@ -94,10 +94,9 @@ static const int SRAM_SIZE = 0x8000;
 static const int ROMSM_SIZE = 0x1000;
 
 
-static const int audio_buffer_size = 16384;
-static const int audio_page_size = 512;
-
-static short sample_buffer[audio_buffer_size];
+static int audio_buffer_size;
+static int audio_page_size;
+static short *sample_buffer;
 
 static int sample_read_ptr;
 static int sample_write_ptr;
@@ -1054,16 +1053,28 @@ static const char* audio_format_to_str(int format)
     return "UNK";
 }
 
-int MCU_OpenAudio(int deviceIndex)
+int MCU_OpenAudio(int deviceIndex, int pageSize, int pageNum)
 {
     SDL_AudioSpec spec = {};
     SDL_AudioSpec spec_actual = {};
 
+    audio_page_size = (pageSize/2)*2; // must be even
+    audio_buffer_size = audio_page_size*pageNum;
+    
     spec.format = AUDIO_S16SYS;
     spec.freq = mcu_mk1 ? 64000: 66207;
     spec.channels = 2;
     spec.callback = audio_callback;
     spec.samples = audio_page_size / 4;
+    
+    sample_buffer = (short*)calloc(audio_buffer_size, sizeof(short));
+    if (!sample_buffer)
+    {
+        printf("Cannot allocate audio buffer.\n");
+        return 0;
+    }
+    sample_read_ptr = 0;
+    sample_write_ptr = 0;
     
     int num = SDL_GetNumAudioDevices(0);
     if (num == 0)
@@ -1101,9 +1112,6 @@ int MCU_OpenAudio(int deviceIndex)
            spec_actual.samples);
     fflush(stdout);
 
-    sample_read_ptr = 0;
-    sample_write_ptr = 0;
-
     SDL_PauseAudioDevice(sdl_audio, 0);
 
     return 1;
@@ -1112,6 +1120,7 @@ int MCU_OpenAudio(int deviceIndex)
 void MCU_CloseAudio(void)
 {
     SDL_CloseAudio();
+    if (sample_buffer) free(sample_buffer);
 }
 
 void MCU_PostSample(int *sample)
@@ -1169,6 +1178,8 @@ int main(int argc, char *argv[])
 
     int port = 0;
     int audioDeviceIndex = -1;
+    int pageSize = 512;
+    int pageNum = 32;
     bool autodetect = true;
 
     romset = ROM_SET_MK2;
@@ -1180,9 +1191,25 @@ int main(int argc, char *argv[])
             {
                 port = atoi(argv[i] + 3);
             }
-            else if (!strncmp(argv[i], "-a:", 3))
+            else if (!strncmp(argv[i], "-d:", 3))
             {
-                audioDeviceIndex = atoi(argv[i] + 3);
+                char* pColon = argv[i];
+                
+                do {
+                    if (!(pColon = strchr(pColon, ':')) || pColon[1] == 0) break;
+                    audioDeviceIndex = atoi(++pColon);
+                } while (0);
+            }
+            else if (!strncmp(argv[i], "-ab:", 4))
+            {
+                char* pColon = argv[i];
+                
+                do {
+                    if (!(pColon = strchr(pColon, ':')) || pColon[1] == 0) break;
+                    pageSize = atoi(++pColon);
+                    if (!(pColon = strchr(pColon, ':')) || pColon[1] == 0) break;
+                    pageNum = atoi(++pColon);
+                } while (0);
             }
             else if (!strcmp(argv[i], "-mk2"))
             {
@@ -1400,7 +1427,7 @@ int main(int argc, char *argv[])
         return 2;
     }
 
-    if (!MCU_OpenAudio(audioDeviceIndex))
+    if (!MCU_OpenAudio(audioDeviceIndex, pageSize, pageNum))
     {
         fprintf(stderr, "FATAL ERROR: Failed to open the audio stream.\n");
         fflush(stderr);
