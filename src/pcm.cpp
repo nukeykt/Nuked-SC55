@@ -40,8 +40,9 @@
 
 pcm_t pcm;
 uint8_t waverom1[0x200000];
-uint8_t waverom2[0x100000];
+uint8_t waverom2[0x200000];
 uint8_t waverom3[0x100000];
+uint8_t waverom_exp[0x800000];
 
 uint8_t PCM_ReadROM(uint32_t address)
 {
@@ -58,9 +59,19 @@ uint8_t PCM_ReadROM(uint32_t address)
             else
                 return waverom1[address & 0x1fffff];
         case 1:
-            return waverom2[address & 0xfffff];
+            if (!mcu_jv880)
+                return waverom2[address & 0xfffff];
+            else
+                return waverom2[address & 0x1fffff];
         case 2:
+            if (mcu_jv880) return 0;
             return waverom3[address & 0xfffff];
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+            if (mcu_jv880)
+                return waverom_exp[(address & 0xfffff) + (bank - 3) * 0x100000];
         default:
             break;
     }

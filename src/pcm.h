@@ -45,7 +45,7 @@ struct pcm_t {
     uint32_t wave_read_address;
     uint8_t wave_byte_latch;
     uint32_t read_latch;
-    uint8_t config_reg_3c;
+    uint8_t config_reg_3c; // SC55:c3 JV880:c0
     uint8_t config_reg_3d;
     uint32_t irq_channel;
     uint32_t irq_assert;
@@ -67,6 +67,7 @@ extern pcm_t pcm;
 extern uint8_t waverom1[];
 extern uint8_t waverom2[];
 extern uint8_t waverom3[];
+extern uint8_t waverom_exp[];
 
 void PCM_Write(uint32_t address, uint8_t data);
 uint8_t PCM_Read(uint32_t address);

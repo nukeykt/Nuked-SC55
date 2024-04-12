@@ -89,7 +89,7 @@ const char* roms[ROM_SET_COUNT][5] =
     "jv880_rom2.bin",
     "jv880_waverom1.bin",
     "jv880_waverom2.bin",
-    "rom_sm.bin", // dummy to reach size 5
+    "SR-JV80-01 Pop - CS 0x3F1CF705.bin",
 };
 
 int romset = ROM_SET_MK2;
@@ -379,6 +379,8 @@ uint8_t MCU_DeviceRead(uint32_t address)
             data &= ((button_pressed >> 5) & 0b11111) ^ 0xFF;
         if (io_sd == 0b11101111)
             data &= ((button_pressed >> 10) & 0b1111) ^ 0xFF;
+
+        data |= 0b10000000;
         return data;
     }
     case DEV_P9DR:
@@ -1041,7 +1043,7 @@ void MCU_WriteP1(uint8_t data)
     mcu_p1_data = data;
 }
 
-uint8_t tempbuf[0x200000];
+uint8_t tempbuf[0x800000];
 
 void unscramble(uint8_t *src, uint8_t *dst, int len)
 {
@@ -1412,6 +1414,38 @@ int main(int argc, char *argv[])
         }
 
         unscramble(tempbuf, waverom3, 0x100000);
+    }
+    else if (mcu_jv880)
+    {
+        if (fread(tempbuf, 1, 0x200000, s_rf[2]) != 0x200000)
+        {
+            fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom1.\n");
+            fflush(stderr);
+            closeAllR();
+            return 1;
+        }
+
+        unscramble(tempbuf, waverom1, 0x200000);
+
+        if (fread(tempbuf, 1, 0x200000, s_rf[3]) != 0x200000)
+        {
+            fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom2.\n");
+            fflush(stderr);
+            closeAllR();
+            return 1;
+        }
+
+        unscramble(tempbuf, waverom2, 0x200000);
+
+        if (fread(tempbuf, 1, 0x800000, s_rf[4]) != 0x800000)
+        {
+            fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom EXP.\n");
+            fflush(stderr);
+            closeAllR();
+            return 1;
+        }
+
+        unscramble(tempbuf, waverom_exp, 0x800000);
     }
     else
     {
