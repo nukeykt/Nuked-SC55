@@ -1115,7 +1115,7 @@ int MCU_OpenAudio(void)
     SDL_AudioSpec spec_actual = {};
 
     spec.format = AUDIO_S16SYS;
-    spec.freq = (mcu_mk1 || mcu_jv880) ? 64000: 66207;
+    spec.freq = (mcu_mk1 || mcu_jv880) ? 64000 : 66207;
     spec.channels = 2;
     spec.callback = audio_callback;
     spec.samples = audio_page_size / 4;
