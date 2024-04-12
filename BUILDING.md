@@ -6,6 +6,10 @@
 
 ## Windows
 
+### VisualStudio 2022
+
+**Note:** add /ENTRY:WinMainCRTStartup to the linker flags of "nuked-sc55".
+
 ### MSYS2
 
 [MSYS2](https://www.msys2.org/wiki/MSYS2-installation/)-**MSYS2 MinGW32** shell
