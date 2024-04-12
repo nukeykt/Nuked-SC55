@@ -1065,9 +1065,9 @@ int MCU_OpenAudio(int deviceIndex)
     spec.callback = audio_callback;
     spec.samples = audio_page_size / 4;
     
-    const char* audioDevicename = SDL_GetAudioDeviceName(deviceIndex, 0);
+    const char* audioDevicename = deviceIndex == -1 ? "Default device" : SDL_GetAudioDeviceName(deviceIndex, 0);
 
-    sdl_audio = SDL_OpenAudioDevice(audioDevicename, 0, &spec, &spec_actual, 0);
+    sdl_audio = SDL_OpenAudioDevice(deviceIndex == -1 ? NULL : audioDevicename, 0, &spec, &spec_actual, 0);
     if (!sdl_audio)
     {
         return 0;
@@ -1155,7 +1155,7 @@ int main(int argc, char *argv[])
     std::string basePath;
 
     int port = 0;
-    int audioDeviceIndex = 0;
+    int audioDeviceIndex = -1;
     bool autodetect = true;
 
     romset = ROM_SET_MK2;
