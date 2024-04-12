@@ -8,7 +8,7 @@
 
 ### VisualStudio 2022
 
-**Note:** add /ENTRY:WinMainCRTStartup to the linker flags of "nuked-sc55".
+**Note:** add /ENTRY:WinMainCRTStartup to the linker flags of "nuked-sc55"
 
 ### MSYS2
 
