@@ -361,13 +361,8 @@ void MCU_Jump_JMP(uint8_t operand)
         {
             MCU_PushStack(mcu.pc);
             MCU_PushStack(mcu.cp);
-            if (opcode_l >= 0 && opcode_l <= 3)
-                mcu.cp = mcu.dp;
-            else if (opcode_l >= 4 && opcode_l <= 5)
-                mcu.cp = mcu.ep;
-            else if (opcode_l >= 6 && opcode_l <= 7)
-                mcu.cp = mcu.tp;
-            mcu.pc = mcu.r[opcode_l];
+            mcu.cp = mcu.r[opcode_l] & 0xff;
+            mcu.pc = mcu.r[opcode_l + 1];
         }
         else if (opcode_h == 0x1a)
         {
