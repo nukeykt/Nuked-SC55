@@ -1127,8 +1127,8 @@ void MCU_Opcode_BNOTI(uint8_t opcode, uint8_t opcode_reg)
         uint32_t data = MCU_Operand_Read();
         uint32_t bit = opcode_reg | ((opcode & 1) << 3);
         MCU_SetStatus((data & (1 << bit)) == 0, STATUS_Z);
-        data ^= ~(1 << bit);
-        // MCU_Operand_Write(data); FIXME ??
+        data ^= (1 << bit);
+        MCU_Operand_Write(data); 
     }
     else
     {
