@@ -338,6 +338,8 @@ void MCU_Jump_RTD(uint8_t operand)
     if (operand == 0x14)
     {
         mcu.r[7] += imm;
+        if (mcu.r[7] & 1)
+            MCU_ErrorTrap();
     }
     else if (operand == 0x1c)
     {
@@ -1295,11 +1297,7 @@ void MCU_Opcode_SHLR(uint8_t opcode, uint8_t opcode_reg)
     else if (opcode_reg == 0x01 && operand_type != GENERAL_IMMEDIATE) // SHAR
     {
         uint32_t data = MCU_Operand_Read();
-        uint32_t C;
-        if (operand_size)
-            C = (data & 0x8000) != 0;
-        else
-            C = (data & 0x80) != 0;
+        uint32_t C = data & 0x1;
         data >>= 1;
         MCU_Operand_Write(data);
         MCU_SetStatus(C, STATUS_C);
