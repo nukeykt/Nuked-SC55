@@ -1065,15 +1065,28 @@ int MCU_OpenAudio(int deviceIndex)
     spec.callback = audio_callback;
     spec.samples = audio_page_size / 4;
     
+    int num = SDL_GetNumAudioDevices(0);
+    if (num == 0)
+    {
+        printf("No audio output device found.\n");
+        return 0;
+    }
+    
+    if (deviceIndex < -1 || deviceIndex >= num)
+    {
+        printf("Out of range audio device index is requested. Default audio output device is selected.\n");
+        deviceIndex = -1;
+    }
+    
     const char* audioDevicename = deviceIndex == -1 ? "Default device" : SDL_GetAudioDeviceName(deviceIndex, 0);
-
+    
     sdl_audio = SDL_OpenAudioDevice(deviceIndex == -1 ? NULL : audioDevicename, 0, &spec, &spec_actual, 0);
     if (!sdl_audio)
     {
         return 0;
     }
-    
-    printf("Audio Device: %s\n", audioDevicename);
+
+    printf("Audio device: %s\n", audioDevicename);
 
     printf("Audio Requested: F=%s, C=%d, R=%d, B=%d\n",
            audio_format_to_str(spec.format),
