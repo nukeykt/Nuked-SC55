@@ -172,18 +172,14 @@ endif()
 include(3rdparty/Utf8Main/utf8main.cmake)
 
 if(NOT WIN32 AND PKG_CONFIG_FOUND)
-    set(USE_RTMIDI TRUE)
-    option(USE_SYSTEM_RTMIDI "Use system libraries for RtMidi" OFF)
+    set(USE_PORTMIDI TRUE)
+    option(USE_SYSTEM_PORTMIDI "Use system libraries for PortMidi" OFF)
 endif()
 
 find_package(SDL2 REQUIRED)
 
-if(USE_RTMIDI)
-    if(USE_SYSTEM_RTMIDI)
-        pkg_check_modules(SYSTEM_RTMIDI rtmidi REQUIRED)
-    else()
-        include(RtMidi)
-    endif()
+if(USE_PORTMIDI)
+    add_subdirectory(3rdparty/portmidi)
 endif()
 
 
@@ -200,8 +196,8 @@ set(SC55_SRC
     src/utils/files.cpp src/utils/files.h
 )
 
-if(USE_RTMIDI)
-    list(APPEND SC55_SRC src/midi_rtmidi.cpp)
+if(USE_PORTMIDI)
+    list(APPEND SC55_SRC src/midi_portmidi.cpp)
 elseif(WIN32)
     list(APPEND SC55_SRC src/midi_win32.cpp)
 endif()
@@ -217,14 +213,8 @@ else()
     target_link_libraries(nuked-sc55 PRIVATE ${SDL2_LIBRARIES})
 endif()
 
-if(USE_RTMIDI)
-    if(USE_SYSTEM_RTMIDI)
-        target_compile_options(nuked-sc55 PRIVATE ${SYSTEM_RTMIDI_CFLAGS})
-        target_include_directories(nuked-sc55 PRIVATE ${SYSTEM_RTMIDI_INCLUDE_DIRS})
-        target_link_libraries(nuked-sc55 PRIVATE ${SYSTEM_RTMIDI_LIBRARIES})
-    else()
-        target_link_libraries(nuked-sc55 PRIVATE RtMidi)
-    endif()
+if(USE_PORTMIDI)
+    target_link_libraries(nuked-sc55 PRIVATE portmidi)
 endif()
 
 if(WIN32)

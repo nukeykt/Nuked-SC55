@@ -35,4 +35,5 @@
 
 int MIDI_Init(int port);
 void MIDI_Quit(void);
+void MIDI_Update(void);
 

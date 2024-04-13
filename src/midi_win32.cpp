@@ -150,3 +150,7 @@ void MIDI_Quit()
         midi_handle = 0;
     }
 }
+
+void MIDI_Update()
+{
+}
