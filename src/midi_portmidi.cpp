@@ -13,37 +13,37 @@ void MIDI_Update()
     while (Pm_Read(midiInStream, &event, 1)) {
         uint8_t command = (Pm_MessageStatus(event.message) >> 4);
 
-        SM_PostUART(Pm_MessageStatus(event.message));
+        MCU_PostUART(Pm_MessageStatus(event.message));
 
         if (sysExMode && Pm_MessageStatus(event.message) == 0xF7) {
             sysExMode = false;
         } else if (sysExMode || Pm_MessageStatus(event.message) == 0xF0) {
             sysExMode = true;
-            SM_PostUART(Pm_MessageData1(event.message));
+            MCU_PostUART(Pm_MessageData1(event.message));
             if (Pm_MessageData1(event.message) == 0xF7) {
                 sysExMode = false;
                 return;
             }
-            SM_PostUART(Pm_MessageData2(event.message));
+            MCU_PostUART(Pm_MessageData2(event.message));
             if (Pm_MessageData2(event.message) == 0xF7) {
                 sysExMode = false;
                 return;
             }
-            SM_PostUART((((event.message) >> 24) & 0xFF));
+            MCU_PostUART((((event.message) >> 24) & 0xFF));
             if ((((event.message) >> 24) & 0xFF) == 0xF7) {
                 sysExMode = false;
                 return;
             }
         } else if (command == 0xC || command == 0xD || Pm_MessageStatus(event.message) == 0xF3) {
-            SM_PostUART(Pm_MessageData1(event.message));
+            MCU_PostUART(Pm_MessageData1(event.message));
         } else if (command == 0x8 || command == 0x9 || command == 0xA || command == 0xB || command == 0xE){
-            SM_PostUART(Pm_MessageData1(event.message));
-            SM_PostUART(Pm_MessageData2(event.message));
+            MCU_PostUART(Pm_MessageData1(event.message));
+            MCU_PostUART(Pm_MessageData2(event.message));
         }
     }
 }
 
-int MIDI_Init(void)
+int MIDI_Init(int port)
 {
     Pm_Initialize();
 
