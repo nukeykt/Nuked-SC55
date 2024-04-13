@@ -147,7 +147,16 @@ uint16_t MCU_AnalogReadPin(uint32_t pin)
 {
     if (mcu_mk1)
         return 0x0;
-    return 0x3ff;
+    
+    //printf("%d:%d\n",pin,(io_sd >> 2) & 3);
+
+    if(((io_sd >> 2) & 3 ) == 0){ //The Battery
+        return 0x25c;//2.9V
+    }
+
+    return 0x3ff;//keep return 0x3ff or cannot recv midi
+
+
     uint8_t rcu;
     if (pin == 7)
     {

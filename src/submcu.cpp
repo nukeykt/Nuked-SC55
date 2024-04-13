@@ -419,6 +419,31 @@ void SM_Opcode_LDX(uint8_t opcode) // a2, a6, ae, b6, be
     SM_Update_NZ(sm.x);
 }
 
+void SM_Opcode_LDY(uint8_t opcode) // a0, a4, ac, b4, bc
+{
+    uint8_t val = 0;
+    switch (opcode)
+    {
+        case 0xa0:
+            val = SM_ReadAdvance();
+            break;
+        case 0xa4:
+            val = SM_Read(SM_ReadAdvance());
+            break;
+        case 0xac:
+            val = SM_Read((SM_ReadAdvance() + sm.x) & 0xff);
+            break;
+        case 0xb4:
+            val = SM_Read(SM_ReadAdvance16());
+            break;
+        case 0xbc:
+            val = SM_Read(SM_ReadAdvance16() + sm.x);
+            break;
+    }
+    sm.y = val;
+    SM_Update_NZ(sm.y);
+}
+
 void SM_Opcode_TXS(uint8_t opcode) // 9a
 {
     sm.s = sm.x;
@@ -467,6 +492,12 @@ void SM_Opcode_INX(uint8_t opcode) // e8
     SM_Update_NZ(sm.x);
 }
 
+void SM_Opcode_INY(uint8_t opcode) // c8
+{
+    sm.y++;
+    SM_Update_NZ(sm.y);
+}
+
 void SM_Opcode_BBC_BBS(uint8_t opcode)
 {
     int32_t zp = (opcode & 4) != 0;
@@ -507,6 +538,26 @@ void SM_Opcode_CPX(uint8_t opcode) // e0, e4, ec
             break;
     }
     int diff = sm.x - operand;
+    SM_SetStatus((diff & 0x100) == 0, SM_STATUS_C);
+    SM_Update_NZ(diff & 0xff);
+}
+
+void SM_Opcode_CPY(uint8_t opcode) // c0, c4, cc
+{
+    uint8_t operand = 0;
+    switch (opcode)
+    {
+        case 0xc0:
+            operand = SM_ReadAdvance();
+            break;
+        case 0xc4:
+            operand = SM_Read(SM_ReadAdvance());
+            break;
+        case 0xcc:
+            operand = SM_Read(SM_ReadAdvance16());
+            break;
+    }
+    int diff = sm.y - operand;
     SM_SetStatus((diff & 0x100) == 0, SM_STATUS_C);
     SM_Update_NZ(diff & 0xff);
 }
@@ -845,6 +896,25 @@ void SM_Opcode_STX(uint8_t opcode) // 86 96 8e
     SM_Write(dest, sm.x);
 }
 
+void SM_Opcode_STY(uint8_t opcode) // 84 8c 94
+{
+    uint16_t dest = 0;
+    switch (opcode)
+    {
+        case 0x84:
+            dest = SM_ReadAdvance();
+            break;
+        case 0x94:
+            dest = SM_ReadAdvance() + sm.y;
+            break;
+        case 0x8c:
+            dest = SM_ReadAdvance16();
+            break;
+    }
+
+    SM_Write(dest, sm.y);
+}
+
 void SM_Opcode_SEC(uint8_t opcode) // 38
 {
     SM_SetStatus(1, SM_STATUS_C);
@@ -1087,7 +1157,7 @@ void (*SM_Opcode_Table[256])(uint8_t opcode)
     SM_Opcode_STA, // 81
     SM_Opcode_NotImplemented, // 82
     SM_Opcode_BBC_BBS, // 83
-    SM_Opcode_NotImplemented, // 84
+    SM_Opcode_STY, // 84
     SM_Opcode_STA, // 85
     SM_Opcode_STX, // 86
     SM_Opcode_BBC_BBS, // 87
@@ -1095,7 +1165,7 @@ void (*SM_Opcode_Table[256])(uint8_t opcode)
     SM_Opcode_NotImplemented, // 89
     SM_Opcode_TXA, // 8a
     SM_Opcode_SEB_CLB, // 8b
-    SM_Opcode_NotImplemented, // 8c
+    SM_Opcode_STY, // 8c
     SM_Opcode_STA, // 8d
     SM_Opcode_STX, // 8e
     SM_Opcode_SEB_CLB, // 8f
@@ -1103,7 +1173,7 @@ void (*SM_Opcode_Table[256])(uint8_t opcode)
     SM_Opcode_STA, // 91
     SM_Opcode_NotImplemented, // 92
     SM_Opcode_BBC_BBS, // 93
-    SM_Opcode_NotImplemented, // 94
+    SM_Opcode_STY, // 94
     SM_Opcode_STA, // 95
     SM_Opcode_STX, // 96
     SM_Opcode_BBC_BBS, // 97
@@ -1119,7 +1189,7 @@ void (*SM_Opcode_Table[256])(uint8_t opcode)
     SM_Opcode_LDA, // a1
     SM_Opcode_LDX, // a2
     SM_Opcode_BBC_BBS, // a3
-    SM_Opcode_NotImplemented, // a4
+    SM_Opcode_LDY, // a4
     SM_Opcode_LDA, // a5
     SM_Opcode_LDX, // a6
     SM_Opcode_BBC_BBS, // a7
@@ -1147,7 +1217,7 @@ void (*SM_Opcode_Table[256])(uint8_t opcode)
     SM_Opcode_LDA, // bd
     SM_Opcode_LDX, // be
     SM_Opcode_SEB_CLB, // bf
-    SM_Opcode_NotImplemented, // c0
+    SM_Opcode_CPY, // c0
     SM_Opcode_CMP, // c1
     SM_Opcode_NotImplemented, // c2
     SM_Opcode_BBC_BBS, // c3
@@ -1155,7 +1225,7 @@ void (*SM_Opcode_Table[256])(uint8_t opcode)
     SM_Opcode_CMP, // c5
     SM_Opcode_DEC, // c6
     SM_Opcode_BBC_BBS, // c7
-    SM_Opcode_NotImplemented, // c8
+    SM_Opcode_INY, // c8
     SM_Opcode_CMP, // c9
     SM_Opcode_NotImplemented, // ca
     SM_Opcode_SEB_CLB, // cb
