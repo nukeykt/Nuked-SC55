@@ -71,7 +71,7 @@ uint8_t PCM_ReadROM(uint32_t address)
         case 5:
         case 6:
             if (mcu_jv880)
-                return waverom_exp[(address & 0xfffff) + (bank - 3) * 0x100000];
+                return waverom_exp[(address & 0x1fffff) + (bank - 3) * 0x200000];
         default:
             break;
     }
