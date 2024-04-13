@@ -396,8 +396,8 @@ uint8_t MCU_DeviceRead(uint32_t address)
         return val;
     }
     case DEV_SCR:
-        if (mcu_jv880) // fixme for test mode
-            return 0x00;
+    case DEV_TDR:
+    case DEV_SMR:
         return dev_register[address];
     case DEV_IPRC:
     case DEV_IPRD:
