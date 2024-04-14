@@ -834,7 +834,7 @@ void MCU_Opcode_MOVG_Immediate(uint8_t opcode, uint8_t opcode_reg)
     else if (opcode_reg == 4 && (operand_type == GENERAL_INDIRECT || operand_type == GENERAL_ABSOLUTE) && operand_size == OPERAND_WORD) // FIXME
     {
         uint32_t t1 = MCU_Operand_Read();
-        uint32_t t2 = MCU_ReadCodeAdvance();
+        uint32_t t2 = (uint16_t)((int8_t)MCU_ReadCodeAdvance());
         MCU_SUB_Common(t1, t2, 0, OPERAND_WORD);
     }
     else if (opcode_reg == 5 && (operand_type == GENERAL_INDIRECT || operand_type == GENERAL_ABSOLUTE) && operand_size == OPERAND_WORD)
