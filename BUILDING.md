@@ -36,6 +36,13 @@ $ cmake -G Xcode .
 
 ### VisualStudio 2022
 
+**install prerequisites:**
+```
+Git for Windows
+vcpkg
+```
+Read the [guide](https://vcpkg.io/en/getting-started) from the official vcpkg website.
+
 **Note:** add /ENTRY:WinMainCRTStartup to the linker flags of "nuked-sc55"
 
 ### MSYS2
