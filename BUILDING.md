@@ -4,6 +4,34 @@
 
 ## MacOS
 
+### Xcode
+
+
+**install prerequisites (brew/macports - untested):**
+```
+git
+cmake
+SDL2
+SDL2_image
+```
+
+open terminal.app
+
+`git clone --recurse-submodules https://github.com/nukeykt/Nuked-SC55.git`
+
+create an Xcode project:
+
+```
+$ cd Nuked-SC55
+$ cmake -G Xcode .
+```
+
+- open created Xcode project
+- Product -> Scheme -> Edit Scheme -> Build Configuration set to Release
+- build
+- copy data/back.data the same directory as built binary
+
+
 ## Windows
 
 ### VisualStudio 2022
@@ -24,7 +52,7 @@ Note: you are asked twice to make a selection - just press "Return"/"Enter" to s
 **use `msys2mingw32-build-release.sh`**
 
 ```
-git clone --recursive https://github.com/nukeykt/Nuked-SC55.git
+git clone --recurse-submodules https://github.com/nukeykt/Nuked-SC55.git
 cd ./Nuked-SC55
 sh ./msys2mingw32-build-release.sh
 ```
