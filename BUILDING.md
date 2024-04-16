@@ -121,6 +121,7 @@ pacman -S base-devel libtool pkg-config make gettext gcc git cmake mingw-w64-i68
 ```
 note: you are asked twice to make a selection - just press "Return"/"Enter" to select all
 
+#### **build:**
 
 #### **use `msys2mingw32-build-release.sh`**
 
