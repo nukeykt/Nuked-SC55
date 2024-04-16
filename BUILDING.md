@@ -97,7 +97,8 @@ vcpkg install SDL2 SDL2-image
 setx SDL2_DIR %VCPKG_PATH%\installed\x64-windows\share\sdl2
 ```
 
-- ##### build
+#### **build:**
+
 ###### **example in new cmd:**
 
 ```
