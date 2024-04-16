@@ -67,7 +67,29 @@ in cmd:
 winget install Git.Git
 ```
 
+**[manual handling of SDL2 dependency](#underlined-text)**
+
+#### **build:**
+
+note: example msvc-build-release64.cmd uses hardcoded urls for SDL2-download and thus might fail  
+use VCPKG-version described [below](https://github.com/000MDK/Nuked-SC55/edit/building.md/BUILDING.md#vcpkg-handling-of-sdl2-dependency) instead.
+
+#### **use `msvc-build-release64.cmd`**
+
+in new cmd:
+
+```
+git clone --recurse-submodules https://github.com/nukeykt/Nuked-SC55.git
+cd .\Nuked-SC55
+.\msvc-build-release64.cmd
+```
+
+**[VCPKG handling of SDL2 dependency](#underlined-text)**
+
+#### **install prerequisites:**
+
 - ##### [vcpkg](https://github.com/microsoft/vcpkg):
+
 in new cmd:
 ```
 c:
@@ -99,21 +121,21 @@ vcpkg install SDL2 SDL2-image
 
 #### **build:**
 
-###### **example in new cmd:**
+#### **use `msvc-vcpkg-build-release64.cmd`**
+
+in new cmd:
 
 ```
 git clone --recurse-submodules https://github.com/nukeykt/Nuked-SC55.git
 cd .\Nuked-SC55
-cmake . -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -G"Visual Studio 17 2022"
-cmake --build . --config Release
-copy .\data\back.data .\Release
-explorer .\Release
+.\msvc-vcpkg-build-release64.cmd
 ```
+
 ###### note: if SDL2 can't be found use
 
 `setx SDL2_DIR %VCPKG_PATH%\installed\x64-windows\share\sdl2` (permanent, must reopen cmd to use) or
 
-`set SDL2_DIR=%VCPKG_PATH%\installed\x64-windows\share\sdl2` (temporary, only for current cmd)
+`set SDL2_DIR=%VCPKG_PATH%\installed\x64-windows\share\sdl2` (temporary, only for currently open cmd)
 
 
 
