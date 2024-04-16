@@ -8,7 +8,7 @@
 
 #### **install prerequisites:**
 
-`git cmake pkg-config ninja SDL2 SDL2-image` and a c-compiler capable of C++11
+`git cmake pkg-config ninja SDL2` and a c-compiler capable of C++11
 
 #### **build:**
 
@@ -33,7 +33,6 @@ T.B.D.
 git
 cmake
 SDL2
-SDL2_image
 ```
 #### **build:**
 
@@ -52,6 +51,7 @@ $ cmake -G Xcode .
 - Product -> Scheme -> Edit Scheme -> Build Configuration set to Release
 - build
 - copy data/back.data the same directory as built binary
+
 
 
 ## Windows
@@ -109,7 +109,13 @@ cmake --build . --config Release
 copy .\data\back.data .\Release
 explorer .\Release
 ```
-###### note: if SDL2 can't be found use `setx SDL2_DIR %VCPKG_PATH%\installed\x64-windows\share\sdl2`
+###### note: if SDL2 can't be found use
+
+`setx SDL2_DIR %VCPKG_PATH%\installed\x64-windows\share\sdl2` (permanent, must reopen cmd to use) or
+
+`set SDL2_DIR=%VCPKG_PATH%\installed\x64-windows\share\sdl2` (temporary, only for current cmd)
+
+
 
 ### MSYS2
 
@@ -117,7 +123,7 @@ explorer .\Release
 
 #### **install prerequisites:**
 ```
-pacman -S base-devel libtool pkg-config make gettext gcc git cmake mingw-w64-i686-gcc mingw-w64-x86_64-gcc mingw-w64-i686-cmake mingw-w64-x86_64-cmake mingw-w64-i686-pkg-config mingw-w64-x86_64-pkg-config mingw-w64-i686-toolchain mingw-w64-x86_64-toolchain mingw-w64-i686-SDL2 mingw-w64-i686-SDL2_image mingw-w64-x86_64-SDL2 mingw-w64-x86_64-SDL2_image
+pacman -S base-devel libtool pkg-config make gettext gcc git cmake mingw-w64-i686-gcc mingw-w64-x86_64-gcc mingw-w64-i686-cmake mingw-w64-x86_64-cmake mingw-w64-i686-pkg-config mingw-w64-x86_64-pkg-config mingw-w64-i686-toolchain mingw-w64-x86_64-toolchain mingw-w64-i686-SDL2 mingw-w64-x86_64-SDL2
 ```
 note: you are asked twice to make a selection - just press "Return"/"Enter" to select all
 
