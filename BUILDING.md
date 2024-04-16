@@ -1,4 +1,24 @@
-# Building
+# **building instructions for Nuked-SC55**
+
+## CMake
+
+**generic instructions for CMake**
+
+### Ninja
+
+#### **install prerequisites:**
+
+`git cmake pkg-config ninja SDL2 SDL2-image` and a c-compiler capable of C++11
+
+#### **build:**
+
+```
+git clone --recurse-submodules https://github.com/nukeykt/Nuked-SC55.git
+cd .\Nuked-SC55
+cmake . -DCMAKE_BUILD_TYPE=Release -GNinja
+cmake --build .
+```
+
 
 ## Linux
 
@@ -7,13 +27,14 @@
 ### Xcode
 
 
-**install prerequisites (brew/macports - untested):**
+#### **install prerequisites (brew/macports - untested):**
 ```
 git
 cmake
 SDL2
 SDL2_image
 ```
+#### **build:**
 
 open terminal.app
 
@@ -84,7 +105,7 @@ in new admin-cmd:
 `C:\ProgramData\vcpkg\vcpkg integrate install`
 
 - ##### [SDL2](https://github.com/libsdl-org)
-###### Get SDL2
+###### get SDL2
 
 in new cmd:
 ```
@@ -93,10 +114,9 @@ setx SDL2_DIR %VCPKG_PATH%\installed\x64-windows\share\sdl2
 ```
 
 - ##### build
-###### **Example in new cmd:**
+###### **example in new cmd:**
 
 ```
-cd..
 git clone --recurse-submodules https://github.com/nukeykt/Nuked-SC55.git
 cd .\Nuked-SC55
 cmake . -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -G"Visual Studio 17 2022"
