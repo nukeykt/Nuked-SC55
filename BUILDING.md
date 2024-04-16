@@ -65,28 +65,6 @@ in cmd:
 ```
 winget install Git.Git
 ```
-  
-- ##### pkg-config:
-in new cmd:
-```
-c:
-cd %ProgramData%
-md pkg-config
-cd pkg-config
-setx PKG_CONFIG_PATH %cd%
-winget install wget
-wget https://download.gnome.org/binaries/win64/glib/2.26/glib_2.26.1-1_win64.zip
-wget https://download.gnome.org/binaries/win64/dependencies/gettext-runtime_0.18.1.1-2_win64.zip
-wget https://download.gnome.org/binaries/win64/dependencies/pkg-config_0.23-2_win64.zip
-tar -xf glib_2.26.1-1_win64.zip
-tar -xf gettext-runtime_0.18.1.1-2_win64.zip
-tar -xf pkg-config_0.23-2_win64.zip
-del glib_2.26.1-1_win64.zip
-del gettext-runtime_0.18.1.1-2_win64.zip
-del pkg-config_0.23-2_win64.zip
-cd bin
-setx PATH "%PATH%;%cd%"
-```
 
 - ##### [vcpkg](https://github.com/microsoft/vcpkg):
 in new cmd:
@@ -104,8 +82,14 @@ in new admin-cmd:
 
 `C:\ProgramData\vcpkg\vcpkg integrate install`
 
+- ##### pkgconf:
+
+in new cmd:
+```
+vcpkg install pkgconf
+```
+
 - ##### [SDL2](https://github.com/libsdl-org)
-###### get SDL2
 
 in new cmd:
 ```
