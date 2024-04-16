@@ -55,27 +55,23 @@ in admin cmd:
 
 `.\vcpkg\vcpkg integrate install`
 
-- ##### SDL2
-###### Get [SDL2](https://github.com/libsdl-org/SDL/releases)
-###### • download latest SDL2-devel-2.x-VC.zip
-###### • extract
-###### • set SDL2_DIR
-- ##### build
-###### **Example for SDL2 version 2.30.2 in cmd**
+add vcpkg-folder to %PATH%
 
-####### **prerequisite: `winget install JernejSimoncic.Wget`**
+- ##### [SDL2](https://github.com/libsdl-org)
+###### Get SDL2
+
+`vcpkg install SDL2 SDL2-image SDL2-mixer`
+
+- ##### build
+###### **Example in cmd**
 
 ```
-wget https://github.com/libsdl-org/SDL/releases/download/release-2.30.2/SDL2-devel-2.30.2-VC.zip
-tar -xf SDL2-2.30.2.zip
-cd SDL2-2.30.2
-set SDL2_DIR=%cd%
 cd..
 git clone --recurse-submodules https://github.com/nukeykt/Nuked-SC55.git
 cd .\Nuked-SC55
 cmake . -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -G"Visual Studio 17 2022"
 cmake --build . --config Release
-copy %SDL2_DIR%\lib\x64\SDL2.dll .\Release
+echo copy SDL2 %SDL2_DIR%\lib\x64\SDL2.dll to %cd%\Release
 copy .\data\back.data .\Release
 explorer .\Release
 ```
