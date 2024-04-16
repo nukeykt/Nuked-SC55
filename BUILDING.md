@@ -19,8 +19,9 @@ cmake . -DCMAKE_BUILD_TYPE=Release -GNinja
 cmake --build .
 ```
 
-
 ## Linux
+
+T.B.D.
 
 ## MacOS
 
@@ -94,7 +95,6 @@ vcpkg install pkgconf
 in new cmd:
 ```
 vcpkg install SDL2 SDL2-image
-setx SDL2_DIR %VCPKG_PATH%\installed\x64-windows\share\sdl2
 ```
 
 #### **build:**
@@ -109,7 +109,7 @@ cmake --build . --config Release
 copy .\data\back.data .\Release
 explorer .\Release
 ```
-
+###### note: if SDL2 can't be found use `setx SDL2_DIR %VCPKG_PATH%\installed\x64-windows\share\sdl2`
 
 ### MSYS2
 
@@ -119,7 +119,7 @@ explorer .\Release
 ```
 pacman -S base-devel libtool pkg-config make gettext gcc git cmake mingw-w64-i686-gcc mingw-w64-x86_64-gcc mingw-w64-i686-cmake mingw-w64-x86_64-cmake mingw-w64-i686-pkg-config mingw-w64-x86_64-pkg-config mingw-w64-i686-toolchain mingw-w64-x86_64-toolchain mingw-w64-i686-SDL2 mingw-w64-i686-SDL2_image mingw-w64-x86_64-SDL2 mingw-w64-x86_64-SDL2_image
 ```
-Note: you are asked twice to make a selection - just press "Return"/"Enter" to select all
+note: you are asked twice to make a selection - just press "Return"/"Enter" to select all
 
 
 #### **use `msys2mingw32-build-release.sh`**
