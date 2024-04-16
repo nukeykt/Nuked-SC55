@@ -9,4 +9,3 @@ copy .\data\back.data .\Release
 copy %SDL2_DIR%\..\lib\x64\SDL2.dll .\Release
 move .\Release\nuked-sc55.exe .\Release\sc55emu.exe
 start .\Release
-cd ..
