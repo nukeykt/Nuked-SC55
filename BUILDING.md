@@ -74,7 +74,7 @@ cd..
 git clone --recurse-submodules https://github.com/nukeykt/Nuked-SC55.git
 cd .\Nuked-SC55
 cmake . -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -G"Visual Studio 17 2022"
-cmake --build .
+cmake --build . --config Release
 copy %SDL2_DIR%\lib\x64\SDL2.dll .\Release
 copy .\data\back.data .\Release
 explorer .\Release
