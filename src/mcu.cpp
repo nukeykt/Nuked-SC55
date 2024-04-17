@@ -1343,12 +1343,6 @@ int main(int argc, char *argv[])
             rom2_mask /= 2; // rom is half the size
             lcd_width = 820;
             lcd_height = 100;
-            FILE *f = fopen("nvram.bin", "rb");
-            if (f)
-            {
-                fread(nvram, NVRAM_SIZE, 1, f);
-                fclose(f);
-            }
             break;
     }
 
@@ -1539,10 +1533,6 @@ int main(int argc, char *argv[])
     MIDI_Quit();
     LCD_UnInit();
     SDL_Quit();
-
-    FILE *f = fopen("nvram.bin", "wb");
-    fwrite(nvram, NVRAM_SIZE, 1, f);
-    fclose(f);
 
     return 0;
 }
