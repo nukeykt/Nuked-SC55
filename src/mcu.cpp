@@ -1325,7 +1325,6 @@ int main(int argc, char *argv[])
     mcu_cm300 = false;
     mcu_st = false;
     mcu_jv880 = false;
-
     switch (romset)
     {
         case ROM_SET_ST:
@@ -1339,7 +1338,6 @@ int main(int argc, char *argv[])
             mcu_mk1 = true;
             mcu_cm300 = true;
             break;
-
         case ROM_SET_JV880:
             mcu_jv880 = true;
             rom2_mask /= 2; // rom is half the size
