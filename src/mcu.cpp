@@ -1237,7 +1237,7 @@ int main(int argc, char *argv[])
             {
                 resetType = ResetType::GS_RESET;
             }
-            if (!stricmp(argv[i], "-gm"))
+            else if (!stricmp(argv[i], "-gm"))
             {
                 resetType = ResetType::GM_RESET;
             }
