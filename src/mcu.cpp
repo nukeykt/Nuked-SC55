@@ -1191,14 +1191,9 @@ int main(int argc, char *argv[])
             {
                 port = atoi(argv[i] + 3);
             }
-            else if (!strncmp(argv[i], "-d:", 3))
+            else if (!strncmp(argv[i], "-a:", 3))
             {
-                char* pColon = argv[i];
-                
-                do {
-                    if (!(pColon = strchr(pColon, ':')) || pColon[1] == 0) break;
-                    audioDeviceIndex = atoi(++pColon);
-                } while (0);
+                audioDeviceIndex = atoi(argv[i] + 3);
             }
             else if (!strncmp(argv[i], "-ab:", 4))
             {
