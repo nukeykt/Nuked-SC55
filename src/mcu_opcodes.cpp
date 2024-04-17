@@ -343,6 +343,11 @@ void MCU_Jump_RTD(uint8_t operand)
     }
     else if (operand == 0x1c)
     {
+        // TODO
+        MCU_ErrorTrap();
+    }
+    else
+    {
         MCU_ErrorTrap();
     }
 }
@@ -363,6 +368,7 @@ void MCU_Jump_JMP(uint8_t operand)
         {
             MCU_PushStack(mcu.pc);
             MCU_PushStack(mcu.cp);
+            opcode_l &= ~1;
             mcu.cp = mcu.r[opcode_l] & 0xff;
             mcu.pc = mcu.r[opcode_l + 1];
         }
@@ -1298,7 +1304,19 @@ void MCU_Opcode_SHLR(uint8_t opcode, uint8_t opcode_reg)
     {
         uint32_t data = MCU_Operand_Read();
         uint32_t C = data & 0x1;
+        uint32_t msb;
+        if (operand_size)
+        {
+            msb = data & 0x8000;
+            data &= 0x7fff;
+        }
+        else
+        {
+            msb = data & 0x80;
+            data &= 0x7f;
+        }
         data >>= 1;
+        data |= msb;
         MCU_Operand_Write(data);
         MCU_SetStatus(C, STATUS_C);
         MCU_SetStatusCommon(data, operand_size);

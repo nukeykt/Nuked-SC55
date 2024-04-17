@@ -89,7 +89,7 @@ const char* roms[ROM_SET_COUNT][5] =
     "jv880_rom2.bin",
     "jv880_waverom1.bin",
     "jv880_waverom2.bin",
-    "SR-JV80-01 Pop - CS 0x3F1CF705.bin",
+    "jv880_waverom_expansion.bin",
 };
 
 int romset = ROM_SET_MK2;
@@ -485,7 +485,8 @@ uint8_t MCU_Read(uint32_t address)
         {
             if (!mcu_mk1)
             {
-                if (mcu_jv880 ? (address >= 0xf000 && address < 0xf400) : (address >= 0xe000 && address < 0xe400))
+                uint16_t base = mcu_jv880 ? 0xf000 : 0xe000;
+                if (address >= base && address < (base | 0x400))
                 {
                     ret = PCM_Read(address & 0x3f);
                 }
@@ -504,7 +505,7 @@ uint8_t MCU_Read(uint32_t address)
                 {
                     ret = sram[address & 0x7fff];
                 }
-                else if (mcu_jv880 ? (address == 0xf402) : (address == 0xe402))
+                else if (address == (base | 0x402))
                 {
                     ret = ga_int_trigger;
                     ga_int_trigger = 0;
@@ -1344,7 +1345,8 @@ int main(int argc, char *argv[])
     for(size_t i = 0; i < 5; ++i)
     {
         s_rf[i] = Files::utf8_fopen(rpaths[i].c_str(), "rb");
-        r_ok &= (s_rf[i] != nullptr);
+        bool optional = mcu_jv880 && i == 4;
+        r_ok &= optional || (s_rf[i] != nullptr);
         if(!s_rf[i])
         {
             if(!errors_list.empty())
@@ -1443,15 +1445,10 @@ int main(int argc, char *argv[])
 
         unscramble(tempbuf, waverom2, 0x200000);
 
-        if (fread(tempbuf, 1, 0x800000, s_rf[4]) != 0x800000)
-        {
-            fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom EXP.\n");
-            fflush(stderr);
-            closeAllR();
-            return 1;
-        }
-
-        unscramble(tempbuf, waverom_exp, 0x800000);
+        if (s_rf[4] && fread(tempbuf, 1, 0x800000, s_rf[4]))
+            unscramble(tempbuf, waverom_exp, 0x800000);
+        else
+            printf("WaveRom EXP not found, skipping it.\n");
     }
     else
     {
