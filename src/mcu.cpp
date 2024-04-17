@@ -1197,10 +1197,10 @@ int main(int argc, char *argv[])
             }
             else if (!strncmp(argv[i], "-ab:", 4))
             {
-                char* pColon = argv[i];
+                char* pColon = argv[i] + 3;
                 
                 do {
-                    if (!(pColon = strchr(pColon, ':')) || pColon[1] == 0) break;
+                    if (pColon[1] == 0) break;
                     pageSize = atoi(++pColon);
                     if (!(pColon = strchr(pColon, ':')) || pColon[1] == 0) break;
                     pageNum = atoi(++pColon);
