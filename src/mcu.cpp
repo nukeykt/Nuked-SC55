@@ -59,6 +59,13 @@ const char* rs_name[ROM_SET_COUNT] = {
     "JV880"
 };
 
+const char* rs_shortname[ROM_SET_COUNT] = {
+    "sc55mk2",
+    "sc55st",
+    "sc55mk1",
+    "cm300"
+};
+
 const char* roms[ROM_SET_COUNT][5] =
 {
     "rom1.bin",
@@ -1595,6 +1602,23 @@ int main(int argc, char *argv[])
         fflush(stderr);
     }
 
+    std::string sramPath = basePath + "/" + rs_shortname[romset] + "_sram.bin";
+    bool hasSram = (romset == ROM_SET_MK2 || romset == ROM_SET_MK1);
+
+    if (hasSram)
+    {
+        auto h = Files::utf8_fopen(sramPath.c_str(), "rb");
+        if (h)
+        {
+            if (fread(tempbuf, 1, SRAM_SIZE, h) == SRAM_SIZE)
+            {
+                printf("Loaded SRAM from %s\n", sramPath.c_str());
+                memcpy(sram, tempbuf, SRAM_SIZE);
+            }
+            fclose(h);
+        }
+    }
+
     LCD_Init();
     MCU_Init();
     MCU_PatchROM();
@@ -1605,6 +1629,13 @@ int main(int argc, char *argv[])
     if (resetType != ResetType::NONE) MIDI_Reset(resetType);
     
     MCU_Run();
+
+    if (hasSram)
+    {
+        auto h = Files::utf8_fopen(sramPath.c_str(), "wb");
+        fwrite(sram, 1, SRAM_SIZE, h);
+        fclose(h);
+    }
 
     MCU_CloseAudio();
     MIDI_Quit();
