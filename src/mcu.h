@@ -183,7 +183,9 @@ struct mcu_t {
     uint8_t sleep;
     uint8_t ex_ignore;
     int32_t exception_pending;
+    uint8_t pending_interrupts;
     uint8_t interrupt_pending[INTERRUPT_SOURCE_MAX];
+    uint8_t pending_trapas;
     uint8_t trapa_pending[16];
     uint64_t cycles;
 };
@@ -202,12 +204,8 @@ inline uint32_t MCU_GetAddress(uint8_t page, uint16_t address) {
     return (page << 16) + address;
 }
 
-inline uint8_t MCU_ReadCode(void) {
-    return MCU_Read(MCU_GetAddress(mcu.cp, mcu.pc));
-}
-
 inline uint8_t MCU_ReadCodeAdvance(void) {
-    uint8_t ret = MCU_ReadCode();
+    uint8_t ret = MCU_Read(MCU_GetAddress(mcu.cp, mcu.pc));
     mcu.pc++;
     return ret;
 }

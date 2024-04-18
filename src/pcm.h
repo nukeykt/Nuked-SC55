@@ -50,8 +50,6 @@ struct pcm_t {
     uint32_t irq_channel;
     uint32_t irq_assert;
 
-    uint32_t nfs;
-
     uint32_t tv_counter;
 
     uint64_t cycles;

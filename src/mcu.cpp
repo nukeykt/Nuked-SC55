@@ -509,7 +509,7 @@ uint8_t MCU_Read(uint32_t address)
                     ret = MCU_DeviceRead(address & 0x7f);
                 }
                 else if (address >= 0xfb80 && address < 0xff80
-                    && (dev_register[DEV_RAME] & 0x80) != 0)
+                         && (dev_register[DEV_RAME] & 0x80) != 0)
                     ret = ram[(address - 0xfb80) & 0x3ff];
                 else if (address >= 0x8000 && address < 0xe000)
                 {
@@ -601,16 +601,17 @@ uint8_t MCU_Read(uint32_t address)
         break;
 #endif
     case 1:
-        ret = rom2[address_rom & rom2_mask];
-        break;
     case 2:
-        ret = rom2[address_rom & rom2_mask];
-        break;
     case 3:
-        ret = rom2[address_rom & rom2_mask];
-        break;
     case 4:
         ret = rom2[address_rom & rom2_mask];
+        break;
+    case 10:
+    case 11:
+        if (!mcu_mk1)
+            ret = sram[address & 0x7fff]; // FIXME
+        else
+            ret = 0xff;
         break;
     case 8:
         if (!mcu_jv880)
@@ -631,9 +632,8 @@ uint8_t MCU_Read(uint32_t address)
         else
             ret = cardram[address & 0x7fff]; // FIXME
         break;
-    case 10:
-    case 11:
-        if (!mcu_mk1)
+    case 5:
+        if (mcu_mk1)
             ret = sram[address & 0x7fff]; // FIXME
         else
             ret = 0xff;
@@ -642,12 +642,6 @@ uint8_t MCU_Read(uint32_t address)
     case 13:
         if (mcu_jv880)
             ret = nvram[address & 0x7fff]; // FIXME
-        else
-            ret = 0xff;
-        break;
-    case 5:
-        if (mcu_mk1)
-            ret = sram[address & 0x7fff]; // FIXME
         else
             ret = 0xff;
         break;
@@ -867,6 +861,7 @@ void MCU_Reset(void)
     {
         ga_int_enable = 255;
     }
+    TIMER_Reset();
 }
 
 void MCU_PostUART(uint8_t data)

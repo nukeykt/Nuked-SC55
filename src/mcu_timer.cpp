@@ -42,6 +42,13 @@ uint8_t timer_tempreg;
 frt_t frt[3];
 mcu_timer_t timer;
 
+uint8_t timer_lut1[4] = {3,7,31,1};
+uint8_t timer_mk1_lut1[4] = {3,7,31,3};
+uint8_t* p_timer_lut1;
+uint16_t timer_lut2[8] = {0,7,63,1023,0,1,1,1};
+uint16_t timer_mk1_lut2[8] = {0,7,63,1023,0,3,3,3};
+uint16_t* p_timer_lut2;
+
 enum {
     REG_TCR = 0x00,
     REG_TCSR = 0x01,
@@ -61,6 +68,8 @@ void TIMER_Reset(void)
     timer_tempreg = 0;
     memset(frt, 0, sizeof(frt));
     memset(&timer, 0, sizeof(timer));
+    p_timer_lut1 = mcu_mk1 ? timer_mk1_lut1 : timer_lut1;
+    p_timer_lut2 = mcu_mk1 ? timer_mk1_lut2 : timer_lut2;
 }
 
 void TIMER_Write(uint32_t address, uint8_t data)
@@ -221,123 +230,71 @@ uint8_t TIMER_Read2(uint32_t address)
 
 void TIMER_Clock(uint64_t cycles)
 {
-    uint32_t i;
+    frt_t *timer1 = &frt[0];
+    frt_t *timer2 = &frt[1];
+    frt_t *timer3 = &frt[2];
+    uint8_t lut1_1_val = p_timer_lut1[timer1->tcr & 3];
+    uint8_t lut1_2_val = p_timer_lut1[timer2->tcr & 3];
+    uint8_t lut1_3_val = p_timer_lut1[timer3->tcr & 3];
+    uint16_t lut2_val = p_timer_lut2[timer.tcr & 7];
+
     while (timer_cycles*2 < cycles) // FIXME
     {
-        for (i = 0; i < 3; i++)
-        {
-            frt_t *timer = &frt[i];
-
-            switch (timer->tcr & 3)
-            {
-            case 0: // o / 4
-                if (timer_cycles & 3)
-                    continue;
-                break;
-            case 1: // o / 8
-                if (timer_cycles & 7)
-                    continue;
-                break;
-            case 2: // o / 32
-                if (timer_cycles & 31)
-                    continue;
-                break;
-            case 3: // ext (o / 2)
-                if (mcu_mk1)
-                {
-                    if (timer_cycles & 3)
-                        continue;
-                }
-                else
-                {
-                    if (timer_cycles & 1)
-                        continue;
-                }
-                break;
-            }
-
-            uint32_t value = timer->frc;
-            uint32_t matcha = value == timer->ocra;
-            uint32_t matchb = value == timer->ocrb;
-            if ((timer->tcsr & 1) != 0 && matcha) // CCLRA
-                value = 0;
-            else
-                value++;
-            uint32_t of = (value >> 16) & 1;
-            value &= 0xffff;
-            timer->frc = value;
+        if (!(timer_cycles & lut1_1_val)) {
+            uint8_t matcha = timer1->frc == timer1->ocra;
+            uint8_t matchb = timer1->frc == timer1->ocrb;
+            timer1->frc = ((timer1->tcsr & 1) != 0 && matcha) ? 0 : timer1->frc + 1;
 
             // flags
-            if (of)
-                timer->tcsr |= 0x10;
-            if (matcha)
-                timer->tcsr |= 0x20;
-            if (matchb)
-                timer->tcsr |= 0x40;
-            if ((timer->tcr & 0x10) != 0 && (timer->tcsr & 0x10) != 0)
-                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_FRT0_FOVI + i * 4, 1);
-            if ((timer->tcr & 0x20) != 0 && (timer->tcsr & 0x20) != 0)
-                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_FRT0_OCIA + i * 4, 1);
-            if ((timer->tcr & 0x40) != 0 && (timer->tcsr & 0x40) != 0)
-                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_FRT0_OCIB + i * 4, 1);
+            timer1->tcsr |= (((timer1->frc >> 16) & 1) ? 0x10 : 0) | (matcha ? 0x20 : 0) | (matchb ? 0x40 : 0);
+            if ((timer1->tcr & 0x10) != 0 && (timer1->tcsr & 0x10) != 0)
+                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_FRT0_FOVI, 1);
+            if ((timer1->tcr & 0x20) != 0 && (timer1->tcsr & 0x20) != 0)
+                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_FRT0_OCIA, 1);
+            if ((timer1->tcr & 0x40) != 0 && (timer1->tcsr & 0x40) != 0)
+                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_FRT0_OCIB, 1);
+        }
+        if (!(timer_cycles & lut1_2_val)) {
+            uint8_t matcha = timer2->frc == timer2->ocra;
+            uint8_t matchb = timer2->frc == timer2->ocrb;
+            timer2->frc = ((timer2->tcsr & 1) != 0 && matcha) ? 0 : timer2->frc + 1;
+
+            // flags
+            timer2->tcsr |= (((timer2->frc >> 16) & 1) ? 0x10 : 0) | (matcha ? 0x20 : 0) | (matchb ? 0x40 : 0);
+            if ((timer2->tcr & 0x10) != 0 && (timer2->tcsr & 0x10) != 0)
+                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_FRT0_FOVI + 4, 1);
+            if ((timer2->tcr & 0x20) != 0 && (timer2->tcsr & 0x20) != 0)
+                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_FRT0_OCIA + 4, 1);
+            if ((timer2->tcr & 0x40) != 0 && (timer2->tcsr & 0x40) != 0)
+                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_FRT0_OCIB + 4, 1);
+        }
+        if (!(timer_cycles & lut1_3_val)) {
+            uint8_t matcha = timer3->frc == timer3->ocra;
+            uint8_t matchb = timer3->frc == timer3->ocrb;
+            timer3->frc = ((timer3->tcsr & 1) != 0 && matcha) ? 0 : timer3->frc + 1;
+
+            // flags
+            timer3->tcsr |= (((timer3->frc >> 16) & 1) ? 0x10 : 0) | (matcha ? 0x20 : 0) | (matchb ? 0x40 : 0);
+            if ((timer3->tcr & 0x10) != 0 && (timer3->tcsr & 0x10) != 0)
+                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_FRT0_FOVI + 8, 1);
+            if ((timer3->tcr & 0x20) != 0 && (timer3->tcsr & 0x20) != 0)
+                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_FRT0_OCIA + 8, 1);
+            if ((timer3->tcr & 0x40) != 0 && (timer3->tcsr & 0x40) != 0)
+                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_FRT0_OCIB + 8, 1);
         }
 
-        int32_t timer_step = 0;
-
-        switch (timer.tcr & 7)
+        if (lut2_val && !(timer_cycles & lut2_val))
         {
-        case 0:
-        case 4:
-            break;
-        case 1: // o / 8
-            if ((timer_cycles & 7) == 0)
-                timer_step = 1;
-            break;
-        case 2: // o / 64
-            if ((timer_cycles & 63) == 0)
-                timer_step = 1;
-            break;
-        case 3: // o / 1024
-            if ((timer_cycles & 1023) == 0)
-                timer_step = 1;
-            break;
-        case 5:
-        case 6:
-        case 7: // ext (o / 2)
-            if (mcu_mk1)
-            {
-                if ((timer_cycles & 3) == 0)
-                    timer_step = 1;
-            }
-            else
-            {
-                if ((timer_cycles & 1) == 0)
-                    timer_step = 1;
-            }
-            break;
-        }
-        if (timer_step)
-        {
-            uint32_t value = timer.tcnt;
-            uint32_t matcha = value == timer.tcora;
-            uint32_t matchb = value == timer.tcorb;
-            if ((timer.tcr & 24) == 8 && matcha)
-                value = 0;
-            else if ((timer.tcr & 24) == 16 && matchb)
-                value = 0;
-            else
-                value++;
-            uint32_t of = (value >> 8) & 1;
-            value &= 0xff;
+            uint16_t value = timer.tcnt;
+            uint8_t matcha = value == timer.tcora;
+            uint8_t matchb = value == timer.tcorb;
+            uint8_t match24 = timer.tcr & 24;
+            value = matcha && match24 == 8 ? 0
+                : (matchb && match24 == 16 ? 0 : value + 1);
             timer.tcnt = value;
 
             // flags
-            if (of)
-                timer.tcsr |= 0x20;
-            if (matcha)
-                timer.tcsr |= 0x40;
-            if (matchb)
-                timer.tcsr |= 0x80;
+            timer.tcsr |= (((value >> 8) & 1) ? 0x20 : 0) | (matcha ? 0x40 : 0) | (matchb ? 0x80 : 0);
             if ((timer.tcr & 0x20) != 0 && (timer.tcsr & 0x20) != 0)
                 MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_TIMER_OVI, 1);
             if ((timer.tcr & 0x40) != 0 && (timer.tcsr & 0x40) != 0)
