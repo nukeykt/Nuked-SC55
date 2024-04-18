@@ -35,7 +35,7 @@
 #include "mcu.h"
 #include "mcu_interrupt.h"
 
-void MCU_Interrupt_Start(int32_t mask)
+inline void MCU_Interrupt_Start(int32_t mask)
 {
     MCU_PushStack(mcu.pc);
     MCU_PushStack(mcu.cp);
@@ -70,7 +70,7 @@ void MCU_Interrupt_TRAPA(uint32_t vector)
     mcu.trapa_pending[vector] = 1;
 }
 
-void MCU_Interrupt_StartVector(uint32_t vector, int32_t mask)
+inline void MCU_Interrupt_StartVector(uint32_t vector, int32_t mask)
 {
     uint32_t address = MCU_GetVectorAddress(vector);
     MCU_Interrupt_Start(mask);

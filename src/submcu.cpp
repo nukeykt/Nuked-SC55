@@ -314,14 +314,14 @@ uint8_t SM_SysRead(uint32_t address)
     }
 }
 
-uint16_t SM_GetVectorAddress(uint32_t vector)
+inline uint16_t SM_GetVectorAddress(uint32_t vector)
 {
     uint16_t pc = SM_Read(0x1fec + vector * 2);
     pc |= SM_Read(0x1fec + vector * 2 + 1) << 8;
     return pc;
 }
 
-void SM_SetStatus(uint32_t condition, uint32_t mask)
+inline void SM_SetStatus(uint32_t condition, uint32_t mask)
 {
     if (condition)
         sm.sr |= mask;
@@ -335,40 +335,40 @@ void SM_Reset(void)
     sm.pc = SM_GetVectorAddress(SM_VECTOR_RESET);
 }
 
-uint8_t SM_ReadAdvance(void)
+inline uint8_t SM_ReadAdvance(void)
 {
     uint8_t byte = SM_Read(sm.pc);
     sm.pc++;
     return byte;
 }
 
-uint16_t SM_ReadAdvance16(void)
+inline uint16_t SM_ReadAdvance16(void)
 {
     uint16_t word = SM_ReadAdvance();
     word |= SM_ReadAdvance() << 8;
     return word;
 }
 
-uint16_t SM_Read16(uint16_t address)
+inline uint16_t SM_Read16(uint16_t address)
 {
     uint16_t word = SM_Read(address);
     word |= SM_Read(address) << 8;
     return word;
 }
 
-void SM_Update_NZ(uint8_t val)
+inline void SM_Update_NZ(uint8_t val)
 {
     SM_SetStatus(val == 0, SM_STATUS_Z);
     SM_SetStatus(val & 0x80, SM_STATUS_N);
 }
 
-void SM_PushStack(uint8_t data)
+inline void SM_PushStack(uint8_t data)
 {
     SM_Write(sm.s, data);
     sm.s--;
 }
 
-uint8_t SM_PopStack(void)
+inline uint8_t SM_PopStack(void)
 {
     sm.s++;
     return SM_Read(sm.s);
@@ -1249,7 +1249,7 @@ void SM_StartVector(uint32_t vector)
     sm.pc = SM_GetVectorAddress(vector);
 }
 
-void SM_HandleInterrupt(void)
+inline void SM_HandleInterrupt(void)
 {
     if (sm.sr & SM_STATUS_I)
         return;
@@ -1329,7 +1329,7 @@ void SM_HandleInterrupt(void)
     }
 }
 
-void SM_UpdateTimer(void)
+inline void SM_UpdateTimer(void)
 {
     while (sm_timer_cycles < sm.cycles)
     {

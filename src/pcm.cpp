@@ -44,7 +44,7 @@ uint8_t waverom2[0x200000];
 uint8_t waverom3[0x100000];
 uint8_t waverom_exp[0x800000];
 
-uint8_t PCM_ReadROM(uint32_t address)
+inline uint8_t PCM_ReadROM(uint32_t address)
 {
     int bank;
     if (pcm.config_reg_3d & 0x20)
