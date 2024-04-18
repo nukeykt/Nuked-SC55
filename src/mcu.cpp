@@ -61,35 +61,41 @@ const char* rs_name[ROM_SET_COUNT] = {
 
 const char* roms[ROM_SET_COUNT][5] =
 {
-    "rom1.bin",
-    "rom2.bin",
-    "waverom1.bin",
-    "waverom2.bin",
-    "rom_sm.bin",
-
-    "rom1.bin",
-    "rom2_st.bin",
-    "waverom1.bin",
-    "waverom2.bin",
-    "rom_sm.bin",
-
-    "sc55_rom1.bin",
-    "sc55_rom2.bin",
-    "sc55_waverom1.bin",
-    "sc55_waverom2.bin",
-    "sc55_waverom3.bin",
-
-    "cm300_rom1.bin",
-    "cm300_rom2.bin",
-    "cm300_waverom1.bin",
-    "cm300_waverom2.bin",
-    "cm300_waverom3.bin",
-
-    "jv880_rom1.bin",
-    "jv880_rom2.bin",
-    "jv880_waverom1.bin",
-    "jv880_waverom2.bin",
-    "jv880_waverom_expansion.bin",
+    {
+        "rom1.bin",
+        "rom2.bin",
+        "waverom1.bin",
+        "waverom2.bin",
+        "rom_sm.bin"
+    },
+    {
+        "rom1.bin",
+        "rom2_st.bin",
+        "waverom1.bin",
+        "waverom2.bin",
+        "rom_sm.bin"
+    },
+    {
+        "sc55_rom1.bin",
+        "sc55_rom2.bin",
+        "sc55_waverom1.bin",
+        "sc55_waverom2.bin",
+        "sc55_waverom3.bin"
+    },
+    {
+        "cm300_rom1.bin",
+        "cm300_rom2.bin",
+        "cm300_waverom1.bin",
+        "cm300_waverom2.bin",
+        "cm300_waverom3.bin"
+    },
+    {
+        "jv880_rom1.bin",
+        "jv880_rom2.bin",
+        "jv880_waverom1.bin",
+        "jv880_waverom2.bin",
+        "jv880_waverom_expansion.bin"
+    }
 };
 
 int romset = ROM_SET_MK2;
@@ -130,8 +136,6 @@ static int ga_lcd_counter = 0;
 
 uint8_t dev_register[0x80];
 
-static uint16_t ad_val[4];
-static uint8_t ad_nibble = 0x00;
 static uint8_t sw_pos = 3;
 static uint8_t io_sd = 0x00;
 
@@ -924,6 +928,7 @@ void MCU_WorkThread_Unlock(void)
 
 int SDLCALL work_thread(void* data)
 {
+    (void)data;
     work_thread_lock = SDL_CreateMutex();
 
     MCU_WorkThread_Lock();
@@ -1255,21 +1260,21 @@ void MIDI_Reset(ResetType resetType)
     const unsigned char gmReset[] = { 0xF0, 0x7E, 0x7F, 0x09, 0x01, 0xF7 };
     const unsigned char gsReset[] = { 0xF0, 0x41, 0x10, 0x42, 0x12, 0x40, 0x00, 0x7F, 0x00, 0x41, 0xF7 };
     
+    uint8_t i;
     if (resetType == ResetType::GS_RESET)
     {
-        for (size_t i = 0; i < sizeof(gsReset); i++)
+        for (i = 0; i < sizeof(gsReset); i++)
         {
             MCU_PostUART(gsReset[i]);
         }
     }
-    else  if (resetType == ResetType::GM_RESET)
+    else if (resetType == ResetType::GM_RESET)
     {
-        for (size_t i = 0; i < sizeof(gmReset); i++)
+        for (i = 0; i < sizeof(gmReset); i++)
         {
             MCU_PostUART(gmReset[i]);
         }
     }
-
 }
 
 int main(int argc, char *argv[])
@@ -1373,7 +1378,7 @@ int main(int argc, char *argv[])
 
     if (autodetect)
     {
-        for (size_t i = 0; i < ROM_SET_COUNT; i++)
+        for (int i = 0; i < ROM_SET_COUNT; i++)
         {
             bool good = true;
             for (size_t j = 0; j < 5; j++)
@@ -1468,7 +1473,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    size_t rom2_read = fread(rom2, 1, ROM2_SIZE, s_rf[1]);
+    int rom2_read = (int)fread(rom2, 1, ROM2_SIZE, s_rf[1]);
 
     if (rom2_read == ROM2_SIZE || rom2_read == ROM2_SIZE / 2)
     {
@@ -1603,7 +1608,7 @@ int main(int argc, char *argv[])
     PCM_Reset();
 
     if (resetType != ResetType::NONE) MIDI_Reset(resetType);
-    
+
     MCU_Run();
 
     MCU_CloseAudio();

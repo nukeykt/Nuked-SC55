@@ -227,7 +227,6 @@ void TIMER_Clock(uint64_t cycles)
         for (i = 0; i < 3; i++)
         {
             frt_t *timer = &frt[i];
-            uint32_t offset = 0x10 * i;
 
             switch (timer->tcr & 3)
             {

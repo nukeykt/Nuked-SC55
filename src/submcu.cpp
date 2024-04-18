@@ -376,21 +376,25 @@ uint8_t SM_PopStack(void)
 
 void SM_Opcode_NotImplemented(uint8_t opcode)
 {
+    (void)opcode;
     SM_ErrorTrap();
 }
 
 void SM_Opcode_SEI(uint8_t opcode) // 78
 {
+    (void)opcode;
     SM_SetStatus(1, SM_STATUS_I);
 }
 
 void SM_Opcode_CLD(uint8_t opcode) // d8
 {
+    (void)opcode;
     SM_SetStatus(0, SM_STATUS_D);
 }
 
 void SM_Opcode_CLT(uint8_t opcode) // 12
 {
+    (void)opcode;
     SM_SetStatus(0, SM_STATUS_T);
 }
 
@@ -421,11 +425,13 @@ void SM_Opcode_LDX(uint8_t opcode) // a2, a6, ae, b6, be
 
 void SM_Opcode_TXS(uint8_t opcode) // 9a
 {
+    (void)opcode;
     sm.s = sm.x;
 }
 
 void SM_Opcode_TXA(uint8_t opcode) // 8a
 {
+    (void)opcode;
     sm.a = sm.x;
     SM_Update_NZ(sm.a);
 }
@@ -463,6 +469,7 @@ void SM_Opcode_STA(uint8_t opcode) // 85, 95, 8d, 9d, 99, 81, 91
 
 void SM_Opcode_INX(uint8_t opcode) // e8
 {
+    (void)opcode;
     sm.x++;
     SM_Update_NZ(sm.x);
 }
@@ -513,6 +520,7 @@ void SM_Opcode_CPX(uint8_t opcode) // e0, e4, ec
 
 void SM_Opcode_BEQ(uint8_t opcode) // f0
 {
+    (void)opcode;
     int8_t diff = SM_ReadAdvance();
     if ((sm.sr & SM_STATUS_Z) != 0)
         sm.pc += diff;
@@ -520,6 +528,7 @@ void SM_Opcode_BEQ(uint8_t opcode) // f0
 
 void SM_Opcode_BCC(uint8_t opcode) // 90
 {
+    (void)opcode;
     int8_t diff = SM_ReadAdvance();
     if ((sm.sr & SM_STATUS_C) == 0)
         sm.pc += diff;
@@ -527,6 +536,7 @@ void SM_Opcode_BCC(uint8_t opcode) // 90
 
 void SM_Opcode_BCS(uint8_t opcode) // b0
 {
+    (void)opcode;
     int8_t diff = SM_ReadAdvance();
     if ((sm.sr & SM_STATUS_C) != 0)
         sm.pc += diff;
@@ -534,6 +544,7 @@ void SM_Opcode_BCS(uint8_t opcode) // b0
 
 void SM_Opcode_LDM(uint8_t opcode) // 3c
 {
+    (void)opcode;
     uint8_t val = SM_ReadAdvance();
     SM_Write(SM_ReadAdvance(), val);
 }
@@ -583,16 +594,19 @@ void SM_Opcode_LDA(uint8_t opcode) // a9, a5, b5, ad, bd, b9, a1, b1
 
 void SM_Opcode_CLI(uint8_t opcode) // 58
 {
+    (void)opcode;
     SM_SetStatus(0, SM_STATUS_I);
 }
 
 void SM_Opcode_STP(uint8_t opcode) // 42
 {
+    (void)opcode;
     sm.sleep = 1;
 }
 
 void SM_Opcode_PHA(uint8_t opcode) // 48
 {
+    (void)opcode;
     SM_PushStack(sm.a);
 }
 
@@ -631,6 +645,7 @@ void SM_Opcode_SEB_CLB(uint8_t opcode)
 
 void SM_Opcode_RTI(uint8_t opcode) // 40
 {
+    (void)opcode;
     sm.sr = SM_PopStack();
     sm.pc = SM_PopStack();
     sm.pc |= SM_PopStack() << 8;
@@ -638,12 +653,14 @@ void SM_Opcode_RTI(uint8_t opcode) // 40
 
 void SM_Opcode_PLA(uint8_t opcode) // 68
 {
+    (void)opcode;
     sm.a = SM_PopStack();
     SM_Update_NZ(sm.a);
 }
 
 void SM_Opcode_BRA(uint8_t opcode) // 80
 {
+    (void)opcode;
     int8_t disp = SM_ReadAdvance();
     sm.pc += disp;
 }
@@ -706,6 +723,7 @@ void SM_Opcode_CMP(uint8_t opcode) // c9, c5, d5, cd, dd, d9, c1, d1
 
 void SM_Opcode_BNE(uint8_t opcode) // d0
 {
+    (void)opcode;
     int8_t diff = SM_ReadAdvance();
     if ((sm.sr & SM_STATUS_Z) == 0)
         sm.pc += diff;
@@ -713,6 +731,7 @@ void SM_Opcode_BNE(uint8_t opcode) // d0
 
 void SM_Opcode_RTS(uint8_t opcode) // 60
 {
+    (void)opcode;
     sm.pc = SM_PopStack();
     sm.pc |= SM_PopStack() << 8;
 }
@@ -822,6 +841,7 @@ void SM_Opcode_DEC(uint8_t opcode) // 1a, c6, d6, ce, de
 
 void SM_Opcode_TAX(uint8_t opcode) // aa
 {
+    (void)opcode;
     sm.x = sm.a;
     SM_Update_NZ(sm.x);
 }
@@ -847,15 +867,18 @@ void SM_Opcode_STX(uint8_t opcode) // 86 96 8e
 
 void SM_Opcode_SEC(uint8_t opcode) // 38
 {
+    (void)opcode;
     SM_SetStatus(1, SM_STATUS_C);
 }
 
 void SM_Opcode_NOP(uint8_t opcode) // EA
 {
+    (void)opcode;
 }
 
 void SM_Opcode_BPL(uint8_t opcode) // 10
 {
+    (void)opcode;
     int8_t diff = SM_ReadAdvance();
     if ((sm.sr & SM_STATUS_N) == 0)
         sm.pc += diff;
@@ -863,6 +886,7 @@ void SM_Opcode_BPL(uint8_t opcode) // 10
 
 void SM_Opcode_CLC(uint8_t opcode) // 18
 {
+    (void)opcode;
     SM_SetStatus(0, SM_STATUS_C);
 }
 

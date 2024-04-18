@@ -34,7 +34,7 @@ int MIDI_Init(int port)
     s_midi_in->setCallback(&MidiOnReceive, nullptr); // FIXME: (local bug) Fix the linking error
     s_midi_in->setErrorCallback(&MidiOnError, nullptr);
 
-    unsigned count = s_midi_in->getPortCount();
+    int count = s_midi_in->getPortCount();
 
     if (count == 0)
     {
