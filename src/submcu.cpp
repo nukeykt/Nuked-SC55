@@ -1386,7 +1386,7 @@ void SM_Update(uint64_t cycles)
             SM_Opcode_Table[opcode](opcode);
         }
 
-        sm.cycles += 12 * 4; // FIXME
+        sm.cycles += 12 * 10; // FIXME
         
         SM_UpdateTimer();
         SM_UpdateUART();
