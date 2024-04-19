@@ -36,6 +36,9 @@
 #include <stdint.h>
 #include <string>
 
+extern int lcd_width;
+extern int lcd_height;
+
 void LCD_SetBackPath(const std::string &path);
 void LCD_Init(void);
 void LCD_UnInit(void);

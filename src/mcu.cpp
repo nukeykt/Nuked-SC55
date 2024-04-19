@@ -55,7 +55,8 @@ const char* rs_name[ROM_SET_COUNT] = {
     "SC-55mk2",
     "SC-55st",
     "SC-55mk1",
-    "CM-300/SCC-1"
+    "CM-300/SCC-1",
+    "JV880"
 };
 
 const char* roms[ROM_SET_COUNT][5] =
@@ -83,6 +84,12 @@ const char* roms[ROM_SET_COUNT][5] =
     "cm300_waverom1.bin",
     "cm300_waverom2.bin",
     "cm300_waverom3.bin",
+
+    "jv880_rom1.bin",
+    "jv880_rom2.bin",
+    "jv880_waverom1.bin",
+    "jv880_waverom2.bin",
+    "jv880_waverom_expansion.bin",
 };
 
 int romset = ROM_SET_MK2;
@@ -91,6 +98,8 @@ static const int ROM1_SIZE = 0x8000;
 static const int ROM2_SIZE = 0x80000;
 static const int RAM_SIZE = 0x400;
 static const int SRAM_SIZE = 0x8000;
+static const int NVRAM_SIZE = 0x8000; // JV880 only
+static const int CARDRAM_SIZE = 0x8000; // JV880 only
 static const int ROMSM_SIZE = 0x1000;
 
 
@@ -112,6 +121,7 @@ void MCU_ErrorTrap(void)
 int mcu_mk1 = 0; // 0 - SC-55mkII, SC-55ST. 1 - SC-55, CM-300/SCC-1
 int mcu_cm300 = 0; // 0 - SC-55, 1 - CM-300/SCC-1
 int mcu_st = 0; // 0 - SC-55mk2, 1 - SC-55ST
+int mcu_jv880 = 0; // 0 - SC-55, 1 - JV880
 
 static int ga_int[8];
 static int ga_int_enable = 0;
@@ -356,6 +366,23 @@ uint8_t MCU_DeviceRead(uint32_t address)
         return uart_rx_byte;
     case 0x00:
         return 0xff;
+    case DEV_P7DR:
+    {
+        if (!mcu_jv880) return 0xff;
+
+        uint8_t data = 0xff;
+        uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
+
+        if (io_sd == 0b11111011)
+            data &= ((button_pressed >> 0) & 0b11111) ^ 0xFF;
+        if (io_sd == 0b11110111)
+            data &= ((button_pressed >> 5) & 0b11111) ^ 0xFF;
+        if (io_sd == 0b11101111)
+            data &= ((button_pressed >> 10) & 0b1111) ^ 0xFF;
+
+        data |= 0b10000000;
+        return data;
+    }
     case DEV_P9DR:
     {
         int cfg = 0;
@@ -369,6 +396,8 @@ uint8_t MCU_DeviceRead(uint32_t address)
         return val;
     }
     case DEV_SCR:
+    case DEV_TDR:
+    case DEV_SMR:
         return dev_register[address];
     case DEV_IPRC:
     case DEV_IPRD:
@@ -434,13 +463,15 @@ uint8_t rom1[ROM1_SIZE];
 uint8_t rom2[ROM2_SIZE];
 uint8_t ram[RAM_SIZE];
 uint8_t sram[SRAM_SIZE];
+uint8_t nvram[NVRAM_SIZE];
+uint8_t cardram[CARDRAM_SIZE];
 
 int rom2_mask = ROM2_SIZE - 1;
 
 uint8_t MCU_Read(uint32_t address)
 {
     uint32_t address_rom = address & 0x3ffff;
-    if (address & 0x80000)
+    if (address & 0x80000 && !mcu_jv880)
         address_rom |= 0x40000;
     uint8_t page = (address >> 16) & 0xf;
     address &= 0xffff;
@@ -454,7 +485,8 @@ uint8_t MCU_Read(uint32_t address)
         {
             if (!mcu_mk1)
             {
-                if (address >= 0xe000 && address < 0xe400)
+                uint16_t base = mcu_jv880 ? 0xf000 : 0xe000;
+                if (address >= base && address < (base | 0x400))
                 {
                     ret = PCM_Read(address & 0x3f);
                 }
@@ -473,11 +505,11 @@ uint8_t MCU_Read(uint32_t address)
                 {
                     ret = sram[address & 0x7fff];
                 }
-                else if (address == 0xe402)
+                else if (address == (base | 0x402))
                 {
                     ret = ga_int_trigger;
                     ga_int_trigger = 0;
-                    MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ1, 0);
+                    MCU_Interrupt_SetRequest(mcu_jv880 ? INTERRUPT_SOURCE_IRQ0 : INTERRUPT_SOURCE_IRQ1, 0);
                 }
                 else
                 {
@@ -571,20 +603,35 @@ uint8_t MCU_Read(uint32_t address)
         ret = rom2[address_rom & rom2_mask];
         break;
     case 8:
-        ret = rom2[address_rom & rom2_mask];
+        if (!mcu_jv880)
+            ret = rom2[address_rom & rom2_mask];
+        else
+            ret = 0xff;
         break;
     case 9:
-        ret = rom2[address_rom & rom2_mask];
+        if (!mcu_jv880)
+            ret = rom2[address_rom & rom2_mask];
+        else
+            ret = 0xff;
         break;
     case 14:
-        ret = rom2[address_rom & rom2_mask];
-        break;
     case 15:
-        ret = rom2[address_rom & rom2_mask];
+        if (!mcu_jv880)
+            ret = rom2[address_rom & rom2_mask];
+        else
+            ret = cardram[address & 0x7fff]; // FIXME
         break;
     case 10:
+    case 11:
         if (!mcu_mk1)
             ret = sram[address & 0x7fff]; // FIXME
+        else
+            ret = 0xff;
+        break;
+    case 12:
+    case 13:
+        if (mcu_jv880)
+            ret = nvram[address & 0x7fff]; // FIXME
         else
             ret = 0xff;
         break;
@@ -631,16 +678,17 @@ void MCU_Write(uint32_t address, uint8_t value)
         {
             if (!mcu_mk1)
             {
-                if (address >= 0xe400 && address < 0xe800)
+                uint16_t base = mcu_jv880 ? 0xf000 : 0xe000;
+                if (address >= (base | 0x400) && address < (base | 0x800))
                 {
-                    if (address == 0xe404 || address == 0xe405)
+                    if (address == (base | 0x404) || address == (base | 0x405))
                         LCD_Write(address & 1, value);
-                    else if (address == 0xe401)
+                    else if (address == (base | 0x401))
                     {
                         io_sd = value;
                         LCD_Enable((value & 1) == 0);
                     }
-                    else if (address == 0xe402)
+                    else if (address == (base | 0x402))
                         ga_int_enable = (value << 1);
                     else
                         printf("Unknown write %x %x\n", address, value);
@@ -655,7 +703,7 @@ void MCU_Write(uint32_t address, uint8_t value)
                     // e407: 0, e406 continuation?
                     //
                 }
-                else if (address >= 0xe000 && address < 0xe400)
+                else if (address >= (base | 0x000) && address < (base | 0x400))
                 {
                     PCM_Write(address & 0x3f, value);
                 }
@@ -737,6 +785,14 @@ void MCU_Write(uint32_t address, uint8_t value)
     else if (page == 10 && !mcu_mk1)
     {
         sram[address & 0x7fff] = value; // FIXME
+    }
+    else if (page == 12 && mcu_jv880)
+    {
+        nvram[address & 0x7fff] = value; // FIXME
+    }
+    else if (page == 14 && mcu_jv880)
+    {
+        cardram[address & 0x7fff] = value; // FIXME
     }
     else
     {
@@ -898,7 +954,7 @@ int SDLCALL work_thread(void* data)
 
         TIMER_Clock(mcu.cycles);
 
-        if (!mcu_mk1)
+        if (!mcu_mk1 && !mcu_jv880)
             SM_Update(mcu.cycles);
         else
         {
@@ -988,7 +1044,7 @@ void MCU_WriteP1(uint8_t data)
     mcu_p1_data = data;
 }
 
-uint8_t tempbuf[0x200000];
+uint8_t tempbuf[0x800000];
 
 void unscramble(uint8_t *src, uint8_t *dst, int len)
 {
@@ -1060,7 +1116,7 @@ int MCU_OpenAudio(int deviceIndex)
     SDL_AudioSpec spec_actual = {};
 
     spec.format = AUDIO_S16SYS;
-    spec.freq = mcu_mk1 ? 64000: 66207;
+    spec.freq = (mcu_mk1 || mcu_jv880) ? 64000 : 66207;
     spec.channels = 2;
     spec.callback = audio_callback;
     spec.samples = audio_page_size / 4;
@@ -1138,7 +1194,17 @@ void MCU_GA_SetGAInt(int line, int value)
         ga_int_trigger = line;
     ga_int[line] = value;
 
-    MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ1, ga_int_trigger != 0);
+    if (mcu_jv880)
+        MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ0, ga_int_trigger != 0);
+    else
+        MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ1, ga_int_trigger != 0);
+}
+
+void MCU_EncoderTrigger(int dir)
+{
+    if (!mcu_jv880) return;
+    MCU_GA_SetGAInt(dir == 0 ? 3 : 4, 0);
+    MCU_GA_SetGAInt(dir == 0 ? 3 : 4, 1);
 }
 
 
@@ -1233,6 +1299,11 @@ int main(int argc, char *argv[])
                 romset = ROM_SET_CM300;
                 autodetect = false;
             }
+            else if (!strcmp(argv[i], "-jv880"))
+            {
+                romset = ROM_SET_JV880;
+                autodetect = false;
+            }
             else if (!stricmp(argv[i], "-gs"))
             {
                 resetType = ResetType::GS_RESET;
@@ -1289,6 +1360,7 @@ int main(int argc, char *argv[])
     mcu_mk1 = false;
     mcu_cm300 = false;
     mcu_st = false;
+    mcu_jv880 = false;
     switch (romset)
     {
         case ROM_SET_ST:
@@ -1301,6 +1373,12 @@ int main(int argc, char *argv[])
         case ROM_SET_CM300:
             mcu_mk1 = true;
             mcu_cm300 = true;
+            break;
+        case ROM_SET_JV880:
+            mcu_jv880 = true;
+            rom2_mask /= 2; // rom is half the size
+            lcd_width = 820;
+            lcd_height = 100;
             break;
     }
 
@@ -1319,7 +1397,8 @@ int main(int argc, char *argv[])
     for(size_t i = 0; i < 5; ++i)
     {
         s_rf[i] = Files::utf8_fopen(rpaths[i].c_str(), "rb");
-        r_ok &= (s_rf[i] != nullptr);
+        bool optional = mcu_jv880 && i == 4;
+        r_ok &= optional || (s_rf[i] != nullptr);
         if(!s_rf[i])
         {
             if(!errors_list.empty())
@@ -1395,6 +1474,33 @@ int main(int argc, char *argv[])
         }
 
         unscramble(tempbuf, waverom3, 0x100000);
+    }
+    else if (mcu_jv880)
+    {
+        if (fread(tempbuf, 1, 0x200000, s_rf[2]) != 0x200000)
+        {
+            fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom1.\n");
+            fflush(stderr);
+            closeAllR();
+            return 1;
+        }
+
+        unscramble(tempbuf, waverom1, 0x200000);
+
+        if (fread(tempbuf, 1, 0x200000, s_rf[3]) != 0x200000)
+        {
+            fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom2.\n");
+            fflush(stderr);
+            closeAllR();
+            return 1;
+        }
+
+        unscramble(tempbuf, waverom2, 0x200000);
+
+        if (s_rf[4] && fread(tempbuf, 1, 0x800000, s_rf[4]))
+            unscramble(tempbuf, waverom_exp, 0x800000);
+        else
+            printf("WaveRom EXP not found, skipping it.\n");
     }
     else
     {

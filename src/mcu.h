@@ -373,6 +373,7 @@ inline uint16_t MCU_PopStack(void)
 }
 
 enum {
+    // SC55
     MCU_BUTTON_POWER = 0,
     MCU_BUTTON_INST_L = 3,
     MCU_BUTTON_INST_R = 4,
@@ -391,7 +392,23 @@ enum {
     MCU_BUTTON_REVERB_R = 17,
     MCU_BUTTON_LEVEL_L = 18,
     MCU_BUTTON_LEVEL_R = 19,
-    MCU_BUTTON_PART_L = 20
+    MCU_BUTTON_PART_L = 20,
+
+    // JV880
+    MCU_BUTTON_CURSOR_L = 0,
+    MCU_BUTTON_CURSOR_R = 1,
+    MCU_BUTTON_TONE_SELECT = 2,
+    MCU_BUTTON_MUTE = 3,
+    MCU_BUTTON_DATA = 4,
+    MCU_BUTTON_MONITOR = 5,
+    MCU_BUTTON_COMPARE = 6,
+    MCU_BUTTON_ENTER = 7,
+    MCU_BUTTON_UTILITY = 8,
+    MCU_BUTTON_PREVIEW = 9,
+    MCU_BUTTON_PATCH_PERFORM = 10,
+    MCU_BUTTON_EDIT = 11,
+    MCU_BUTTON_SYSTEM = 12,
+    MCU_BUTTON_RHYTHM = 13,
 };
 
 
@@ -400,6 +417,7 @@ enum {
     ROM_SET_ST,
     ROM_SET_MK1,
     ROM_SET_CM300,
+    ROM_SET_JV880,
     ROM_SET_COUNT
 };
 
@@ -410,6 +428,7 @@ extern int romset;
 extern int mcu_mk1;
 extern int mcu_cm300;
 extern int mcu_st;
+extern int mcu_jv880;
 
 extern SDL_atomic_t mcu_button_pressed;
 
@@ -423,6 +442,8 @@ uint8_t MCU_ReadP1(void);
 void MCU_WriteP0(uint8_t data);
 void MCU_WriteP1(uint8_t data);
 void MCU_GA_SetGAInt(int line, int value);
+
+void MCU_EncoderTrigger(int dir);
 
 void MCU_PostSample(int *sample);
 void MCU_PostUART(uint8_t data);

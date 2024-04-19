@@ -6,6 +6,7 @@ Supported models:
 - SC-55mk1 (v1.21/v2.0 firmwares are confirmed to work)
 - CM-300/SCC-1 (v1.10/v1.20 firmwares are confirmed to work)
 - SC-55st (v1.01)
+- JV-880 (v1.0.0)
 
 Special thanks:
 - John McMaster: SC-55 PCM chip decap.
@@ -14,6 +15,7 @@ Special thanks:
 - Wohlstand: linux/macos port.
 - mattw.
 - HardWareMan.
+- giulioz: JV-880 support
 
 ## Status
 
@@ -82,6 +84,13 @@ R15279806 (WAVE A) -> cm300_waverom1.bin
 R15279807 (WAVE B) -> cm300_waverom2.bin
 R15279808 (WAVE C) -> cm300_waverom3.bin
 
+JV-880 (v1.0.0):
+R15199810 (H8/532 mcu) -> jv880_rom1.bin
+R15209386 (H8/532 extra code) -> jv880_rom2.bin
+R15209312 (WAVE A) -> jv880_waverom1.bin
+R15209313 (WAVE B) -> jv880_waverom2.bin
+Expansion PCBs -> jv880_waverom_expansion.bin (optional)
+
 ```
 
 ## License
@@ -119,6 +128,27 @@ LEFT -> PART L
 RIGHT -> PART R
 ```
 
-- `-mk2`, `-st`, `mk1` and `-cm300` command line arguments can be used to specify rom set. If no model is specified emulator will try to autodetect rom set (based on file names). 
+- JV-880 buttons are mapped as such (currently hardcoded):
+
+```
+P -> PREVIEW
+LEFT -> CURSOR L
+RIGHT -> CURSOR R
+TAB -> DATA
+Q -> TONE_SELECT
+A -> PATCH_PERFORM
+W -> EDIT
+E -> SYSTEM
+R -> RHYTHM
+T -> UTILITY
+S -> MUTE
+D -> MONITOR
+F -> COMPARE
+G -> ENTER
+COMMA -> ENCODER L
+PERIOD -> ENCODER R
+```
+
+- `-mk2`, `-st`, `mk1`, `-cm300` and `-jv880` command line arguments can be used to specify rom set. If no model is specified emulator will try to autodetect rom set (based on file names). 
 
 - Due to a bug in the SC-55mk2's firmware, some parameters don't reset properly on startup. Do GM, GS or MT-32 reset using buttons to fix this issue.
