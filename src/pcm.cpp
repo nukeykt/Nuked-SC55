@@ -40,8 +40,9 @@
 
 pcm_t pcm;
 uint8_t waverom1[0x200000];
-uint8_t waverom2[0x100000];
+uint8_t waverom2[0x200000];
 uint8_t waverom3[0x100000];
+uint8_t waverom_exp[0x800000];
 
 uint8_t PCM_ReadROM(uint32_t address)
 {
@@ -58,9 +59,19 @@ uint8_t PCM_ReadROM(uint32_t address)
             else
                 return waverom1[address & 0x1fffff];
         case 1:
-            return waverom2[address & 0xfffff];
+            if (!mcu_jv880)
+                return waverom2[address & 0xfffff];
+            else
+                return waverom2[address & 0x1fffff];
         case 2:
+            if (mcu_jv880) return 0;
             return waverom3[address & 0xfffff];
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+            if (mcu_jv880)
+                return waverom_exp[(address & 0x1fffff) + (bank - 3) * 0x200000];
         default:
             break;
     }
@@ -198,7 +209,10 @@ uint8_t PCM_Read(uint32_t address)
         if (address == 0x3e && pcm.irq_assert)
         {
             pcm.irq_assert = 0;
-            MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ0, 0);
+            if (mcu_jv880)
+                MCU_GA_SetGAInt(5, 0);
+            else
+                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ0, 0);
         }
 
         status |= pcm.irq_channel;
@@ -1416,7 +1430,10 @@ void PCM_Update(uint64_t cycles)
                     ram2[8] |= 0x4000;
                 pcm.irq_assert = 1;
                 pcm.irq_channel = slot;
-                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ0, 1);
+                if (mcu_jv880)
+                    MCU_GA_SetGAInt(5, 1);
+                else
+                    MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ0, 1);
             }
 
             int volmul1 = 0;
@@ -1547,6 +1564,6 @@ void PCM_Update(uint64_t cycles)
 
         pcm.nfs = 1;
 
-        pcm.cycles += (reg_slots + 1) * 25;
+        pcm.cycles += (reg_slots + 1) * (mcu_jv880 ? (25 * 200 / 232) : 25);
     }
 }
