@@ -1343,11 +1343,11 @@ int main(int argc, char *argv[])
                 romset = ROM_SET_JV880;
                 autodetect = false;
             }
-            else if (!stricmp(argv[i], "-gs"))
+            else if (!strcmp(argv[i], "-gs"))
             {
                 resetType = ResetType::GS_RESET;
             }
-            else if (!stricmp(argv[i], "-gm"))
+            else if (!strcmp(argv[i], "-gm"))
             {
                 resetType = ResetType::GM_RESET;
             }
