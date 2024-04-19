@@ -132,7 +132,7 @@ uint8_t dev_register[0x80];
 
 static uint16_t ad_val[4];
 static uint8_t ad_nibble = 0x00;
-static uint8_t sw_pos = 0;
+static uint8_t sw_pos = 3;
 static uint8_t io_sd = 0x00;
 
 SDL_atomic_t mcu_button_pressed = { 0 };
@@ -146,20 +146,27 @@ enum {
     ANALOG_LEVEL_RCU_LOW = 0,
     ANALOG_LEVEL_RCU_HIGH = 0,
     ANALOG_LEVEL_SW_0 = 0,
-    ANALOG_LEVEL_SW_1 = 0,
-    ANALOG_LEVEL_SW_2 = 0,
-    ANALOG_LEVEL_SW_3 = 0,
-    ANALOG_LEVEL_BATTERY = 0x3ff,
+    ANALOG_LEVEL_SW_1 = 0x155,
+    ANALOG_LEVEL_SW_2 = 0x2aa,
+    ANALOG_LEVEL_SW_3 = 0x3ff,
+    ANALOG_LEVEL_BATTERY = 0x2a0,
 };
 
 uint16_t MCU_AnalogReadPin(uint32_t pin)
 {
-    if (mcu_mk1)
-        return 0x0;
-    return 0x3ff;
+    if (mcu_cm300)
+        return 0;
+    if (mcu_jv880)
+    {
+        if (pin == 1)
+            return ANALOG_LEVEL_BATTERY;
+        return 0x3ff;
+    }
     uint8_t rcu;
     if (pin == 7)
     {
+        if (mcu_mk1)
+            return ANALOG_LEVEL_BATTERY;
         switch ((io_sd >> 2) & 3)
         {
         case 0: // Battery voltage
