@@ -1199,12 +1199,22 @@ int main(int argc, char *argv[])
             {
                 char* pColon = argv[i] + 3;
                 
-                do {
-                    if (pColon[1] == 0) break;
+                if (pColon[1] != 0)
+                {
                     pageSize = atoi(++pColon);
-                    if (!(pColon = strchr(pColon, ':')) || pColon[1] == 0) break;
-                    pageNum = atoi(++pColon);
-                } while (0);
+                    pColon = strchr(pColon, ':');
+                    if (pColon && pColon[1] != 0)
+                    {
+                        pageNum = atoi(++pColon);
+                    }
+                }
+                
+                // reset both if either is invalid
+                if (pageSize <= 0 || pageNum <= 0)
+                {
+                    pageSize = 512;
+                    pageNum = 32;
+                }
             }
             else if (!strcmp(argv[i], "-mk2"))
             {
