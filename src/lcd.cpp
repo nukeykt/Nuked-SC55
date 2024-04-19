@@ -271,7 +271,7 @@ void LCD_UnInit(void)
 uint32_t lcd_col1 = 0x000000;
 uint32_t lcd_col2 = 0x0050c8;
 
-void LCD_FontRenderStandard(int32_t x, int32_t y, uint8_t ch)
+void LCD_FontRenderStandard(int32_t x, int32_t y, uint8_t ch, bool overlay = false)
 {
     uint8_t* f;
     if (ch >= 16)
@@ -297,7 +297,10 @@ void LCD_FontRenderStandard(int32_t x, int32_t y, uint8_t ch)
             {
                 for (int jj = 0; jj < 5; jj++)
                 {
-                    lcd_buffer[xx+ii][yy+jj] = col;
+                    if (overlay)
+                        lcd_buffer[xx+ii][yy+jj] &= col;
+                    else
+                        lcd_buffer[xx+ii][yy+jj] = col;
                 }
             }
         }
@@ -446,6 +449,12 @@ void LCD_Update(void)
                         LCD_FontRenderStandard(4 + i * 50, 4 + j * 34, ch);
                     }
                 }
+                
+                // cursor
+                int j = LCD_DD_RAM % 0x40;
+                int i = LCD_DD_RAM / 0x40;
+                if (i < 2 && j < 24 && LCD_C)
+                    LCD_FontRenderStandard(4 + i * 50, 4 + j * 34, '_', true);
             }
             else
             {
