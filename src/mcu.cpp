@@ -1228,6 +1228,34 @@ static void closeAllR()
     }
 }
 
+enum class ResetType {
+    NONE,
+    GS_RESET,
+    GM_RESET,
+};
+
+void MIDI_Reset(ResetType resetType)
+{
+    const unsigned char gmReset[] = { 0xF0, 0x7E, 0x7F, 0x09, 0x01, 0xF7 };
+    const unsigned char gsReset[] = { 0xF0, 0x41, 0x10, 0x42, 0x12, 0x40, 0x00, 0x7F, 0x00, 0x41, 0xF7 };
+    
+    if (resetType == ResetType::GS_RESET)
+    {
+        for (DWORD i = 0; i < sizeof(gsReset); i++)
+        {
+            MCU_PostUART(gsReset[i]);
+        }
+    }
+    else  if (resetType == ResetType::GM_RESET)
+    {
+        for (DWORD i = 0; i < sizeof(gmReset); i++)
+        {
+            MCU_PostUART(gmReset[i]);
+        }
+    }
+
+}
+
 int main(int argc, char *argv[])
 {
     (void)argc;
@@ -1236,6 +1264,7 @@ int main(int argc, char *argv[])
     int port = 0;
     int audioDeviceIndex = -1;
     bool autodetect = true;
+    ResetType resetType = ResetType::NONE;
 
     romset = ROM_SET_MK2;
 
@@ -1274,7 +1303,14 @@ int main(int argc, char *argv[])
             {
                 romset = ROM_SET_JV880;
                 autodetect = false;
-                break;
+            }
+            else if (!stricmp(argv[i], "-gs"))
+            {
+                resetType = ResetType::GS_RESET;
+            }
+            else if (!stricmp(argv[i], "-gm"))
+            {
+                resetType = ResetType::GM_RESET;
             }
         }
     }
@@ -1527,6 +1563,8 @@ int main(int argc, char *argv[])
     SM_Reset();
     PCM_Reset();
 
+    if (resetType != ResetType::NONE) MIDI_Reset(resetType);
+    
     MCU_Run();
 
     MCU_CloseAudio();
