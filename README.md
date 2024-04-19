@@ -15,6 +15,7 @@ Special thanks:
 - Wohlstand: linux/macos port.
 - mattw.
 - HardWareMan.
+- giulioz: JV-880 support
 
 ## Status
 
