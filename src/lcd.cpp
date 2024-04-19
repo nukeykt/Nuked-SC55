@@ -92,7 +92,7 @@ void LCD_Write(uint32_t address, uint8_t data)
         else if ((data & 0xfc) == 0x04)
         {
             LCD_ID = (data & 0x2) != 0;
-            LCD_S = (data & 0x2) != 0;
+            LCD_S = (data & 0x1) != 0;
         }
         else if ((data & 0xc0) == 0x40)
         {
@@ -337,6 +337,73 @@ void LCD_FontRenderLevel(int32_t x, int32_t y, uint8_t ch, uint8_t width = 5)
     }
 }
 
+static const uint8_t LR[2][12][11] =
+{
+    {
+        1,1,0,0,0,0,0,0,0,0,0,
+        1,1,0,0,0,0,0,0,0,0,0,
+        1,1,0,0,0,0,0,0,0,0,0,
+        1,1,0,0,0,0,0,0,0,0,0,
+        1,1,0,0,0,0,0,0,0,0,0,
+        1,1,0,0,0,0,0,0,0,0,0,
+        1,1,0,0,0,0,0,0,0,0,0,
+        1,1,0,0,0,0,0,0,0,0,0,
+        1,1,0,0,0,0,0,0,0,0,0,
+        1,1,0,0,0,0,0,0,0,0,0,
+        1,1,1,1,1,1,1,1,1,1,1,
+        1,1,1,1,1,1,1,1,1,1,1,
+    },
+    {
+        1,1,1,1,1,1,1,1,1,0,0,
+        1,1,1,1,1,1,1,1,1,1,0,
+        1,1,0,0,0,0,0,0,1,1,0,
+        1,1,0,0,0,0,0,0,1,1,0,
+        1,1,0,0,0,0,0,0,1,1,0,
+        1,1,1,1,1,1,1,1,1,1,0,
+        1,1,1,1,1,1,1,1,1,0,0,
+        1,1,0,0,0,0,0,1,1,0,0,
+        1,1,0,0,0,0,0,0,1,1,0,
+        1,1,0,0,0,0,0,0,1,1,0,
+        1,1,0,0,0,0,0,0,0,1,1,
+        1,1,0,0,0,0,0,0,0,1,1,
+    }
+};
+
+static const int LR_xy[2][2] = {
+    { 70, 264 },
+    { 232, 264 }
+};
+
+
+void LCD_FontRenderLR(uint8_t ch)
+{
+    uint8_t* f;
+    if (ch >= 16)
+        f = &lcd_font[ch - 16][0];
+    else
+        f = &LCD_CG[(ch & 7) * 8];
+    int col;
+    if (f[0] & 1)
+    {
+        col = lcd_col1;
+    }
+    else
+    {
+        col = lcd_col2;
+    }
+    for (int f = 0; f < 2; f++)
+    {
+        for (int i = 0; i < 12; i++)
+        {
+            for (int j = 0; j < 11; j++)
+            {
+                if (LR[f][i][j])
+                    lcd_buffer[i+LR_xy[f][0]][j+LR_xy[f][1]] = col;
+            }
+        }
+    }
+}
+
 void LCD_Update(void)
 {
     if (!lcd_init)
@@ -422,6 +489,8 @@ void LCD_Update(void)
                     uint8_t ch = LCD_Data[55 + i];
                     LCD_FontRenderStandard(203, 153 + i * 35, ch);
                 }
+
+                LCD_FontRenderLR(LCD_Data[58]);
 
                 for (int i = 0; i < 2; i++)
                 {
