@@ -1241,14 +1241,14 @@ void MIDI_Reset(ResetType resetType)
     
     if (resetType == ResetType::GS_RESET)
     {
-        for (DWORD i = 0; i < sizeof(gsReset); i++)
+        for (size_t i = 0; i < sizeof(gsReset); i++)
         {
             MCU_PostUART(gsReset[i]);
         }
     }
     else  if (resetType == ResetType::GM_RESET)
     {
-        for (DWORD i = 0; i < sizeof(gmReset); i++)
+        for (size_t i = 0; i < sizeof(gmReset); i++)
         {
             MCU_PostUART(gmReset[i]);
         }
