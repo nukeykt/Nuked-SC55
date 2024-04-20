@@ -1359,7 +1359,7 @@ int main(int argc, char *argv[])
                 printf("\n");
                 printf("  -p:<port_number>               Set MIDI port.\n", argv[0]);
                 printf("  -a:<device_number>             Set Audio Device index.\n", argv[0]);
-                printf("  -ab:<page_size]:<page number>  Set Audio Buffer size.\n", argv[0]);
+                printf("  -ab:<page_size>:<page number>  Set Audio Buffer size.\n", argv[0]);
                 printf("\n");
                 printf("  -mk2                           Use MK2 ROM set.\n");
                 printf("  -st                            Use ST ROM set.\n");
