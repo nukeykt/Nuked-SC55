@@ -1357,6 +1357,7 @@ int main(int argc, char *argv[])
                 printf("Usage: %s [options]\n", argv[0]);
                 printf("Options:\n");
                 printf("  -h, -help, --help  Display this information.\n");
+                printf("\n");
                 printf("  -p:                Set MIDI port.\n", argv[0]);
                 printf("  -a:                Set Audio Device index.\n", argv[0]);
                 printf("  -ab:               Set Audio Buffer size.\n", argv[0]);
