@@ -1353,23 +1353,22 @@ int main(int argc, char *argv[])
             }
             else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "-help") || !strcmp(argv[i], "--help"))
             {
-                // TODO: Add explanation for how -p:, -a:, and -ab: work.
                 printf("Usage: %s [options]\n", argv[0]);
                 printf("Options:\n");
                 printf("  -h, -help, --help  Display this information.\n");
                 printf("\n");
-                printf("  -p:                Set MIDI port.\n", argv[0]);
-                printf("  -a:                Set Audio Device index.\n", argv[0]);
-                printf("  -ab:               Set Audio Buffer size.\n", argv[0]);
+                printf("  -p:[NUMBER]            Set MIDI port.\n", argv[0]);
+                printf("  -a:[NUMBER]            Set Audio Device index.\n", argv[0]);
+                printf("  -ab:[NUMBER]:[NUMBER]  Set Audio Buffer size.\n", argv[0]);
                 printf("\n");
-                printf("  -mk2               Use MK2 ROM set.\n");
-                printf("  -st                Use ST ROM set.\n");
-                printf("  -mk1               Use MK1 ROM set.\n");
-                printf("  -cm300             Use CM300 ROM set.\n");
-                printf("  -jv880             Use JV880 ROM set.\n");
+                printf("  -mk2                   Use MK2 ROM set.\n");
+                printf("  -st                    Use ST ROM set.\n");
+                printf("  -mk1                   Use MK1 ROM set.\n");
+                printf("  -cm300                 Use CM300 ROM set.\n");
+                printf("  -jv880                 Use JV880 ROM set.\n");
                 printf("\n");
-                printf("  -gs                Reset system in GS mode.\n");
-                printf("  -gm                Reset system in GM mode.\n");
+                printf("  -gs                    Reset system in GS mode.\n");
+                printf("  -gm                    Reset system in GM mode.\n");
                 return 0;
             }
         }
