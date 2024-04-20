@@ -1364,7 +1364,7 @@ int main(int argc, char *argv[])
                 printf("  -mk2                           Use MK2 ROM set.\n");
                 printf("  -st                            Use ST ROM set.\n");
                 printf("  -mk1                           Use MK1 ROM set.\n");
-                printf("  -cm300                         Use CM300 ROM set.\n");
+                printf("  -cm300                         Use CM300/SCC1 ROM set.\n");
                 printf("  -jv880                         Use JV880 ROM set.\n");
                 printf("\n");
                 printf("  -gs                            Reset system in GS mode.\n");
