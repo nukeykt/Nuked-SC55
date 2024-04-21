@@ -1353,7 +1353,8 @@ int main(int argc, char *argv[])
             }
             else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "-help") || !strcmp(argv[i], "--help"))
             {
-                printf("Usage: %s [options]\n", argv[0]);
+                // TODO: Might want to try to find a way to print out the executable's actual name (without any full paths).
+                printf("Usage: nuked-sc55 [options]\n");
                 printf("Options:\n");
                 printf("  -h, -help, --help              Display this information.\n");
                 printf("\n");
