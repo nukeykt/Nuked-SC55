@@ -1357,9 +1357,9 @@ int main(int argc, char *argv[])
                 printf("Options:\n");
                 printf("  -h, -help, --help              Display this information.\n");
                 printf("\n");
-                printf("  -p:<port_number>               Set MIDI port.\n", argv[0]);
-                printf("  -a:<device_number>             Set Audio Device index.\n", argv[0]);
-                printf("  -ab:<page_size>:[page_count]   Set Audio Buffer size.\n", argv[0]);
+                printf("  -p:<port_number>               Set MIDI port.\n");
+                printf("  -a:<device_number>             Set Audio Device index.\n");
+                printf("  -ab:<page_size>:[page_count]   Set Audio Buffer size.\n");
                 printf("\n");
                 printf("  -mk2                           Use SC-55mk2 ROM set.\n");
                 printf("  -st                            Use SC-55st ROM set.\n");
