@@ -82,7 +82,7 @@ void LCD_Write(uint32_t address, uint8_t data)
         else if ((data & 0xff) == 0x01)
         {
             LCD_DD_RAM = 0;
-            LCD_ID = 0;
+            LCD_ID = 1;
             memset(LCD_Data, 0x20, sizeof(LCD_Data));
         }
         else if ((data & 0xff) == 0x02)
@@ -92,7 +92,7 @@ void LCD_Write(uint32_t address, uint8_t data)
         else if ((data & 0xfc) == 0x04)
         {
             LCD_ID = (data & 0x2) != 0;
-            LCD_S = (data & 0x2) != 0;
+            LCD_S = (data & 0x1) != 0;
         }
         else if ((data & 0xc0) == 0x40)
         {
@@ -162,20 +162,22 @@ void LCD_Write(uint32_t address, uint8_t data)
     //    printf("\n");
 }
 
-static const int lcd_width = 741;
-static const int lcd_height = 268;
+int lcd_width = 741;
+int lcd_height = 268;
+static const int lcd_width_max = 1024;
+static const int lcd_height_max = 1024;
 static SDL_Window *window;
 static SDL_Renderer *renderer;
 static SDL_Texture *texture;
 
 static std::string m_back_path = "back.data";
 
-static uint32_t lcd_buffer[lcd_height][lcd_width];
-static uint32_t lcd_background[lcd_height][lcd_width];
+static uint32_t lcd_buffer[lcd_height_max][lcd_width_max];
+static uint32_t lcd_background[268][741];
 
 static uint32_t lcd_init = 0;
 
-const int button_map[][2] =
+const int button_map_sc55[][2] =
 {
     SDL_SCANCODE_Q, MCU_BUTTON_POWER,
     SDL_SCANCODE_W, MCU_BUTTON_INST_ALL,
@@ -197,7 +199,25 @@ const int button_map[][2] =
     SDL_SCANCODE_J, MCU_BUTTON_CHORUS_L,
     SDL_SCANCODE_K, MCU_BUTTON_CHORUS_R,
     SDL_SCANCODE_LEFT, MCU_BUTTON_PART_L,
-    SDL_SCANCODE_RIGHT, MCU_BUTTON_PART_R
+    SDL_SCANCODE_RIGHT, MCU_BUTTON_PART_R,
+};
+
+const int button_map_jv880[][2] =
+{
+    SDL_SCANCODE_P, MCU_BUTTON_PREVIEW,
+    SDL_SCANCODE_LEFT, MCU_BUTTON_CURSOR_L,
+    SDL_SCANCODE_RIGHT, MCU_BUTTON_CURSOR_R,
+    SDL_SCANCODE_TAB, MCU_BUTTON_DATA,
+    SDL_SCANCODE_Q, MCU_BUTTON_TONE_SELECT,
+    SDL_SCANCODE_A, MCU_BUTTON_PATCH_PERFORM,
+    SDL_SCANCODE_W, MCU_BUTTON_EDIT,
+    SDL_SCANCODE_E, MCU_BUTTON_SYSTEM,
+    SDL_SCANCODE_R, MCU_BUTTON_RHYTHM,
+    SDL_SCANCODE_T, MCU_BUTTON_UTILITY,
+    SDL_SCANCODE_S, MCU_BUTTON_MUTE,
+    SDL_SCANCODE_D, MCU_BUTTON_MONITOR,
+    SDL_SCANCODE_F, MCU_BUTTON_COMPARE,
+    SDL_SCANCODE_G, MCU_BUTTON_ENTER,
 };
 
 
@@ -251,7 +271,7 @@ void LCD_UnInit(void)
 uint32_t lcd_col1 = 0x000000;
 uint32_t lcd_col2 = 0x0050c8;
 
-void LCD_FontRenderStandard(int32_t x, int32_t y, uint8_t ch)
+void LCD_FontRenderStandard(int32_t x, int32_t y, uint8_t ch, bool overlay = false)
 {
     uint8_t* f;
     if (ch >= 16)
@@ -277,7 +297,10 @@ void LCD_FontRenderStandard(int32_t x, int32_t y, uint8_t ch)
             {
                 for (int jj = 0; jj < 5; jj++)
                 {
-                    lcd_buffer[xx+ii][yy+jj] = col;
+                    if (overlay)
+                        lcd_buffer[xx+ii][yy+jj] &= col;
+                    else
+                        lcd_buffer[xx+ii][yy+jj] = col;
                 }
             }
         }
@@ -317,6 +340,73 @@ void LCD_FontRenderLevel(int32_t x, int32_t y, uint8_t ch, uint8_t width = 5)
     }
 }
 
+static const uint8_t LR[2][12][11] =
+{
+    {
+        1,1,0,0,0,0,0,0,0,0,0,
+        1,1,0,0,0,0,0,0,0,0,0,
+        1,1,0,0,0,0,0,0,0,0,0,
+        1,1,0,0,0,0,0,0,0,0,0,
+        1,1,0,0,0,0,0,0,0,0,0,
+        1,1,0,0,0,0,0,0,0,0,0,
+        1,1,0,0,0,0,0,0,0,0,0,
+        1,1,0,0,0,0,0,0,0,0,0,
+        1,1,0,0,0,0,0,0,0,0,0,
+        1,1,0,0,0,0,0,0,0,0,0,
+        1,1,1,1,1,1,1,1,1,1,1,
+        1,1,1,1,1,1,1,1,1,1,1,
+    },
+    {
+        1,1,1,1,1,1,1,1,1,0,0,
+        1,1,1,1,1,1,1,1,1,1,0,
+        1,1,0,0,0,0,0,0,1,1,0,
+        1,1,0,0,0,0,0,0,1,1,0,
+        1,1,0,0,0,0,0,0,1,1,0,
+        1,1,1,1,1,1,1,1,1,1,0,
+        1,1,1,1,1,1,1,1,1,0,0,
+        1,1,0,0,0,0,0,1,1,0,0,
+        1,1,0,0,0,0,0,0,1,1,0,
+        1,1,0,0,0,0,0,0,1,1,0,
+        1,1,0,0,0,0,0,0,0,1,1,
+        1,1,0,0,0,0,0,0,0,1,1,
+    }
+};
+
+static const int LR_xy[2][2] = {
+    { 70, 264 },
+    { 232, 264 }
+};
+
+
+void LCD_FontRenderLR(uint8_t ch)
+{
+    uint8_t* f;
+    if (ch >= 16)
+        f = &lcd_font[ch - 16][0];
+    else
+        f = &LCD_CG[(ch & 7) * 8];
+    int col;
+    if (f[0] & 1)
+    {
+        col = lcd_col1;
+    }
+    else
+    {
+        col = lcd_col2;
+    }
+    for (int f = 0; f < 2; f++)
+    {
+        for (int i = 0; i < 12; i++)
+        {
+            for (int j = 0; j < 11; j++)
+            {
+                if (LR[f][i][j])
+                    lcd_buffer[i+LR_xy[f][0]][j+LR_xy[f][1]] = col;
+            }
+        }
+    }
+}
+
 void LCD_Update(void)
 {
     if (!lcd_init)
@@ -326,24 +416,45 @@ void LCD_Update(void)
     {
         MCU_WorkThread_Lock();
 
-        if (!lcd_enable)
+        if (!lcd_enable && !mcu_jv880)
         {
             memset(lcd_buffer, 0, sizeof(lcd_buffer));
         }
         else
         {
-            memcpy(lcd_buffer, lcd_background, sizeof(lcd_buffer));
-
-            if (0)
+            if (mcu_jv880)
             {
-                for (int i = 0; i < 4; i++)
-                {
-                    for (int j = 0; j < 20; j++)
-                    {
-                        uint8_t ch = LCD_Data[i * 20 + j];
-                        LCD_FontRenderStandard(i * 50, j * 34, ch);
+                for (size_t i = 0; i < lcd_height; i++) {
+                    for (size_t j = 0; j < lcd_width; j++) {
+                        lcd_buffer[i][j] = 0xFF0F6FFF;
                     }
                 }
+            }
+            else
+            {
+                for (size_t i = 0; i < lcd_height; i++) {
+                    for (size_t j = 0; j < lcd_width; j++) {
+                        lcd_buffer[i][j] = lcd_background[i][j];
+                    }
+                }
+            }
+
+            if (mcu_jv880)
+            {
+                for (int i = 0; i < 2; i++)
+                {
+                    for (int j = 0; j < 24; j++)
+                    {
+                        uint8_t ch = LCD_Data[i * 40 + j];
+                        LCD_FontRenderStandard(4 + i * 50, 4 + j * 34, ch);
+                    }
+                }
+                
+                // cursor
+                int j = LCD_DD_RAM % 0x40;
+                int i = LCD_DD_RAM / 0x40;
+                if (i < 2 && j < 24 && LCD_C)
+                    LCD_FontRenderStandard(4 + i * 50, 4 + j * 34, '_', true);
             }
             else
             {
@@ -388,6 +499,8 @@ void LCD_Update(void)
                     LCD_FontRenderStandard(203, 153 + i * 35, ch);
                 }
 
+                LCD_FontRenderLR(LCD_Data[58]);
+
                 for (int i = 0; i < 2; i++)
                 {
                     for (int j = 0; j < 4; j++)
@@ -401,7 +514,7 @@ void LCD_Update(void)
 
         MCU_WorkThread_Unlock();
 
-        SDL_UpdateTexture(texture, NULL, lcd_buffer, lcd_width * 4);
+        SDL_UpdateTexture(texture, NULL, lcd_buffer, lcd_width_max * 4);
         SDL_RenderCopy(renderer, texture, NULL, NULL);
         SDL_RenderPresent(renderer);
     }
@@ -409,6 +522,14 @@ void LCD_Update(void)
     SDL_Event sdl_event;
     while (SDL_PollEvent(&sdl_event))
     {
+        if (sdl_event.type == SDL_KEYDOWN)
+        {
+            if (sdl_event.key.keysym.scancode == SDL_SCANCODE_COMMA)
+                MCU_EncoderTrigger(0);
+            if (sdl_event.key.keysym.scancode == SDL_SCANCODE_PERIOD)
+                MCU_EncoderTrigger(1);
+        }
+
         switch (sdl_event.type)
         {
             case SDL_QUIT:
@@ -420,11 +541,13 @@ void LCD_Update(void)
             {
                 if (sdl_event.key.repeat)
                     continue;
-
+                
                 int mask = 0;
                 uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
 
-                for (size_t i = 0; i < sizeof(button_map) / sizeof(button_map[0]); i++)
+                auto button_map = mcu_jv880 ? button_map_jv880 : button_map_sc55;
+                auto button_size = (mcu_jv880 ? sizeof(button_map_jv880) : sizeof(button_map_sc55)) / sizeof(button_map_sc55[0]);
+                for (size_t i = 0; i < button_size; i++)
                 {
                     if (button_map[i][0] == sdl_event.key.keysym.scancode)
                         mask |= (1 << button_map[i][1]);
