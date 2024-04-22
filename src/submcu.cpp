@@ -431,10 +431,10 @@ void SM_Opcode_LDY(uint8_t opcode) // a0, a4, ac, b4, bc
             val = SM_Read(SM_ReadAdvance());
             break;
         case 0xac:
-            val = SM_Read((SM_ReadAdvance() + sm.x) & 0xff);
+            val = SM_Read(SM_ReadAdvance16());
             break;
         case 0xb4:
-            val = SM_Read(SM_ReadAdvance16());
+            val = SM_Read((SM_ReadAdvance() + sm.x) & 0xff);
             break;
         case 0xbc:
             val = SM_Read(SM_ReadAdvance16() + sm.x);
@@ -905,7 +905,7 @@ void SM_Opcode_STY(uint8_t opcode) // 84 8c 94
             dest = SM_ReadAdvance();
             break;
         case 0x94:
-            dest = SM_ReadAdvance() + sm.y;
+            dest = (SM_ReadAdvance() + sm.x) & 0xff
             break;
         case 0x8c:
             dest = SM_ReadAdvance16();
@@ -1185,7 +1185,7 @@ void (*SM_Opcode_Table[256])(uint8_t opcode)
     SM_Opcode_STA, // 9d
     SM_Opcode_NotImplemented, // 9e
     SM_Opcode_SEB_CLB, // 9f
-    SM_Opcode_NotImplemented, // a0
+    SM_Opcode_LDY, // a0
     SM_Opcode_LDA, // a1
     SM_Opcode_LDX, // a2
     SM_Opcode_BBC_BBS, // a3
@@ -1197,7 +1197,7 @@ void (*SM_Opcode_Table[256])(uint8_t opcode)
     SM_Opcode_LDA, // a9
     SM_Opcode_TAX, // aa
     SM_Opcode_SEB_CLB, // ab
-    SM_Opcode_NotImplemented, // ac
+    SM_Opcode_LDY, // ac
     SM_Opcode_LDA, // ad
     SM_Opcode_LDX, // ae
     SM_Opcode_SEB_CLB, // af
@@ -1205,7 +1205,7 @@ void (*SM_Opcode_Table[256])(uint8_t opcode)
     SM_Opcode_LDA, // b1
     SM_Opcode_JMP, // b2
     SM_Opcode_BBC_BBS, // b3
-    SM_Opcode_NotImplemented, // b4
+    SM_Opcode_LDY, // b4
     SM_Opcode_LDA, // b5
     SM_Opcode_LDX, // b6
     SM_Opcode_BBC_BBS, // b7
@@ -1213,7 +1213,7 @@ void (*SM_Opcode_Table[256])(uint8_t opcode)
     SM_Opcode_LDA, // b9
     SM_Opcode_NotImplemented, // ba
     SM_Opcode_SEB_CLB, // bb
-    SM_Opcode_NotImplemented, // bc
+    SM_Opcode_LDY, // bc
     SM_Opcode_LDA, // bd
     SM_Opcode_LDX, // be
     SM_Opcode_SEB_CLB, // bf
@@ -1221,7 +1221,7 @@ void (*SM_Opcode_Table[256])(uint8_t opcode)
     SM_Opcode_CMP, // c1
     SM_Opcode_NotImplemented, // c2
     SM_Opcode_BBC_BBS, // c3
-    SM_Opcode_NotImplemented, // c4
+    SM_Opcode_CPY, // c4
     SM_Opcode_CMP, // c5
     SM_Opcode_DEC, // c6
     SM_Opcode_BBC_BBS, // c7
@@ -1229,7 +1229,7 @@ void (*SM_Opcode_Table[256])(uint8_t opcode)
     SM_Opcode_CMP, // c9
     SM_Opcode_NotImplemented, // ca
     SM_Opcode_SEB_CLB, // cb
-    SM_Opcode_NotImplemented, // cc
+    SM_Opcode_CPY, // cc
     SM_Opcode_CMP, // cd
     SM_Opcode_DEC, // ce
     SM_Opcode_SEB_CLB, // cf
