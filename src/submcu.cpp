@@ -905,7 +905,7 @@ void SM_Opcode_STY(uint8_t opcode) // 84 8c 94
             dest = SM_ReadAdvance();
             break;
         case 0x94:
-            dest = (SM_ReadAdvance() + sm.x) & 0xff
+            dest = (SM_ReadAdvance() + sm.x) & 0xff;
             break;
         case 0x8c:
             dest = SM_ReadAdvance16();
