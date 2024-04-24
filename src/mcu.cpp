@@ -46,6 +46,11 @@
 #include "utf8main.h"
 #include "utils/files.h"
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif
+
 #if __linux__
 #include <unistd.h>
 #include <limits.h>
@@ -925,6 +930,11 @@ void MCU_WorkThread_Unlock(void)
 
 int SDLCALL work_thread(void* data)
 {
+
+#ifdef _WIN32
+    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+#endif
+   
     work_thread_lock = SDL_CreateMutex();
 
     MCU_WorkThread_Lock();
@@ -1313,6 +1323,10 @@ int main(int argc, char *argv[])
 {
     (void)argc;
     std::string basePath;
+
+#ifdef _WIN32
+    SetPriorityClass(GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS);
+#endif
 
     int port = 0;
     int audioDeviceIndex = -1;
