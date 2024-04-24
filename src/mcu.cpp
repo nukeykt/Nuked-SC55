@@ -264,12 +264,12 @@ void MCU_DeviceWrite(mcu_t& mcu, uint32_t address, uint8_t data)
     address &= 0x7f;
     if (address >= 0x10 && address < 0x40)
     {
-        TIMER_Write(mcu, address, data);
+        TIMER_Write(*mcu.timer, address, data);
         return;
     }
     if (address >= 0x50 && address < 0x55)
     {
-        TIMER2_Write(mcu, address, data);
+        TIMER2_Write(*mcu.timer, address, data);
         return;
     }
     switch (address)
@@ -385,11 +385,11 @@ uint8_t MCU_DeviceRead(mcu_t& mcu, uint32_t address)
     address &= 0x7f;
     if (address >= 0x10 && address < 0x40)
     {
-        return TIMER_Read(address);
+        return TIMER_Read(*mcu.timer, address);
     }
     if (address >= 0x50 && address < 0x55)
     {
-        return TIMER_Read2(address);
+        return TIMER_Read2(*mcu.timer, address);
     }
     switch (address)
     {
@@ -856,12 +856,13 @@ void MCU_ReadInstruction(mcu_t& mcu)
     }
 }
 
-void MCU_Init(mcu_t& mcu, submcu_t& sm, pcm_t& pcm)
+void MCU_Init(mcu_t& mcu, submcu_t& sm, pcm_t& pcm, mcu_timer_t& timer)
 {
     memset(&mcu, 0, sizeof(mcu_t));
     mcu.sw_pos = 3;
     mcu.sm = &sm;
     mcu.pcm = &pcm;
+    mcu.timer = &timer;
     mcu.romset = ROM_SET_MK2;
     mcu.rom2_mask = ROM2_SIZE - 1;
 }
@@ -995,7 +996,7 @@ int SDLCALL work_thread(void* data)
 
         PCM_Update(*mcu.pcm, mcu.cycles);
 
-        TIMER_Clock(mcu, mcu.cycles);
+        TIMER_Clock(*mcu.timer, mcu.cycles);
 
         if (!mcu.mcu_mk1 && !mcu.mcu_jv880 && !mcu.mcu_scb55)
             SM_Update(*mcu.sm, mcu.cycles);
@@ -1327,10 +1328,12 @@ int main(int argc, char *argv[])
 
     mcu_t mcu;
     submcu_t sm;
+    mcu_timer_t timer;
     // allocate pcm because the waveroms will overflow the stack
     pcm_t* pcm = (pcm_t*)malloc(sizeof(pcm_t));
     PCM_Reset(*pcm, mcu);
-    MCU_Init(mcu, sm, *pcm);
+    MCU_Init(mcu, sm, *pcm, timer);
+    TIMER_Init(timer, mcu);
     lcd_t lcd;
 
     {

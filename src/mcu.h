@@ -39,6 +39,7 @@
 
 struct submcu_t;
 struct pcm_t;
+struct mcu_timer_t;
 
 enum {
     DEV_P1DDR = 0x00,
@@ -213,6 +214,7 @@ struct mcu_t {
 
     submcu_t* sm;
     pcm_t* pcm;
+    mcu_timer_t* timer;
 
     uint32_t uart_write_ptr;
     uint32_t uart_read_ptr;
