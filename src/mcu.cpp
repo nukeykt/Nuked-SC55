@@ -122,15 +122,6 @@ const char* roms[ROM_SET_COUNT][5] =
 
 int romset = ROM_SET_MK2;
 
-static const int ROM1_SIZE = 0x8000;
-static const int ROM2_SIZE = 0x80000;
-static const int RAM_SIZE = 0x400;
-static const int SRAM_SIZE = 0x8000;
-static const int NVRAM_SIZE = 0x8000; // JV880 only
-static const int CARDRAM_SIZE = 0x8000; // JV880 only
-static const int ROMSM_SIZE = 0x1000;
-
-
 static int audio_buffer_size;
 static int audio_page_size;
 static short *sample_buffer;
@@ -537,13 +528,6 @@ void MCU_UpdateAnalog(mcu_t& mcu, uint64_t cycles)
         analog_end_time = 0;
 }
 
-uint8_t rom1[ROM1_SIZE];
-uint8_t rom2[ROM2_SIZE];
-uint8_t ram[RAM_SIZE];
-uint8_t sram[SRAM_SIZE];
-uint8_t nvram[NVRAM_SIZE];
-uint8_t cardram[CARDRAM_SIZE];
-
 int rom2_mask = ROM2_SIZE - 1;
 
 uint8_t MCU_Read(mcu_t& mcu, uint32_t address)
@@ -558,7 +542,7 @@ uint8_t MCU_Read(mcu_t& mcu, uint32_t address)
     {
     case 0:
         if (!(address & 0x8000))
-            ret = rom1[address & 0x7fff];
+            ret = mcu.rom1[address & 0x7fff];
         else
         {
             if (!mcu_mk1)
@@ -578,10 +562,10 @@ uint8_t MCU_Read(mcu_t& mcu, uint32_t address)
                 }
                 else if (address >= 0xfb80 && address < 0xff80
                     && (dev_register[DEV_RAME] & 0x80) != 0)
-                    ret = ram[(address - 0xfb80) & 0x3ff];
+                    ret = mcu.ram[(address - 0xfb80) & 0x3ff];
                 else if (address >= 0x8000 && address < 0xe000)
                 {
-                    ret = sram[address & 0x7fff];
+                    ret = mcu.sram[address & 0x7fff];
                 }
                 else if (address == (base | 0x402))
                 {
@@ -611,11 +595,11 @@ uint8_t MCU_Read(mcu_t& mcu, uint32_t address)
                 else if (address >= 0xfb80 && address < 0xff80
                     && (dev_register[DEV_RAME] & 0x80) != 0)
                 {
-                    ret = ram[(address - 0xfb80) & 0x3ff];
+                    ret = mcu.ram[(address - 0xfb80) & 0x3ff];
                 }
                 else if (address >= 0x8000 && address < 0xe000)
                 {
-                    ret = sram[address & 0x7fff];
+                    ret = mcu.sram[address & 0x7fff];
                 }
                 else if (address >= 0xf000 && address < 0xf100)
                 {
@@ -671,53 +655,53 @@ uint8_t MCU_Read(mcu_t& mcu, uint32_t address)
         break;
 #endif
     case 1:
-        ret = rom2[address_rom & rom2_mask];
+        ret = mcu.rom2[address_rom & rom2_mask];
         break;
     case 2:
-        ret = rom2[address_rom & rom2_mask];
+        ret = mcu.rom2[address_rom & rom2_mask];
         break;
     case 3:
-        ret = rom2[address_rom & rom2_mask];
+        ret = mcu.rom2[address_rom & rom2_mask];
         break;
     case 4:
-        ret = rom2[address_rom & rom2_mask];
+        ret = mcu.rom2[address_rom & rom2_mask];
         break;
     case 8:
         if (!mcu_jv880)
-            ret = rom2[address_rom & rom2_mask];
+            ret = mcu.rom2[address_rom & rom2_mask];
         else
             ret = 0xff;
         break;
     case 9:
         if (!mcu_jv880)
-            ret = rom2[address_rom & rom2_mask];
+            ret = mcu.rom2[address_rom & rom2_mask];
         else
             ret = 0xff;
         break;
     case 14:
     case 15:
         if (!mcu_jv880)
-            ret = rom2[address_rom & rom2_mask];
+            ret = mcu.rom2[address_rom & rom2_mask];
         else
-            ret = cardram[address & 0x7fff]; // FIXME
+            ret = mcu.cardram[address & 0x7fff]; // FIXME
         break;
     case 10:
     case 11:
         if (!mcu_mk1)
-            ret = sram[address & 0x7fff]; // FIXME
+            ret = mcu.sram[address & 0x7fff]; // FIXME
         else
             ret = 0xff;
         break;
     case 12:
     case 13:
         if (mcu_jv880)
-            ret = nvram[address & 0x7fff]; // FIXME
+            ret = mcu.nvram[address & 0x7fff]; // FIXME
         else
             ret = 0xff;
         break;
     case 5:
         if (mcu_mk1)
-            ret = sram[address & 0x7fff]; // FIXME
+            ret = mcu.sram[address & 0x7fff]; // FIXME
         else
             ret = 0xff;
         break;
@@ -798,11 +782,11 @@ void MCU_Write(mcu_t& mcu, uint32_t address, uint8_t value)
                 else if (address >= 0xfb80 && address < 0xff80
                     && (dev_register[DEV_RAME] & 0x80) != 0)
                 {
-                    ram[(address - 0xfb80) & 0x3ff] = value;
+                    mcu.ram[(address - 0xfb80) & 0x3ff] = value;
                 }
                 else if (address >= 0x8000 && address < 0xe000)
                 {
-                    sram[address & 0x7fff] = value;
+                    mcu.sram[address & 0x7fff] = value;
                 }
                 else
                 {
@@ -822,11 +806,11 @@ void MCU_Write(mcu_t& mcu, uint32_t address, uint8_t value)
                 else if (address >= 0xfb80 && address < 0xff80
                     && (dev_register[DEV_RAME] & 0x80) != 0)
                 {
-                    ram[(address - 0xfb80) & 0x3ff] = value;
+                    mcu.ram[(address - 0xfb80) & 0x3ff] = value;
                 }
                 else if (address >= 0x8000 && address < 0xe000)
                 {
-                    sram[address & 0x7fff] = value;
+                    mcu.sram[address & 0x7fff] = value;
                 }
                 else if (address >= 0xf000 && address < 0xf100)
                 {
@@ -860,19 +844,19 @@ void MCU_Write(mcu_t& mcu, uint32_t address, uint8_t value)
     }
     else if (page == 5 && mcu_mk1)
     {
-        sram[address & 0x7fff] = value; // FIXME
+        mcu.sram[address & 0x7fff] = value; // FIXME
     }
     else if (page == 10 && !mcu_mk1)
     {
-        sram[address & 0x7fff] = value; // FIXME
+        mcu.sram[address & 0x7fff] = value; // FIXME
     }
     else if (page == 12 && mcu_jv880)
     {
-        nvram[address & 0x7fff] = value; // FIXME
+        mcu.nvram[address & 0x7fff] = value; // FIXME
     }
     else if (page == 14 && mcu_jv880)
     {
-        cardram[address & 0x7fff] = value; // FIXME
+        mcu.cardram[address & 0x7fff] = value; // FIXME
     }
     else
     {
@@ -1593,10 +1577,10 @@ int main(int argc, char *argv[])
     LCD_SetBackPath(basePath + "/back.data");
 
     mcu_t mcu;
-    memset(&mcu, 0, sizeof(mcu_t));
+    MCU_Init(mcu);
     lcd_t lcd;
 
-    if (fread(rom1, 1, ROM1_SIZE, s_rf[0]) != ROM1_SIZE)
+    if (fread(mcu.rom1, 1, ROM1_SIZE, s_rf[0]) != ROM1_SIZE)
     {
         fprintf(stderr, "FATAL ERROR: Failed to read the mcu ROM1.\n");
         fflush(stderr);
@@ -1604,7 +1588,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    size_t rom2_read = fread(rom2, 1, ROM2_SIZE, s_rf[1]);
+    size_t rom2_read = fread(mcu.rom2, 1, ROM2_SIZE, s_rf[1]);
 
     if (rom2_read == ROM2_SIZE || rom2_read == ROM2_SIZE / 2)
     {
@@ -1735,7 +1719,6 @@ int main(int argc, char *argv[])
     }
 
     LCD_Init(lcd, mcu);
-    MCU_Init(mcu);
     MCU_PatchROM();
     MCU_Reset(mcu);
     SM_Reset(mcu);

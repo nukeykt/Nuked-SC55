@@ -174,6 +174,13 @@ enum {
     VECTOR_INTERNAL_INTERRUPT_E0, // ADI
 };
 
+static const int ROM1_SIZE = 0x8000;
+static const int ROM2_SIZE = 0x80000;
+static const int RAM_SIZE = 0x400;
+static const int SRAM_SIZE = 0x8000;
+static const int NVRAM_SIZE = 0x8000; // JV880 only
+static const int CARDRAM_SIZE = 0x8000; // JV880 only
+static const int ROMSM_SIZE = 0x1000;
 
 struct mcu_t {
     uint16_t r[8];
@@ -186,6 +193,13 @@ struct mcu_t {
     uint8_t interrupt_pending[INTERRUPT_SOURCE_MAX];
     uint8_t trapa_pending[16];
     uint64_t cycles;
+
+    uint8_t rom1[ROM1_SIZE];
+    uint8_t rom2[ROM2_SIZE];
+    uint8_t ram[RAM_SIZE];
+    uint8_t sram[SRAM_SIZE];
+    uint8_t nvram[NVRAM_SIZE];
+    uint8_t cardram[CARDRAM_SIZE];
 };
 
 void MCU_ErrorTrap(mcu_t& mcu);
