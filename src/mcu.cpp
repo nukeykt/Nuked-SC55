@@ -1239,9 +1239,7 @@ void MCU_PostSample(int *sample)
     }
     else if (sample_buffer_float)
     {
-        const float divRec = 1 / 32768.0f;
-        sample[0] >>= 14;
-        sample[1] >>= 14;
+        const float divRec = 1 / 536870912.0f;       
         sample_buffer_float[sample_write_ptr + 0] = sample[0] * divRec;
         sample_buffer_float[sample_write_ptr + 1] = sample[1] * divRec;
     }
