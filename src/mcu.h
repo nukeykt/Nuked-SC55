@@ -182,6 +182,8 @@ static const int NVRAM_SIZE = 0x8000; // JV880 only
 static const int CARDRAM_SIZE = 0x8000; // JV880 only
 static const int ROMSM_SIZE = 0x1000;
 
+static const uint32_t uart_buffer_size = 8192;
+
 struct mcu_t {
     uint16_t r[8];
     uint16_t pc;
@@ -209,6 +211,14 @@ struct mcu_t {
     uint8_t io_sd;
 
     submcu_t* sm;
+
+    uint32_t uart_write_ptr;
+    uint32_t uart_read_ptr;
+    uint8_t uart_buffer[uart_buffer_size];
+
+    uint8_t uart_rx_byte;
+    uint64_t uart_rx_delay;
+    uint64_t uart_tx_delay;
 };
 
 void MCU_ErrorTrap(mcu_t& mcu);
@@ -476,11 +486,6 @@ extern int mcu_sc155;
 
 extern SDL_atomic_t mcu_button_pressed;
 
-static const uint32_t uart_buffer_size = 8192;
-extern uint32_t uart_write_ptr;
-extern uint32_t uart_read_ptr;
-extern uint8_t uart_buffer[uart_buffer_size];
-
 uint8_t MCU_ReadP0(void);
 uint8_t MCU_ReadP1(void);
 void MCU_WriteP0(uint8_t data);
@@ -490,7 +495,7 @@ void MCU_GA_SetGAInt(mcu_t& mcu, int line, int value);
 void MCU_EncoderTrigger(mcu_t& mcu, int dir);
 
 void MCU_PostSample(int *sample);
-void MCU_PostUART(uint8_t data);
+void MCU_PostUART(mcu_t& mcu, uint8_t data);
 
 void MCU_WorkThread_Lock(void);
 void MCU_WorkThread_Unlock(void);

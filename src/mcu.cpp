@@ -268,14 +268,6 @@ uint64_t analog_end_time;
 
 int ssr_rd = 0;
 
-uint32_t uart_write_ptr;
-uint32_t uart_read_ptr;
-uint8_t uart_buffer[uart_buffer_size];
-
-static uint8_t uart_rx_byte;
-static uint64_t uart_rx_delay;
-static uint64_t uart_tx_delay;
-
 void MCU_DeviceWrite(mcu_t& mcu, uint32_t address, uint8_t data)
 {
     address &= 0x7f;
@@ -371,12 +363,12 @@ void MCU_DeviceWrite(mcu_t& mcu, uint32_t address, uint8_t data)
         if ((data & 0x80) == 0 && (ssr_rd & 0x80) != 0)
         {
             mcu.dev_register[address] &= ~0x80;
-            uart_tx_delay = mcu.cycles + 3000;
+            mcu.uart_tx_delay = mcu.cycles + 3000;
             MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_UART_TX, 0);
         }
         if ((data & 0x40) == 0 && (ssr_rd & 0x40) != 0)
         {
-            uart_rx_delay = mcu.cycles + 3000;
+            mcu.uart_rx_delay = mcu.cycles + 3000;
             mcu.dev_register[address] &= ~0x40;
             MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_UART_RX, 0);
         }
@@ -426,7 +418,7 @@ uint8_t MCU_DeviceRead(mcu_t& mcu, uint32_t address)
         ssr_rd = mcu.dev_register[address];
         return mcu.dev_register[address];
     case DEV_RDR:
-        return uart_rx_byte;
+        return mcu.uart_rx_byte;
     case 0x00:
         return 0xff;
     case DEV_P7DR:
@@ -917,27 +909,27 @@ void MCU_Reset(mcu_t& mcu)
     }
 }
 
-void MCU_PostUART(uint8_t data)
+void MCU_PostUART(mcu_t& mcu, uint8_t data)
 {
-    uart_buffer[uart_write_ptr] = data;
-    uart_write_ptr = (uart_write_ptr + 1) % uart_buffer_size;
+    mcu.uart_buffer[mcu.uart_write_ptr] = data;
+    mcu.uart_write_ptr = (mcu.uart_write_ptr + 1) % uart_buffer_size;
 }
 
 void MCU_UpdateUART_RX(mcu_t& mcu)
 {
     if ((mcu.dev_register[DEV_SCR] & 16) == 0) // RX disabled
         return;
-    if (uart_write_ptr == uart_read_ptr) // no byte
+    if (mcu.uart_write_ptr == mcu.uart_read_ptr) // no byte
         return;
 
     if (mcu.dev_register[DEV_SSR] & 0x40)
         return;
 
-    if (mcu.cycles < uart_rx_delay)
+    if (mcu.cycles < mcu.uart_rx_delay)
         return;
 
-    uart_rx_byte = uart_buffer[uart_read_ptr];
-    uart_read_ptr = (uart_read_ptr + 1) % uart_buffer_size;
+    mcu.uart_rx_byte = mcu.uart_buffer[mcu.uart_read_ptr];
+    mcu.uart_read_ptr = (mcu.uart_read_ptr + 1) % uart_buffer_size;
     mcu.dev_register[DEV_SSR] |= 0x40;
     MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_UART_RX, (mcu.dev_register[DEV_SCR] & 0x40) != 0);
 }
@@ -951,7 +943,7 @@ void MCU_UpdateUART_TX(mcu_t& mcu)
     if (mcu.dev_register[DEV_SSR] & 0x80)
         return;
 
-    if (mcu.cycles < uart_tx_delay)
+    if (mcu.cycles < mcu.uart_tx_delay)
         return;
 
     mcu.dev_register[DEV_SSR] |= 0x80;
@@ -1305,7 +1297,7 @@ enum class ResetType {
     GM_RESET,
 };
 
-void MIDI_Reset(ResetType resetType)
+void MIDI_Reset(mcu_t& mcu, ResetType resetType)
 {
     const unsigned char gmReset[] = { 0xF0, 0x7E, 0x7F, 0x09, 0x01, 0xF7 };
     const unsigned char gsReset[] = { 0xF0, 0x41, 0x10, 0x42, 0x12, 0x40, 0x00, 0x7F, 0x00, 0x41, 0xF7 };
@@ -1314,14 +1306,14 @@ void MIDI_Reset(ResetType resetType)
     {
         for (size_t i = 0; i < sizeof(gsReset); i++)
         {
-            MCU_PostUART(gsReset[i]);
+            MCU_PostUART(mcu, gsReset[i]);
         }
     }
     else  if (resetType == ResetType::GM_RESET)
     {
         for (size_t i = 0; i < sizeof(gmReset); i++)
         {
-            MCU_PostUART(gmReset[i]);
+            MCU_PostUART(mcu, gmReset[i]);
         }
     }
 
@@ -1707,7 +1699,7 @@ int main(int argc, char *argv[])
         return 2;
     }
 
-    if(!MIDI_Init(port))
+    if(!MIDI_Init(mcu, port))
     {
         fprintf(stderr, "ERROR: Failed to initialize the MIDI Input.\nWARNING: Continuing without MIDI Input...\n");
         fflush(stderr);
@@ -1719,7 +1711,7 @@ int main(int argc, char *argv[])
     SM_Reset(sm, mcu);
     PCM_Reset();
 
-    if (resetType != ResetType::NONE) MIDI_Reset(resetType);
+    if (resetType != ResetType::NONE) MIDI_Reset(mcu, resetType);
     
     MCU_Run(mcu, lcd);
 

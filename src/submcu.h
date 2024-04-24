@@ -58,6 +58,22 @@ struct submcu_t {
     uint8_t sleep;
     mcu_t* mcu;
     uint8_t sm_rom[4096];
+
+    uint8_t sm_ram[128];
+    uint8_t sm_shared_ram[192];
+    uint8_t sm_access[0x18];
+
+    uint8_t sm_p0_dir;
+    uint8_t sm_p1_dir;
+
+    uint8_t sm_device_mode[32];
+    uint8_t sm_cts;
+
+    uint64_t sm_timer_cycles;
+    uint8_t sm_timer_prescaler;
+    uint8_t sm_timer_counter;
+
+    uint8_t uart_rx_gotbyte;
 };
 
 void SM_Reset(submcu_t& sm, mcu_t& mcu);
