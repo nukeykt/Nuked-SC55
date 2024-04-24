@@ -134,11 +134,6 @@ void MCU_ErrorTrap(mcu_t& mcu)
     printf("%.2x %.4x\n", mcu.cp, mcu.pc);
 }
 
-static int ga_int[8];
-static int ga_int_enable = 0;
-static int ga_int_trigger = 0;
-static int ga_lcd_counter = 0;
-
 SDL_atomic_t mcu_button_pressed = { 0 };
 
 uint8_t RCU_Read(void)
@@ -542,8 +537,8 @@ uint8_t MCU_Read(mcu_t& mcu, uint32_t address)
                 }
                 else if (address == (base | 0x402))
                 {
-                    ret = ga_int_trigger;
-                    ga_int_trigger = 0;
+                    ret = mcu.ga_int_trigger;
+                    mcu.ga_int_trigger = 0;
                     MCU_Interrupt_SetRequest(mcu, mcu.mcu_jv880 ? INTERRUPT_SOURCE_IRQ0 : INTERRUPT_SOURCE_IRQ1, 0);
                 }
                 else
@@ -598,8 +593,8 @@ uint8_t MCU_Read(mcu_t& mcu, uint32_t address)
                 }
                 else if (address == 0xf106)
                 {
-                    ret = ga_int_trigger;
-                    ga_int_trigger = 0;
+                    ret = mcu.ga_int_trigger;
+                    mcu.ga_int_trigger = 0;
                     MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_IRQ1, 0);
                 }
                 else
@@ -726,7 +721,7 @@ void MCU_Write(mcu_t& mcu, uint32_t address, uint8_t value)
                         LCD_Enable((value & 1) == 0);
                     }
                     else if (address == (base | 0x402))
-                        ga_int_enable = (value << 1);
+                        mcu.ga_int_enable = (value << 1);
                     else
                         printf("Unknown write %x %x\n", address, value);
                     //
@@ -793,12 +788,12 @@ void MCU_Write(mcu_t& mcu, uint32_t address, uint8_t value)
                 else if (address == 0xf105)
                 {
                     LCD_Write(0, value);
-                    ga_lcd_counter = 500;
+                    mcu.ga_lcd_counter = 500;
                 }
                 else if (address == 0xf104)
                 {
                     LCD_Write(1, value);
-                    ga_lcd_counter = 500;
+                    mcu.ga_lcd_counter = 500;
                 }
                 else if (address == 0xf107)
                 {
@@ -898,7 +893,7 @@ void MCU_Reset(mcu_t& mcu)
 
     if (mcu.mcu_mk1)
     {
-        ga_int_enable = 255;
+        mcu.ga_int_enable = 255;
     }
 }
 
@@ -1010,10 +1005,10 @@ int SDLCALL work_thread(void* data)
 
         if (mcu.mcu_mk1)
         {
-            if (ga_lcd_counter)
+            if (mcu.ga_lcd_counter)
             {
-                ga_lcd_counter--;
-                if (ga_lcd_counter == 0)
+                mcu.ga_lcd_counter--;
+                if (mcu.ga_lcd_counter == 0)
                 {
                     MCU_GA_SetGAInt(mcu, 1, 0);
                     MCU_GA_SetGAInt(mcu, 1, 1);
@@ -1246,14 +1241,14 @@ void MCU_PostSample(int *sample)
 void MCU_GA_SetGAInt(mcu_t& mcu, int line, int value)
 {
     // guesswork
-    if (value && !ga_int[line] && (ga_int_enable & (1 << line)) != 0)
-        ga_int_trigger = line;
-    ga_int[line] = value;
+    if (value && !mcu.ga_int[line] && (mcu.ga_int_enable & (1 << line)) != 0)
+        mcu.ga_int_trigger = line;
+    mcu.ga_int[line] = value;
 
     if (mcu.mcu_jv880)
-        MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_IRQ0, ga_int_trigger != 0);
+        MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_IRQ0, mcu.ga_int_trigger != 0);
     else
-        MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_IRQ1, ga_int_trigger != 0);
+        MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_IRQ1, mcu.ga_int_trigger != 0);
 }
 
 void MCU_EncoderTrigger(mcu_t& mcu, int dir)

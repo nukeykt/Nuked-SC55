@@ -234,6 +234,11 @@ struct mcu_t {
     int mcu_sc155; // 0 - SC-55(MK2), 1 - SC-155(MK2)
 
     int rom2_mask = ROM2_SIZE - 1;
+
+    int ga_int[8];
+    int ga_int_enable = 0;
+    int ga_int_trigger = 0;
+    int ga_lcd_counter = 0;
 };
 
 void MCU_ErrorTrap(mcu_t& mcu);
