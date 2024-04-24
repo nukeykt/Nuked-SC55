@@ -1090,20 +1090,20 @@ void unscramble(uint8_t *src, uint8_t *dst, int len)
     }
 }
 
-void audio_callback(void* /*userdata*/, Uint8* stream, int len)
-{
-    if (sample_buffer)
-    {
-        memcpy(stream, &sample_buffer[sample_read_ptr], len);
-        memset(&sample_buffer[sample_read_ptr], 0, len);
-        sample_read_ptr += len / sizeof(short);        
-    }
-    else if (sample_buffer_float)
-    {
-        memcpy(stream, &sample_buffer_float[sample_read_ptr], len);
-        memset(&sample_buffer_float[sample_read_ptr], 0, len);
-        sample_read_ptr += len / sizeof(float);
-    }
+void audio_callback_short(void* /*userdata*/, Uint8* stream, int len)
+{  
+    memcpy(stream, &sample_buffer[sample_read_ptr], len);
+    memset(&sample_buffer[sample_read_ptr], 0, len);
+    sample_read_ptr += len / sizeof(short);   
+
+    sample_read_ptr %= audio_buffer_size;
+}
+
+void audio_callback_float(void* /*userdata*/, Uint8* stream, int len)
+{    
+    memcpy(stream, &sample_buffer_float[sample_read_ptr], len);
+    memset(&sample_buffer_float[sample_read_ptr], 0, len);
+    sample_read_ptr += len / sizeof(float);   
 
     sample_read_ptr %= audio_buffer_size;
 }
@@ -1151,16 +1151,17 @@ int MCU_OpenAudio(int deviceIndex, int pageSize, int pageNum, AudioFormat audioF
     
     spec.format = audioFormat == AudioFormat::INT16 ?  AUDIO_S16SYS : AUDIO_F32SYS;
     spec.freq = (mcu_mk1 || mcu_jv880) ? 64000 : 66207;
-    spec.channels = 2;
-    spec.callback = audio_callback;
+    spec.channels = 2;   
     spec.samples = audio_page_size / 4;
     
     if (audioFormat == AudioFormat::INT16)
     {
-        sample_buffer = (short*)calloc(audio_buffer_size, sizeof(short));        
+        spec.callback = audio_callback_short;
+        sample_buffer = (short*)calloc(audio_buffer_size, sizeof(short));
     }
     else if (audioFormat == AudioFormat::FLOAT32)
     {
+        spec.callback = audio_callback_float;
         sample_buffer_float = (float*)calloc(audio_buffer_size, sizeof(float));
     }
     
@@ -1413,8 +1414,8 @@ int main(int argc, char *argv[])
 
         if (audioFormat == AudioFormat::FLOAT32 && !isBufferSet)
         {
-            pageSize = 8192;
-            pageNum = 2;
+            pageSize = 6144;
+            pageNum = 3;
         }
     }
 
