@@ -1327,8 +1327,10 @@ int main(int argc, char *argv[])
 
     mcu_t mcu;
     submcu_t sm;
-    pcm_t pcm;
-    MCU_Init(mcu, sm, pcm);
+    // allocate pcm because the waveroms will overflow the stack
+    pcm_t* pcm = (pcm_t*)malloc(sizeof(pcm_t));
+    PCM_Reset(*pcm, mcu);
+    MCU_Init(mcu, sm, *pcm);
     lcd_t lcd;
 
     {
@@ -1592,7 +1594,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        unscramble(tempbuf, waverom1, 0x100000);
+        unscramble(tempbuf, pcm->waverom1, 0x100000);
 
         if (fread(tempbuf, 1, 0x100000, s_rf[3]) != 0x100000)
         {
@@ -1602,7 +1604,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        unscramble(tempbuf, waverom2, 0x100000);
+        unscramble(tempbuf, pcm->waverom2, 0x100000);
 
         if (fread(tempbuf, 1, 0x100000, s_rf[4]) != 0x100000)
         {
@@ -1612,7 +1614,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        unscramble(tempbuf, waverom3, 0x100000);
+        unscramble(tempbuf, pcm->waverom3, 0x100000);
     }
     else if (mcu.mcu_jv880)
     {
@@ -1624,7 +1626,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        unscramble(tempbuf, waverom1, 0x200000);
+        unscramble(tempbuf, pcm->waverom1, 0x200000);
 
         if (fread(tempbuf, 1, 0x200000, s_rf[3]) != 0x200000)
         {
@@ -1634,10 +1636,10 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        unscramble(tempbuf, waverom2, 0x200000);
+        unscramble(tempbuf, pcm->waverom2, 0x200000);
 
         if (s_rf[4] && fread(tempbuf, 1, 0x800000, s_rf[4]))
-            unscramble(tempbuf, waverom_exp, 0x800000);
+            unscramble(tempbuf, pcm->waverom_exp, 0x800000);
         else
             printf("WaveRom EXP not found, skipping it.\n");
     }
@@ -1651,7 +1653,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        unscramble(tempbuf, waverom1, 0x200000);
+        unscramble(tempbuf, pcm->waverom1, 0x200000);
 
         if (s_rf[3])
         {
@@ -1663,7 +1665,7 @@ int main(int argc, char *argv[])
                 return 1;
             }
 
-            unscramble(tempbuf, mcu.mcu_scb55 ? waverom3 : waverom2, 0x100000);
+            unscramble(tempbuf, mcu.mcu_scb55 ? pcm->waverom3 : pcm->waverom2, 0x100000);
         }
 
         if (s_rf[4] && fread(sm.sm_rom, 1, ROMSM_SIZE, s_rf[4]) != ROMSM_SIZE)
@@ -1702,7 +1704,6 @@ int main(int argc, char *argv[])
     MCU_PatchROM();
     MCU_Reset(mcu);
     SM_Reset(sm, mcu);
-    PCM_Reset(pcm, mcu);
 
     if (resetType != ResetType::NONE) MIDI_Reset(mcu, resetType);
     
@@ -1712,6 +1713,8 @@ int main(int argc, char *argv[])
     MIDI_Quit();
     LCD_UnInit();
     SDL_Quit();
+
+    free(pcm);
 
     return 0;
 }

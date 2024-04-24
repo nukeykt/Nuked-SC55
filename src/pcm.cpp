@@ -38,11 +38,6 @@
 #include "mcu_interrupt.h"
 #include "pcm.h"
 
-uint8_t waverom1[0x200000];
-uint8_t waverom2[0x200000];
-uint8_t waverom3[0x100000];
-uint8_t waverom_exp[0x800000];
-
 uint8_t PCM_ReadROM(pcm_t& pcm, uint32_t address)
 {
     int bank;
@@ -54,23 +49,23 @@ uint8_t PCM_ReadROM(pcm_t& pcm, uint32_t address)
     {
         case 0:
             if (pcm.mcu->mcu_mk1)
-                return waverom1[address & 0xfffff];
+                return pcm.waverom1[address & 0xfffff];
             else
-                return waverom1[address & 0x1fffff];
+                return pcm.waverom1[address & 0x1fffff];
         case 1:
             if (!pcm.mcu->mcu_jv880)
-                return waverom2[address & 0xfffff];
+                return pcm.waverom2[address & 0xfffff];
             else
-                return waverom2[address & 0x1fffff];
+                return pcm.waverom2[address & 0x1fffff];
         case 2:
             if (pcm.mcu->mcu_jv880) return 0;
-            return waverom3[address & 0xfffff];
+            return pcm.waverom3[address & 0xfffff];
         case 3:
         case 4:
         case 5:
         case 6:
             if (pcm.mcu->mcu_jv880)
-                return waverom_exp[(address & 0x1fffff) + (bank - 3) * 0x200000];
+                return pcm.waverom_exp[(address & 0x1fffff) + (bank - 3) * 0x200000];
         default:
             break;
     }

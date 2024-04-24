@@ -65,12 +65,12 @@ struct pcm_t {
     int rcsum[2];
 
     mcu_t* mcu;
-};
 
-extern uint8_t waverom1[];
-extern uint8_t waverom2[];
-extern uint8_t waverom3[];
-extern uint8_t waverom_exp[];
+    uint8_t waverom1[0x200000];
+    uint8_t waverom2[0x200000];
+    uint8_t waverom3[0x100000];
+    uint8_t waverom_exp[0x800000];
+};
 
 void PCM_Write(pcm_t& pcm, uint32_t address, uint8_t data);
 uint8_t PCM_Read(pcm_t& pcm, uint32_t address);
