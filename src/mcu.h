@@ -188,41 +188,39 @@ struct mcu_t {
     uint64_t cycles;
 };
 
-extern mcu_t mcu;
+void MCU_ErrorTrap(mcu_t& mcu);
 
-void MCU_ErrorTrap(void);
-
-uint8_t MCU_Read(uint32_t address);
-uint16_t MCU_Read16(uint32_t address);
-uint32_t MCU_Read32(uint32_t address);
-void MCU_Write(uint32_t address, uint8_t value);
-void MCU_Write16(uint32_t address, uint16_t value);
+uint8_t MCU_Read(mcu_t& mcu, uint32_t address);
+uint16_t MCU_Read16(mcu_t& mcu, uint32_t address);
+uint32_t MCU_Read32(mcu_t& mcu, uint32_t address);
+void MCU_Write(mcu_t& mcu, uint32_t address, uint8_t value);
+void MCU_Write16(mcu_t& mcu, uint32_t address, uint16_t value);
 
 inline uint32_t MCU_GetAddress(uint8_t page, uint16_t address) {
     return (page << 16) + address;
 }
 
-inline uint8_t MCU_ReadCode(void) {
-    return MCU_Read(MCU_GetAddress(mcu.cp, mcu.pc));
+inline uint8_t MCU_ReadCode(mcu_t& mcu) {
+    return MCU_Read(mcu, MCU_GetAddress(mcu.cp, mcu.pc));
 }
 
-inline uint8_t MCU_ReadCodeAdvance(void) {
-    uint8_t ret = MCU_ReadCode();
+inline uint8_t MCU_ReadCodeAdvance(mcu_t& mcu) {
+    uint8_t ret = MCU_ReadCode(mcu);
     mcu.pc++;
     return ret;
 }
 
-inline void MCU_SetRegisterByte(uint8_t reg, uint8_t val)
+inline void MCU_SetRegisterByte(mcu_t& mcu, uint8_t reg, uint8_t val)
 {
     mcu.r[reg] = val;
 }
 
-inline uint32_t MCU_GetVectorAddress(uint32_t vector)
+inline uint32_t MCU_GetVectorAddress(mcu_t& mcu, uint32_t vector)
 {
-    return MCU_Read32(vector * 4);
+    return MCU_Read32(mcu, vector * 4);
 }
 
-inline uint32_t MCU_GetPageForRegister(uint32_t reg)
+inline uint32_t MCU_GetPageForRegister(mcu_t& mcu, uint32_t reg)
 {
     if (reg >= 6)
         return mcu.tp;
@@ -231,7 +229,7 @@ inline uint32_t MCU_GetPageForRegister(uint32_t reg)
     return mcu.dp;
 }
 
-inline void MCU_ControlRegisterWrite(uint32_t reg, uint32_t siz, uint32_t data)
+inline void MCU_ControlRegisterWrite(mcu_t& mcu, uint32_t reg, uint32_t siz, uint32_t data)
 {
     if (siz)
     {
@@ -254,7 +252,7 @@ inline void MCU_ControlRegisterWrite(uint32_t reg, uint32_t siz, uint32_t data)
         }
         else
         {
-            MCU_ErrorTrap();
+            MCU_ErrorTrap(mcu);
         }
     }
     else
@@ -283,12 +281,12 @@ inline void MCU_ControlRegisterWrite(uint32_t reg, uint32_t siz, uint32_t data)
         }
         else
         {
-            MCU_ErrorTrap();
+            MCU_ErrorTrap(mcu);
         }
     }
 }
 
-inline uint32_t MCU_ControlRegisterRead(uint32_t reg, uint32_t siz)
+inline uint32_t MCU_ControlRegisterRead(mcu_t& mcu, uint32_t reg, uint32_t siz)
 {
     uint32_t ret = 0;
     if (siz)
@@ -311,7 +309,7 @@ inline uint32_t MCU_ControlRegisterRead(uint32_t reg, uint32_t siz)
         }
         else
         {
-            MCU_ErrorTrap();
+            MCU_ErrorTrap(mcu);
         }
         ret &= 0xffff;
     }
@@ -339,14 +337,14 @@ inline uint32_t MCU_ControlRegisterRead(uint32_t reg, uint32_t siz)
         }
         else
         {
-            MCU_ErrorTrap();
+            MCU_ErrorTrap(mcu);
         }
         ret &= 0xff;
     }
     return ret;
 }
 
-inline void MCU_SetStatus(uint32_t condition, uint32_t mask)
+inline void MCU_SetStatus(mcu_t& mcu, uint32_t condition, uint32_t mask)
 {
     if (condition)
         mcu.sr |= mask;
@@ -354,20 +352,20 @@ inline void MCU_SetStatus(uint32_t condition, uint32_t mask)
         mcu.sr &= ~mask;
 }
 
-inline void MCU_PushStack(uint16_t data)
+inline void MCU_PushStack(mcu_t& mcu, uint16_t data)
 {
     if (mcu.r[7] & 1)
-        MCU_Interrupt_Exception(EXCEPTION_SOURCE_ADDRESS_ERROR);
+        MCU_Interrupt_Exception(mcu, EXCEPTION_SOURCE_ADDRESS_ERROR);
     mcu.r[7] -= 2;
-    MCU_Write16(mcu.r[7], data);
+    MCU_Write16(mcu, mcu.r[7], data);
 }
 
-inline uint16_t MCU_PopStack(void)
+inline uint16_t MCU_PopStack(mcu_t& mcu)
 {
     uint16_t ret;
     if (mcu.r[7] & 1)
-        MCU_Interrupt_Exception(EXCEPTION_SOURCE_ADDRESS_ERROR);
-    ret = MCU_Read16(mcu.r[7]);
+        MCU_Interrupt_Exception(mcu, EXCEPTION_SOURCE_ADDRESS_ERROR);
+    ret = MCU_Read16(mcu, mcu.r[7]);
     mcu.r[7] += 2;
     return ret;
 }
@@ -464,9 +462,9 @@ uint8_t MCU_ReadP0(void);
 uint8_t MCU_ReadP1(void);
 void MCU_WriteP0(uint8_t data);
 void MCU_WriteP1(uint8_t data);
-void MCU_GA_SetGAInt(int line, int value);
+void MCU_GA_SetGAInt(mcu_t& mcu, int line, int value);
 
-void MCU_EncoderTrigger(int dir);
+void MCU_EncoderTrigger(mcu_t& mcu, int dir);
 
 void MCU_PostSample(int *sample);
 void MCU_PostUART(uint8_t data);

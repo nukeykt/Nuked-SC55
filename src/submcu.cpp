@@ -216,7 +216,7 @@ void SM_Write(uint16_t address, uint8_t data)
                 break;
         }
         if (address == SM_DEV_UART3_MODE_STATUS || address == SM_DEV_UART3_CTRL)
-            MCU_GA_SetGAInt(5, (sm_device_mode[SM_DEV_UART3_MODE_STATUS] & 0x80) != 0
+            MCU_GA_SetGAInt(*sm.mcu, 5, (sm_device_mode[SM_DEV_UART3_MODE_STATUS] & 0x80) != 0
                 && (sm_device_mode[SM_DEV_UART3_CTRL] & 0x20) == 0);
     }
     else if (address >= 0x200 && address < 0x2c0)
@@ -329,10 +329,11 @@ void SM_SetStatus(uint32_t condition, uint32_t mask)
         sm.sr &= ~mask;
 }
 
-void SM_Reset(void)
+void SM_Reset(mcu_t& mcu)
 {
     memset(&sm, 0, sizeof(sm));
     sm.pc = SM_GetVectorAddress(SM_VECTOR_RESET);
+    sm.mcu = &mcu;
 }
 
 uint8_t SM_ReadAdvance(void)

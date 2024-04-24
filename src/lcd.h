@@ -36,14 +36,20 @@
 #include <stdint.h>
 #include <string>
 
+struct mcu_t;
+
+struct lcd_t {
+    mcu_t* mcu;
+};
+
 extern int lcd_width;
 extern int lcd_height;
 
 void LCD_SetBackPath(const std::string &path);
-void LCD_Init(void);
+void LCD_Init(lcd_t& lcd, mcu_t& mcu);
 void LCD_UnInit(void);
 void LCD_Write(uint32_t address, uint8_t data);
 void LCD_Enable(uint32_t enable);
 bool LCD_QuitRequested();
 void LCD_Sync(void);
-void LCD_Update(void);
+void LCD_Update(lcd_t& lcd);

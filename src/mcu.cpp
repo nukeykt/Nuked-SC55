@@ -140,7 +140,7 @@ static int sample_write_ptr;
 
 static SDL_AudioDeviceID sdl_audio;
 
-void MCU_ErrorTrap(void)
+void MCU_ErrorTrap(mcu_t& mcu)
 {
     printf("%.2x %.4x\n", mcu.cp, mcu.pc);
 }
@@ -293,17 +293,17 @@ static uint8_t uart_rx_byte;
 static uint64_t uart_rx_delay;
 static uint64_t uart_tx_delay;
 
-void MCU_DeviceWrite(uint32_t address, uint8_t data)
+void MCU_DeviceWrite(mcu_t& mcu, uint32_t address, uint8_t data)
 {
     address &= 0x7f;
     if (address >= 0x10 && address < 0x40)
     {
-        TIMER_Write(address, data);
+        TIMER_Write(mcu, address, data);
         return;
     }
     if (address >= 0x50 && address < 0x55)
     {
-        TIMER2_Write(address, data);
+        TIMER2_Write(mcu, address, data);
         return;
     }
     switch (address)
@@ -377,10 +377,10 @@ void MCU_DeviceWrite(uint32_t address, uint8_t data)
         if ((data & 0x80) == 0 && adf_rd)
         {
             dev_register[address] &= ~0x80;
-            MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_ANALOG, 0);
+            MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_ANALOG, 0);
         }
         if ((data & 0x40) == 0)
-            MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_ANALOG, 0);
+            MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_ANALOG, 0);
         return;
     }
     case DEV_SSR:
@@ -389,13 +389,13 @@ void MCU_DeviceWrite(uint32_t address, uint8_t data)
         {
             dev_register[address] &= ~0x80;
             uart_tx_delay = mcu.cycles + 3000;
-            MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_UART_TX, 0);
+            MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_UART_TX, 0);
         }
         if ((data & 0x40) == 0 && (ssr_rd & 0x40) != 0)
         {
             uart_rx_delay = mcu.cycles + 3000;
             dev_register[address] &= ~0x40;
-            MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_UART_RX, 0);
+            MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_UART_RX, 0);
         }
         if ((data & 0x20) == 0 && (ssr_rd & 0x20) != 0)
         {
@@ -504,7 +504,7 @@ void MCU_DeviceReset(void)
     dev_register[DEV_SSR] = 0x80;
 }
 
-void MCU_UpdateAnalog(uint64_t cycles)
+void MCU_UpdateAnalog(mcu_t& mcu, uint64_t cycles)
 {
     int ctrl = dev_register[DEV_ADCSR];
     int isscan = (ctrl & 16) != 0;
@@ -530,14 +530,12 @@ void MCU_UpdateAnalog(uint64_t cycles)
             }
             dev_register[DEV_ADCSR] |= 0x80;
             if (ctrl & 0x40)
-                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_ANALOG, 1);
+                MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_ANALOG, 1);
         }
     }
     else
         analog_end_time = 0;
 }
-
-mcu_t mcu;
 
 uint8_t rom1[ROM1_SIZE];
 uint8_t rom2[ROM2_SIZE];
@@ -548,7 +546,7 @@ uint8_t cardram[CARDRAM_SIZE];
 
 int rom2_mask = ROM2_SIZE - 1;
 
-uint8_t MCU_Read(uint32_t address)
+uint8_t MCU_Read(mcu_t& mcu, uint32_t address)
 {
     uint32_t address_rom = address & 0x3ffff;
     if (address & 0x80000 && !mcu_jv880)
@@ -568,7 +566,7 @@ uint8_t MCU_Read(uint32_t address)
                 uint16_t base = mcu_jv880 ? 0xf000 : 0xe000;
                 if (address >= base && address < (base | 0x400))
                 {
-                    ret = PCM_Read(address & 0x3f);
+                    ret = PCM_Read(mcu, address & 0x3f);
                 }
                 else if (!mcu_scb55 && address >= 0xec00 && address < 0xf000)
                 {
@@ -589,7 +587,7 @@ uint8_t MCU_Read(uint32_t address)
                 {
                     ret = ga_int_trigger;
                     ga_int_trigger = 0;
-                    MCU_Interrupt_SetRequest(mcu_jv880 ? INTERRUPT_SOURCE_IRQ0 : INTERRUPT_SOURCE_IRQ1, 0);
+                    MCU_Interrupt_SetRequest(mcu, mcu_jv880 ? INTERRUPT_SOURCE_IRQ0 : INTERRUPT_SOURCE_IRQ1, 0);
                 }
                 else
                 {
@@ -604,7 +602,7 @@ uint8_t MCU_Read(uint32_t address)
             {
                 if (address >= 0xe000 && address < 0xe040)
                 {
-                    ret = PCM_Read(address & 0x3f);
+                    ret = PCM_Read(mcu, address & 0x3f);
                 }
                 else if (address >= 0xff80)
                 {
@@ -645,7 +643,7 @@ uint8_t MCU_Read(uint32_t address)
                 {
                     ret = ga_int_trigger;
                     ga_int_trigger = 0;
-                    MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ1, 0);
+                    MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_IRQ1, 0);
                 }
                 else
                 {
@@ -730,27 +728,27 @@ uint8_t MCU_Read(uint32_t address)
     return ret;
 }
 
-uint16_t MCU_Read16(uint32_t address)
+uint16_t MCU_Read16(mcu_t& mcu, uint32_t address)
 {
     address &= ~1;
     uint8_t b0, b1;
-    b0 = MCU_Read(address);
-    b1 = MCU_Read(address+1);
+    b0 = MCU_Read(mcu, address);
+    b1 = MCU_Read(mcu, address+1);
     return (b0 << 8) + b1;
 }
 
-uint32_t MCU_Read32(uint32_t address)
+uint32_t MCU_Read32(mcu_t& mcu, uint32_t address)
 {
     address &= ~3;
     uint8_t b0, b1, b2, b3;
-    b0 = MCU_Read(address);
-    b1 = MCU_Read(address+1);
-    b2 = MCU_Read(address+2);
-    b3 = MCU_Read(address+3);
+    b0 = MCU_Read(mcu, address);
+    b1 = MCU_Read(mcu, address+1);
+    b2 = MCU_Read(mcu, address+2);
+    b3 = MCU_Read(mcu, address+3);
     return (b0 << 24) + (b1 << 16) + (b2 << 8) + b3;
 }
 
-void MCU_Write(uint32_t address, uint8_t value)
+void MCU_Write(mcu_t& mcu, uint32_t address, uint8_t value)
 {
     uint8_t page = (address >> 16) & 0xf;
     address &= 0xffff;
@@ -795,7 +793,7 @@ void MCU_Write(uint32_t address, uint8_t value)
                 }
                 else if (address >= 0xff80)
                 {
-                    MCU_DeviceWrite(address & 0x7f, value);
+                    MCU_DeviceWrite(mcu, address & 0x7f, value);
                 }
                 else if (address >= 0xfb80 && address < 0xff80
                     && (dev_register[DEV_RAME] & 0x80) != 0)
@@ -819,7 +817,7 @@ void MCU_Write(uint32_t address, uint8_t value)
                 }
                 else if (address >= 0xff80)
                 {
-                    MCU_DeviceWrite(address & 0x7f, value);
+                    MCU_DeviceWrite(mcu, address & 0x7f, value);
                 }
                 else if (address >= 0xfb80 && address < 0xff80
                     && (dev_register[DEV_RAME] & 0x80) != 0)
@@ -882,31 +880,31 @@ void MCU_Write(uint32_t address, uint8_t value)
     }
 }
 
-void MCU_Write16(uint32_t address, uint16_t value)
+void MCU_Write16(mcu_t& mcu, uint32_t address, uint16_t value)
 {
     address &= ~1;
-    MCU_Write(address, value >> 8);
-    MCU_Write(address + 1, value & 0xff);
+    MCU_Write(mcu, address, value >> 8);
+    MCU_Write(mcu, address + 1, value & 0xff);
 }
 
-void MCU_ReadInstruction(void)
+void MCU_ReadInstruction(mcu_t& mcu)
 {
-    uint8_t operand = MCU_ReadCodeAdvance();
+    uint8_t operand = MCU_ReadCodeAdvance(mcu);
 
-    MCU_Operand_Table[operand](operand);
+    MCU_Operand_Table[operand](mcu, operand);
 
     if (mcu.sr & STATUS_T)
     {
-        MCU_Interrupt_Exception(EXCEPTION_SOURCE_TRACE);
+        MCU_Interrupt_Exception(mcu, EXCEPTION_SOURCE_TRACE);
     }
 }
 
-void MCU_Init(void)
+void MCU_Init(mcu_t& mcu)
 {
     memset(&mcu, 0, sizeof(mcu_t));
 }
 
-void MCU_Reset(void)
+void MCU_Reset(mcu_t& mcu)
 {
     mcu.r[0] = 0;
     mcu.r[1] = 0;
@@ -927,7 +925,7 @@ void MCU_Reset(void)
     mcu.tp = 0;
     mcu.br = 0;
 
-    uint32_t reset_address = MCU_GetVectorAddress(VECTOR_RESET);
+    uint32_t reset_address = MCU_GetVectorAddress(mcu, VECTOR_RESET);
     mcu.cp = (reset_address >> 16) & 0xff;
     mcu.pc = reset_address & 0xffff;
 
@@ -947,7 +945,7 @@ void MCU_PostUART(uint8_t data)
     uart_write_ptr = (uart_write_ptr + 1) % uart_buffer_size;
 }
 
-void MCU_UpdateUART_RX(void)
+void MCU_UpdateUART_RX(mcu_t& mcu)
 {
     if ((dev_register[DEV_SCR] & 16) == 0) // RX disabled
         return;
@@ -963,11 +961,11 @@ void MCU_UpdateUART_RX(void)
     uart_rx_byte = uart_buffer[uart_read_ptr];
     uart_read_ptr = (uart_read_ptr + 1) % uart_buffer_size;
     dev_register[DEV_SSR] |= 0x40;
-    MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_UART_RX, (dev_register[DEV_SCR] & 0x40) != 0);
+    MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_UART_RX, (dev_register[DEV_SCR] & 0x40) != 0);
 }
 
 // dummy TX
-void MCU_UpdateUART_TX(void)
+void MCU_UpdateUART_TX(mcu_t& mcu)
 {
     if ((dev_register[DEV_SCR] & 32) == 0) // TX disabled
         return;
@@ -979,7 +977,7 @@ void MCU_UpdateUART_TX(void)
         return;
 
     dev_register[DEV_SSR] |= 0x80;
-    MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_UART_TX, (dev_register[DEV_SCR] & 0x80) != 0);
+    MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_UART_TX, (dev_register[DEV_SCR] & 0x80) != 0);
 
     // printf("tx:%x\n", dev_register[DEV_TDR]);
 }
@@ -1000,6 +998,7 @@ void MCU_WorkThread_Unlock(void)
 
 int SDLCALL work_thread(void* data)
 {
+    mcu_t& mcu = *(mcu_t*)data;
     work_thread_lock = SDL_CreateMutex();
 
     MCU_WorkThread_Lock();
@@ -1020,31 +1019,31 @@ int SDLCALL work_thread(void* data)
         }
 
         if (!mcu.ex_ignore)
-            MCU_Interrupt_Handle();
+            MCU_Interrupt_Handle(mcu);
         else
             mcu.ex_ignore = 0;
 
         if (!mcu.sleep)
-            MCU_ReadInstruction();
+            MCU_ReadInstruction(mcu);
 
         mcu.cycles += 12; // FIXME: assume 12 cycles per instruction
 
         // if (mcu.cycles % 24000000 == 0)
         //     printf("seconds: %i\n", (int)(mcu.cycles / 24000000));
 
-        PCM_Update(mcu.cycles);
+        PCM_Update(mcu, mcu.cycles);
 
-        TIMER_Clock(mcu.cycles);
+        TIMER_Clock(mcu, mcu.cycles);
 
         if (!mcu_mk1 && !mcu_jv880 && !mcu_scb55)
             SM_Update(mcu.cycles);
         else
         {
-            MCU_UpdateUART_RX();
-            MCU_UpdateUART_TX();
+            MCU_UpdateUART_RX(mcu);
+            MCU_UpdateUART_TX(mcu);
         }
 
-        MCU_UpdateAnalog(mcu.cycles);
+        MCU_UpdateAnalog(mcu, mcu.cycles);
 
         if (mcu_mk1)
         {
@@ -1053,8 +1052,8 @@ int SDLCALL work_thread(void* data)
                 ga_lcd_counter--;
                 if (ga_lcd_counter == 0)
                 {
-                    MCU_GA_SetGAInt(1, 0);
-                    MCU_GA_SetGAInt(1, 1);
+                    MCU_GA_SetGAInt(mcu, 1, 0);
+                    MCU_GA_SetGAInt(mcu, 1, 1);
                 }
             }
         }
@@ -1066,19 +1065,19 @@ int SDLCALL work_thread(void* data)
     return 0;
 }
 
-static void MCU_Run()
+static void MCU_Run(mcu_t& mcu, lcd_t& lcd)
 {
     bool working = true;
 
     work_thread_run = true;
-    SDL_Thread *thread = SDL_CreateThread(work_thread, "work thread", 0);
+    SDL_Thread *thread = SDL_CreateThread(work_thread, "work thread", &mcu);
 
     while (working)
     {
         if(LCD_QuitRequested())
             working = false;
 
-        LCD_Update();
+        LCD_Update(lcd);
         SDL_Delay(15);
     }
 
@@ -1281,7 +1280,7 @@ void MCU_PostSample(int *sample)
     sample_write_ptr = (sample_write_ptr + 2) % audio_buffer_size;
 }
 
-void MCU_GA_SetGAInt(int line, int value)
+void MCU_GA_SetGAInt(mcu_t& mcu, int line, int value)
 {
     // guesswork
     if (value && !ga_int[line] && (ga_int_enable & (1 << line)) != 0)
@@ -1289,16 +1288,16 @@ void MCU_GA_SetGAInt(int line, int value)
     ga_int[line] = value;
 
     if (mcu_jv880)
-        MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ0, ga_int_trigger != 0);
+        MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_IRQ0, ga_int_trigger != 0);
     else
-        MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ1, ga_int_trigger != 0);
+        MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_IRQ1, ga_int_trigger != 0);
 }
 
-void MCU_EncoderTrigger(int dir)
+void MCU_EncoderTrigger(mcu_t& mcu, int dir)
 {
     if (!mcu_jv880) return;
-    MCU_GA_SetGAInt(dir == 0 ? 3 : 4, 0);
-    MCU_GA_SetGAInt(dir == 0 ? 3 : 4, 1);
+    MCU_GA_SetGAInt(mcu, dir == 0 ? 3 : 4, 0);
+    MCU_GA_SetGAInt(mcu, dir == 0 ? 3 : 4, 1);
 }
 
 
@@ -1593,8 +1592,9 @@ int main(int argc, char *argv[])
 
     LCD_SetBackPath(basePath + "/back.data");
 
+    mcu_t mcu;
     memset(&mcu, 0, sizeof(mcu_t));
-
+    lcd_t lcd;
 
     if (fread(rom1, 1, ROM1_SIZE, s_rf[0]) != ROM1_SIZE)
     {
@@ -1734,16 +1734,16 @@ int main(int argc, char *argv[])
         fflush(stderr);
     }
 
-    LCD_Init();
-    MCU_Init();
+    LCD_Init(lcd, mcu);
+    MCU_Init(mcu);
     MCU_PatchROM();
-    MCU_Reset();
-    SM_Reset();
+    MCU_Reset(mcu);
+    SM_Reset(mcu);
     PCM_Reset();
 
     if (resetType != ResetType::NONE) MIDI_Reset(resetType);
     
-    MCU_Run();
+    MCU_Run(mcu, lcd);
 
     MCU_CloseAudio();
     MIDI_Quit();

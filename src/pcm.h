@@ -70,6 +70,6 @@ extern uint8_t waverom3[];
 extern uint8_t waverom_exp[];
 
 void PCM_Write(uint32_t address, uint8_t data);
-uint8_t PCM_Read(uint32_t address);
+uint8_t PCM_Read(mcu_t& mcu, uint32_t address);
 void PCM_Reset(void);
-void PCM_Update(uint64_t cycles);
+void PCM_Update(mcu_t& mcu, uint64_t cycles);

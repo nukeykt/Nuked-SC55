@@ -192,7 +192,7 @@ void PCM_Write(uint32_t address, uint8_t data)
 // rv: [30][2], [30][3]
 // ch: [31][2], [31][5]
 
-uint8_t PCM_Read(uint32_t address)
+uint8_t PCM_Read(mcu_t& mcu, uint32_t address)
 {
     address &= 0x3f;
     //printf("PCM Read: %.2x\n", address);
@@ -210,9 +210,9 @@ uint8_t PCM_Read(uint32_t address)
         {
             pcm.irq_assert = 0;
             if (mcu_jv880)
-                MCU_GA_SetGAInt(5, 0);
+                MCU_GA_SetGAInt(mcu, 5, 0);
             else
-                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ0, 0);
+                MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_IRQ0, 0);
         }
 
         status |= pcm.irq_channel;
@@ -522,7 +522,7 @@ inline void eram_pack(int addr, int val)
     pcm.eram[addr] = data;
 }
 
-void PCM_Update(uint64_t cycles)
+void PCM_Update(mcu_t& mcu, uint64_t cycles)
 {
     int reg_slots = (pcm.config_reg_3d & 31) + 1;
     int voice_active = pcm.voice_mask & pcm.voice_mask_pending;
@@ -1434,9 +1434,9 @@ void PCM_Update(uint64_t cycles)
                 pcm.irq_assert = 1;
                 pcm.irq_channel = slot;
                 if (mcu_jv880)
-                    MCU_GA_SetGAInt(5, 1);
+                    MCU_GA_SetGAInt(mcu, 5, 1);
                 else
-                    MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ0, 1);
+                    MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_IRQ0, 1);
             }
 
             int volmul1 = 0;

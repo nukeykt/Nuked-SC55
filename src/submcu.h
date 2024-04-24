@@ -34,6 +34,8 @@
 #pragma once
 #include <stdint.h>
 
+struct mcu_t;
+
 enum {
     SM_STATUS_C = 1,
     SM_STATUS_Z = 2,
@@ -54,13 +56,14 @@ struct submcu_t {
     uint8_t sr;
     uint64_t cycles;
     uint8_t sleep;
+    mcu_t* mcu;
 };
 
 extern submcu_t sm;
 
 extern uint8_t sm_rom[4096];
 
-void SM_Reset(void);
+void SM_Reset(mcu_t& mcu);
 void SM_Update(uint64_t cycles);
 void SM_SysWrite(uint32_t address, uint8_t data);
 uint8_t SM_SysRead(uint32_t address);

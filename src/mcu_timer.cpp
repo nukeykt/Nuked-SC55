@@ -63,7 +63,7 @@ void TIMER_Reset(void)
     memset(&timer, 0, sizeof(timer));
 }
 
-void TIMER_Write(uint32_t address, uint8_t data)
+void TIMER_Write(mcu_t& mcu, uint32_t address, uint8_t data)
 {
     uint32_t t = (address >> 4) - 1;
     if (t > 2)
@@ -82,19 +82,19 @@ void TIMER_Write(uint32_t address, uint8_t data)
         {
             timer->tcsr &= ~0x10;
             timer->status_rd &= ~0x10;
-            MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_FRT0_FOVI + t * 4, 0);
+            MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_FRT0_FOVI + t * 4, 0);
         }
         if ((data & 0x20) == 0 && (timer->status_rd & 0x20) != 0)
         {
             timer->tcsr &= ~0x20;
             timer->status_rd &= ~0x20;
-            MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_FRT0_OCIA + t * 4, 0);
+            MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_FRT0_OCIA + t * 4, 0);
         }
         if ((data & 0x40) == 0 && (timer->status_rd & 0x40) != 0)
         {
             timer->tcsr &= ~0x40;
             timer->status_rd &= ~0x40;
-            MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_FRT0_OCIB + t * 4, 0);
+            MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_FRT0_OCIB + t * 4, 0);
         }
         break;
     case REG_FRCH:
@@ -157,7 +157,7 @@ uint8_t TIMER_Read(uint32_t address)
     return 0xff;
 }
 
-void TIMER2_Write(uint32_t address, uint8_t data)
+void TIMER2_Write(mcu_t& mcu, uint32_t address, uint8_t data)
 {
     switch (address)
     {
@@ -171,19 +171,19 @@ void TIMER2_Write(uint32_t address, uint8_t data)
         {
             timer.tcsr &= ~0x20;
             timer.status_rd &= ~0x20;
-            MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_TIMER_OVI, 0);
+            MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_TIMER_OVI, 0);
         }
         if ((data & 0x40) == 0 && (timer.status_rd & 0x40) != 0)
         {
             timer.tcsr &= ~0x40;
             timer.status_rd &= ~0x40;
-            MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_TIMER_CMIA, 0);
+            MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_TIMER_CMIA, 0);
         }
         if ((data & 0x80) == 0 && (timer.status_rd & 0x80) != 0)
         {
             timer.tcsr &= ~0x80;
             timer.status_rd &= ~0x80;
-            MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_TIMER_CMIB, 0);
+            MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_TIMER_CMIB, 0);
         }
         break;
     case DEV_TMR_TCORA:
@@ -219,7 +219,7 @@ uint8_t TIMER_Read2(uint32_t address)
     return 0xff;
 }
 
-void TIMER_Clock(uint64_t cycles)
+void TIMER_Clock(mcu_t& mcu, uint64_t cycles)
 {
     uint32_t i;
     while (timer_cycles*2 < cycles) // FIXME
@@ -276,11 +276,11 @@ void TIMER_Clock(uint64_t cycles)
             if (matchb)
                 timer->tcsr |= 0x40;
             if ((timer->tcr & 0x10) != 0 && (timer->tcsr & 0x10) != 0)
-                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_FRT0_FOVI + i * 4, 1);
+                MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_FRT0_FOVI + i * 4, 1);
             if ((timer->tcr & 0x20) != 0 && (timer->tcsr & 0x20) != 0)
-                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_FRT0_OCIA + i * 4, 1);
+                MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_FRT0_OCIA + i * 4, 1);
             if ((timer->tcr & 0x40) != 0 && (timer->tcsr & 0x40) != 0)
-                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_FRT0_OCIB + i * 4, 1);
+                MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_FRT0_OCIB + i * 4, 1);
         }
 
         int32_t timer_step = 0;
@@ -340,11 +340,11 @@ void TIMER_Clock(uint64_t cycles)
             if (matchb)
                 timer.tcsr |= 0x80;
             if ((timer.tcr & 0x20) != 0 && (timer.tcsr & 0x20) != 0)
-                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_TIMER_OVI, 1);
+                MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_TIMER_OVI, 1);
             if ((timer.tcr & 0x40) != 0 && (timer.tcsr & 0x40) != 0)
-                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_TIMER_CMIA, 1);
+                MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_TIMER_CMIA, 1);
             if ((timer.tcr & 0x80) != 0 && (timer.tcsr & 0x80) != 0)
-                MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_TIMER_CMIB, 1);
+                MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_TIMER_CMIB, 1);
         }
 
         timer_cycles++;

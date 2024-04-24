@@ -226,12 +226,14 @@ void LCD_SetBackPath(const std::string &path)
     m_back_path = path;
 }
 
-void LCD_Init(void)
+void LCD_Init(lcd_t& lcd, mcu_t& mcu)
 {
     FILE *raw;
 
     if(lcd_init)
         return;
+
+    lcd.mcu = &mcu;
 
     lcd_quit_requested = false;
 
@@ -407,7 +409,7 @@ void LCD_FontRenderLR(uint8_t ch)
     }
 }
 
-void LCD_Update(void)
+void LCD_Update(lcd_t& lcd)
 {
     if (!lcd_init)
         return;
@@ -525,9 +527,9 @@ void LCD_Update(void)
         if (sdl_event.type == SDL_KEYDOWN)
         {
             if (sdl_event.key.keysym.scancode == SDL_SCANCODE_COMMA)
-                MCU_EncoderTrigger(0);
+                MCU_EncoderTrigger(*lcd.mcu, 0);
             if (sdl_event.key.keysym.scancode == SDL_SCANCODE_PERIOD)
-                MCU_EncoderTrigger(1);
+                MCU_EncoderTrigger(*lcd.mcu, 1);
         }
 
         switch (sdl_event.type)
