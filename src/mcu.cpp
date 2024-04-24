@@ -546,7 +546,7 @@ uint8_t MCU_Read(mcu_t& mcu, uint32_t address)
                 }
                 else if (!mcu_scb55 && address >= 0xec00 && address < 0xf000)
                 {
-                    ret = SM_SysRead(address & 0xff);
+                    ret = SM_SysRead(*mcu.sm, address & 0xff);
                 }
                 else if (address >= 0xff80)
                 {
@@ -765,7 +765,7 @@ void MCU_Write(mcu_t& mcu, uint32_t address, uint8_t value)
                 }
                 else if (!mcu_scb55 && address >= 0xec00 && address < 0xf000)
                 {
-                    SM_SysWrite(address & 0xff, value);
+                    SM_SysWrite(*mcu.sm, address & 0xff, value);
                 }
                 else if (address >= 0xff80)
                 {
@@ -875,10 +875,11 @@ void MCU_ReadInstruction(mcu_t& mcu)
     }
 }
 
-void MCU_Init(mcu_t& mcu)
+void MCU_Init(mcu_t& mcu, submcu_t& sm)
 {
     memset(&mcu, 0, sizeof(mcu_t));
     mcu.sw_pos = 3;
+    mcu.sm = &sm;
 }
 
 void MCU_Reset(mcu_t& mcu)
@@ -1013,7 +1014,7 @@ int SDLCALL work_thread(void* data)
         TIMER_Clock(mcu, mcu.cycles);
 
         if (!mcu_mk1 && !mcu_jv880 && !mcu_scb55)
-            SM_Update(mcu.cycles);
+            SM_Update(*mcu.sm, mcu.cycles);
         else
         {
             MCU_UpdateUART_RX(mcu);
@@ -1570,7 +1571,8 @@ int main(int argc, char *argv[])
     LCD_SetBackPath(basePath + "/back.data");
 
     mcu_t mcu;
-    MCU_Init(mcu);
+    submcu_t sm;
+    MCU_Init(mcu, sm);
     lcd_t lcd;
 
     if (fread(mcu.rom1, 1, ROM1_SIZE, s_rf[0]) != ROM1_SIZE)
@@ -1679,7 +1681,7 @@ int main(int argc, char *argv[])
             unscramble(tempbuf, mcu_scb55 ? waverom3 : waverom2, 0x100000);
         }
 
-        if (s_rf[4] && fread(sm_rom, 1, ROMSM_SIZE, s_rf[4]) != ROMSM_SIZE)
+        if (s_rf[4] && fread(sm.sm_rom, 1, ROMSM_SIZE, s_rf[4]) != ROMSM_SIZE)
         {
             fprintf(stderr, "FATAL ERROR: Failed to read the sub mcu ROM.\n");
             fflush(stderr);
@@ -1714,7 +1716,7 @@ int main(int argc, char *argv[])
     LCD_Init(lcd, mcu);
     MCU_PatchROM();
     MCU_Reset(mcu);
-    SM_Reset(mcu);
+    SM_Reset(sm, mcu);
     PCM_Reset();
 
     if (resetType != ResetType::NONE) MIDI_Reset(resetType);

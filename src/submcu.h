@@ -57,14 +57,11 @@ struct submcu_t {
     uint64_t cycles;
     uint8_t sleep;
     mcu_t* mcu;
+    uint8_t sm_rom[4096];
 };
 
-extern submcu_t sm;
-
-extern uint8_t sm_rom[4096];
-
-void SM_Reset(mcu_t& mcu);
-void SM_Update(uint64_t cycles);
-void SM_SysWrite(uint32_t address, uint8_t data);
-uint8_t SM_SysRead(uint32_t address);
-void SM_PostUART(uint8_t data);
+void SM_Reset(submcu_t& sm, mcu_t& mcu);
+void SM_Update(submcu_t& sm, uint64_t cycles);
+void SM_SysWrite(submcu_t& sm, uint32_t address, uint8_t data);
+uint8_t SM_SysRead(submcu_t& sm, uint32_t address);
+void SM_PostUART(submcu_t& sm, uint8_t data);

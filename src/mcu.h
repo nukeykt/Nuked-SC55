@@ -37,6 +37,8 @@
 #include "mcu_interrupt.h"
 #include "SDL_atomic.h"
 
+struct submcu_t;
+
 enum {
     DEV_P1DDR = 0x00,
     DEV_P5DDR = 0x08,
@@ -205,6 +207,8 @@ struct mcu_t {
     uint8_t ad_nibble;
     uint8_t sw_pos;
     uint8_t io_sd;
+
+    submcu_t* sm;
 };
 
 void MCU_ErrorTrap(mcu_t& mcu);
