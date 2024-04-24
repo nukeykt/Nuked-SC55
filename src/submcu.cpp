@@ -164,7 +164,7 @@ void SM_Write(submcu_t& sm, uint16_t address, uint8_t data)
         switch (address)
         {
             case SM_DEV_P1_DATA:
-                MCU_WriteP1(data);
+                MCU_WriteP1(*sm.mcu, data);
                 break;
             case SM_DEV_P1_DIR:
                 sm.sm_p1_dir = data;
@@ -235,11 +235,11 @@ void SM_SysWrite(submcu_t& sm, uint32_t address, uint8_t data)
     }
     else if (address == 0xf5)
     {
-        MCU_WriteP1(data);
+        MCU_WriteP1(*sm.mcu, data);
     }
     else if (address == 0xf6)
     {
-        MCU_WriteP0(data);
+        MCU_WriteP0(*sm.mcu, data);
     }
     else if (address == 0xf7)
     {
@@ -280,7 +280,7 @@ uint8_t SM_SysRead(submcu_t& sm, uint32_t address)
     }
     else if (address == 0xf6)
     {
-        return MCU_ReadP0();
+        return MCU_ReadP0(*sm.mcu);
     }
     else if (address == 0xf7)
     {

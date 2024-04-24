@@ -1041,17 +1041,14 @@ static void MCU_Run(mcu_t& mcu, lcd_t& lcd)
     SDL_WaitThread(thread, 0);
 }
 
-void MCU_PatchROM(void)
+void MCU_PatchROM(mcu_t& mcu)
 {
     //rom2[0x1333] = 0x11;
     //rom2[0x1334] = 0x19;
     //rom1[0x622d] = 0x19;
 }
 
-uint8_t mcu_p0_data = 0x00;
-uint8_t mcu_p1_data = 0x00;
-
-uint8_t MCU_ReadP0(void)
+uint8_t MCU_ReadP0(mcu_t& mcu)
 {
     return 0xff;
 }
@@ -1061,26 +1058,26 @@ uint8_t MCU_ReadP1(mcu_t& mcu)
     uint8_t data = 0xff;
     uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu.mcu_button_pressed);
 
-    if ((mcu_p0_data & 1) == 0)
+    if ((mcu.mcu_p0_data & 1) == 0)
         data &= ((button_pressed >> 0) & 255) ^ 255;
-    if ((mcu_p0_data & 2) == 0)
+    if ((mcu.mcu_p0_data & 2) == 0)
         data &= ((button_pressed >> 8) & 255) ^ 255;
-    if ((mcu_p0_data & 4) == 0)
+    if ((mcu.mcu_p0_data & 4) == 0)
         data &= ((button_pressed >> 16) & 255) ^ 255;
-    if ((mcu_p0_data & 8) == 0)
+    if ((mcu.mcu_p0_data & 8) == 0)
         data &= ((button_pressed >> 24) & 255) ^ 255;
 
     return data;
 }
 
-void MCU_WriteP0(uint8_t data)
+void MCU_WriteP0(mcu_t& mcu, uint8_t data)
 {
-    mcu_p0_data = data;
+    mcu.mcu_p0_data = data;
 }
 
-void MCU_WriteP1(uint8_t data)
+void MCU_WriteP1(mcu_t& mcu, uint8_t data)
 {
-    mcu_p1_data = data;
+    mcu.mcu_p1_data = data;
 }
 
 uint8_t tempbuf[0x800000];
@@ -1697,7 +1694,7 @@ int main(int argc, char *argv[])
     }
 
     LCD_Init(lcd, mcu);
-    MCU_PatchROM();
+    MCU_PatchROM(mcu);
     MCU_Reset(mcu);
     SM_Reset(sm, mcu);
 

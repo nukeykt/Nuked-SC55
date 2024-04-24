@@ -241,6 +241,9 @@ struct mcu_t {
     int ga_lcd_counter = 0;
 
     SDL_atomic_t mcu_button_pressed = { 0 };
+
+    uint8_t mcu_p0_data = 0x00;
+    uint8_t mcu_p1_data = 0x00;
 };
 
 void MCU_ErrorTrap(mcu_t& mcu);
@@ -497,10 +500,10 @@ enum {
 
 extern const char* rs_name[ROM_SET_COUNT];
 
-uint8_t MCU_ReadP0(void);
+uint8_t MCU_ReadP0(mcu_t& mcu);
 uint8_t MCU_ReadP1(mcu_t& mcu);
-void MCU_WriteP0(uint8_t data);
-void MCU_WriteP1(uint8_t data);
+void MCU_WriteP0(mcu_t& mcu, uint8_t data);
+void MCU_WriteP1(mcu_t& mcu, uint8_t data);
 void MCU_GA_SetGAInt(mcu_t& mcu, int line, int value);
 
 void MCU_EncoderTrigger(mcu_t& mcu, int dir);
