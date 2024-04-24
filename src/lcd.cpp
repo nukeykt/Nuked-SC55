@@ -239,7 +239,7 @@ void LCD_Init(lcd_t& lcd, mcu_t& mcu)
 
     std::string title = "Nuked SC-55: ";
 
-    title += rs_name[romset];
+    title += rs_name[mcu.romset];
 
     window = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, lcd_width, lcd_height, SDL_WINDOW_SHOWN);
     if (!window)
@@ -414,17 +414,17 @@ void LCD_Update(lcd_t& lcd)
     if (!lcd_init)
         return;
 
-    if (!mcu_cm300 && !mcu_st && !mcu_scb55)
+    if (!lcd.mcu->mcu_cm300 && !lcd.mcu->mcu_st && !lcd.mcu->mcu_scb55)
     {
         MCU_WorkThread_Lock();
 
-        if (!lcd_enable && !mcu_jv880)
+        if (!lcd_enable && !lcd.mcu->mcu_jv880)
         {
             memset(lcd_buffer, 0, sizeof(lcd_buffer));
         }
         else
         {
-            if (mcu_jv880)
+            if (lcd.mcu->mcu_jv880)
             {
                 for (size_t i = 0; i < lcd_height; i++) {
                     for (size_t j = 0; j < lcd_width; j++) {
@@ -441,7 +441,7 @@ void LCD_Update(lcd_t& lcd)
                 }
             }
 
-            if (mcu_jv880)
+            if (lcd.mcu->mcu_jv880)
             {
                 for (int i = 0; i < 2; i++)
                 {
@@ -547,8 +547,8 @@ void LCD_Update(lcd_t& lcd)
                 int mask = 0;
                 uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
 
-                auto button_map = mcu_jv880 ? button_map_jv880 : button_map_sc55;
-                auto button_size = (mcu_jv880 ? sizeof(button_map_jv880) : sizeof(button_map_sc55)) / sizeof(button_map_sc55[0]);
+                auto button_map = lcd.mcu->mcu_jv880 ? button_map_jv880 : button_map_sc55;
+                auto button_size = (lcd.mcu->mcu_jv880 ? sizeof(button_map_jv880) : sizeof(button_map_sc55)) / sizeof(button_map_sc55[0]);
                 for (size_t i = 0; i < button_size; i++)
                 {
                     if (button_map[i][0] == sdl_event.key.keysym.scancode)

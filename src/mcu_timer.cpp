@@ -244,7 +244,7 @@ void TIMER_Clock(mcu_t& mcu, uint64_t cycles)
                     continue;
                 break;
             case 3: // ext (o / 2)
-                if (mcu_mk1)
+                if (mcu.mcu_mk1)
                 {
                     if (timer_cycles & 3)
                         continue;
@@ -305,7 +305,7 @@ void TIMER_Clock(mcu_t& mcu, uint64_t cycles)
         case 5:
         case 6:
         case 7: // ext (o / 2)
-            if (mcu_mk1)
+            if (mcu.mcu_mk1)
             {
                 if ((timer_cycles & 3) == 0)
                     timer_step = 1;

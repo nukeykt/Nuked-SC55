@@ -120,8 +120,6 @@ const char* roms[ROM_SET_COUNT][5] =
     "rom_sm.bin",
 };
 
-int romset = ROM_SET_MK2;
-
 static int audio_buffer_size;
 static int audio_page_size;
 static short *sample_buffer;
@@ -135,13 +133,6 @@ void MCU_ErrorTrap(mcu_t& mcu)
 {
     printf("%.2x %.4x\n", mcu.cp, mcu.pc);
 }
-
-int mcu_mk1 = 0; // 0 - SC-55mkII, SC-55ST. 1 - SC-55, CM-300/SCC-1
-int mcu_cm300 = 0; // 0 - SC-55, 1 - CM-300/SCC-1
-int mcu_st = 0; // 0 - SC-55mk2, 1 - SC-55ST
-int mcu_jv880 = 0; // 0 - SC-55, 1 - JV880
-int mcu_scb55 = 0; // 0 - sub mcu (e.g SC-55mk2), 1 - no sub mcu (e.g SCB-55)
-int mcu_sc155 = 0; // 0 - SC-55(MK2), 1 - SC-155(MK2)
 
 static int ga_int[8];
 static int ga_int_enable = 0;
@@ -181,9 +172,9 @@ uint16_t MCU_SC155Sliders(mcu_t& mcu, uint32_t index)
 
 uint16_t MCU_AnalogReadPin(mcu_t& mcu, uint32_t pin)
 {
-    if (mcu_cm300)
+    if (mcu.mcu_cm300)
         return 0;
-    if (mcu_jv880)
+    if (mcu.mcu_jv880)
     {
         if (pin == 1)
             return ANALOG_LEVEL_BATTERY;
@@ -198,15 +189,15 @@ READ_RCU:
         else
             return ANALOG_LEVEL_RCU_LOW;
     }
-    if (mcu_mk1)
+    if (mcu.mcu_mk1)
     {
-        if (mcu_sc155 && (mcu.dev_register[DEV_P9DR] & 1) != 0)
+        if (mcu.mcu_sc155 && (mcu.dev_register[DEV_P9DR] & 1) != 0)
         {
             return MCU_SC155Sliders(mcu, pin);
         }
         if (pin == 7)
         {
-            if (mcu_sc155 && (mcu.dev_register[DEV_P9DR] & 2) != 0)
+            if (mcu.mcu_sc155 && (mcu.dev_register[DEV_P9DR] & 2) != 0)
                 return MCU_SC155Sliders(mcu, 8);
             else
                 return ANALOG_LEVEL_BATTERY;
@@ -216,20 +207,20 @@ READ_RCU:
     }
     else
     {
-        if (mcu_sc155 && (mcu.io_sd & 16) != 0)
+        if (mcu.mcu_sc155 && (mcu.io_sd & 16) != 0)
         {
             return MCU_SC155Sliders(mcu, pin);
         }
         if (pin == 7)
         {
-            if (mcu_mk1)
+            if (mcu.mcu_mk1)
                 return ANALOG_LEVEL_BATTERY;
             switch ((mcu.io_sd >> 2) & 3)
             {
             case 0: // Battery voltage
                 return ANALOG_LEVEL_BATTERY;
             case 1: // NC
-                if (mcu_sc155)
+                if (mcu.mcu_sc155)
                     return MCU_SC155Sliders(mcu, 8);
                 return 0;
             case 2: // SW
@@ -423,7 +414,7 @@ uint8_t MCU_DeviceRead(mcu_t& mcu, uint32_t address)
         return 0xff;
     case DEV_P7DR:
     {
-        if (!mcu_jv880) return 0xff;
+        if (!mcu.mcu_jv880) return 0xff;
 
         uint8_t data = 0xff;
         uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
@@ -441,8 +432,8 @@ uint8_t MCU_DeviceRead(mcu_t& mcu, uint32_t address)
     case DEV_P9DR:
     {
         int cfg = 0;
-        if (!mcu_mk1)
-            cfg = mcu_sc155 ? 0 : 2; // bit 1: 0 - SC-155mk2 (???), 1 - SC-55mk2
+        if (!mcu.mcu_mk1)
+            cfg = mcu.mcu_sc155 ? 0 : 2; // bit 1: 0 - SC-155mk2 (???), 1 - SC-55mk2
 
         int dir = mcu.dev_register[DEV_P9DDR];
 
@@ -512,12 +503,10 @@ void MCU_UpdateAnalog(mcu_t& mcu, uint64_t cycles)
         analog_end_time = 0;
 }
 
-int rom2_mask = ROM2_SIZE - 1;
-
 uint8_t MCU_Read(mcu_t& mcu, uint32_t address)
 {
     uint32_t address_rom = address & 0x3ffff;
-    if (address & 0x80000 && !mcu_jv880)
+    if (address & 0x80000 && !mcu.mcu_jv880)
         address_rom |= 0x40000;
     uint8_t page = (address >> 16) & 0xf;
     address &= 0xffff;
@@ -529,14 +518,14 @@ uint8_t MCU_Read(mcu_t& mcu, uint32_t address)
             ret = mcu.rom1[address & 0x7fff];
         else
         {
-            if (!mcu_mk1)
+            if (!mcu.mcu_mk1)
             {
-                uint16_t base = mcu_jv880 ? 0xf000 : 0xe000;
+                uint16_t base = mcu.mcu_jv880 ? 0xf000 : 0xe000;
                 if (address >= base && address < (base | 0x400))
                 {
-                    ret = PCM_Read(mcu, address & 0x3f);
+                    ret = PCM_Read(*mcu.pcm, address & 0x3f);
                 }
-                else if (!mcu_scb55 && address >= 0xec00 && address < 0xf000)
+                else if (!mcu.mcu_scb55 && address >= 0xec00 && address < 0xf000)
                 {
                     ret = SM_SysRead(*mcu.sm, address & 0xff);
                 }
@@ -555,7 +544,7 @@ uint8_t MCU_Read(mcu_t& mcu, uint32_t address)
                 {
                     ret = ga_int_trigger;
                     ga_int_trigger = 0;
-                    MCU_Interrupt_SetRequest(mcu, mcu_jv880 ? INTERRUPT_SOURCE_IRQ0 : INTERRUPT_SOURCE_IRQ1, 0);
+                    MCU_Interrupt_SetRequest(mcu, mcu.mcu_jv880 ? INTERRUPT_SOURCE_IRQ0 : INTERRUPT_SOURCE_IRQ1, 0);
                 }
                 else
                 {
@@ -570,7 +559,7 @@ uint8_t MCU_Read(mcu_t& mcu, uint32_t address)
             {
                 if (address >= 0xe000 && address < 0xe040)
                 {
-                    ret = PCM_Read(mcu, address & 0x3f);
+                    ret = PCM_Read(*mcu.pcm, address & 0x3f);
                 }
                 else if (address >= 0xff80)
                 {
@@ -589,7 +578,7 @@ uint8_t MCU_Read(mcu_t& mcu, uint32_t address)
                 {
                     mcu.io_sd = address & 0xff;
 
-                    if (mcu_cm300)
+                    if (mcu.mcu_cm300)
                         return 0xff;
 
                     LCD_Enable((mcu.io_sd & 8) != 0);
@@ -639,52 +628,52 @@ uint8_t MCU_Read(mcu_t& mcu, uint32_t address)
         break;
 #endif
     case 1:
-        ret = mcu.rom2[address_rom & rom2_mask];
+        ret = mcu.rom2[address_rom & mcu.rom2_mask];
         break;
     case 2:
-        ret = mcu.rom2[address_rom & rom2_mask];
+        ret = mcu.rom2[address_rom & mcu.rom2_mask];
         break;
     case 3:
-        ret = mcu.rom2[address_rom & rom2_mask];
+        ret = mcu.rom2[address_rom & mcu.rom2_mask];
         break;
     case 4:
-        ret = mcu.rom2[address_rom & rom2_mask];
+        ret = mcu.rom2[address_rom & mcu.rom2_mask];
         break;
     case 8:
-        if (!mcu_jv880)
-            ret = mcu.rom2[address_rom & rom2_mask];
+        if (!mcu.mcu_jv880)
+            ret = mcu.rom2[address_rom & mcu.rom2_mask];
         else
             ret = 0xff;
         break;
     case 9:
-        if (!mcu_jv880)
-            ret = mcu.rom2[address_rom & rom2_mask];
+        if (!mcu.mcu_jv880)
+            ret = mcu.rom2[address_rom & mcu.rom2_mask];
         else
             ret = 0xff;
         break;
     case 14:
     case 15:
-        if (!mcu_jv880)
-            ret = mcu.rom2[address_rom & rom2_mask];
+        if (!mcu.mcu_jv880)
+            ret = mcu.rom2[address_rom & mcu.rom2_mask];
         else
             ret = mcu.cardram[address & 0x7fff]; // FIXME
         break;
     case 10:
     case 11:
-        if (!mcu_mk1)
+        if (!mcu.mcu_mk1)
             ret = mcu.sram[address & 0x7fff]; // FIXME
         else
             ret = 0xff;
         break;
     case 12:
     case 13:
-        if (mcu_jv880)
+        if (mcu.mcu_jv880)
             ret = mcu.nvram[address & 0x7fff]; // FIXME
         else
             ret = 0xff;
         break;
     case 5:
-        if (mcu_mk1)
+        if (mcu.mcu_mk1)
             ret = mcu.sram[address & 0x7fff]; // FIXME
         else
             ret = 0xff;
@@ -724,9 +713,9 @@ void MCU_Write(mcu_t& mcu, uint32_t address, uint8_t value)
     {
         if (address & 0x8000)
         {
-            if (!mcu_mk1)
+            if (!mcu.mcu_mk1)
             {
-                uint16_t base = mcu_jv880 ? 0xf000 : 0xe000;
+                uint16_t base = mcu.mcu_jv880 ? 0xf000 : 0xe000;
                 if (address >= (base | 0x400) && address < (base | 0x800))
                 {
                     if (address == (base | 0x404) || address == (base | 0x405))
@@ -753,9 +742,9 @@ void MCU_Write(mcu_t& mcu, uint32_t address, uint8_t value)
                 }
                 else if (address >= (base | 0x000) && address < (base | 0x400))
                 {
-                    PCM_Write(address & 0x3f, value);
+                    PCM_Write(*mcu.pcm, address & 0x3f, value);
                 }
-                else if (!mcu_scb55 && address >= 0xec00 && address < 0xf000)
+                else if (!mcu.mcu_scb55 && address >= 0xec00 && address < 0xf000)
                 {
                     SM_SysWrite(*mcu.sm, address & 0xff, value);
                 }
@@ -781,7 +770,7 @@ void MCU_Write(mcu_t& mcu, uint32_t address, uint8_t value)
             {
                 if (address >= 0xe000 && address < 0xe040)
                 {
-                    PCM_Write(address & 0x3f, value);
+                    PCM_Write(*mcu.pcm, address & 0x3f, value);
                 }
                 else if (address >= 0xff80)
                 {
@@ -826,19 +815,19 @@ void MCU_Write(mcu_t& mcu, uint32_t address, uint8_t value)
             printf("Unknown write %x %x\n", address, value);
         }
     }
-    else if (page == 5 && mcu_mk1)
+    else if (page == 5 && mcu.mcu_mk1)
     {
         mcu.sram[address & 0x7fff] = value; // FIXME
     }
-    else if (page == 10 && !mcu_mk1)
+    else if (page == 10 && !mcu.mcu_mk1)
     {
         mcu.sram[address & 0x7fff] = value; // FIXME
     }
-    else if (page == 12 && mcu_jv880)
+    else if (page == 12 && mcu.mcu_jv880)
     {
         mcu.nvram[address & 0x7fff] = value; // FIXME
     }
-    else if (page == 14 && mcu_jv880)
+    else if (page == 14 && mcu.mcu_jv880)
     {
         mcu.cardram[address & 0x7fff] = value; // FIXME
     }
@@ -867,11 +856,14 @@ void MCU_ReadInstruction(mcu_t& mcu)
     }
 }
 
-void MCU_Init(mcu_t& mcu, submcu_t& sm)
+void MCU_Init(mcu_t& mcu, submcu_t& sm, pcm_t& pcm)
 {
     memset(&mcu, 0, sizeof(mcu_t));
     mcu.sw_pos = 3;
     mcu.sm = &sm;
+    mcu.pcm = &pcm;
+    mcu.romset = ROM_SET_MK2;
+    mcu.rom2_mask = ROM2_SIZE - 1;
 }
 
 void MCU_Reset(mcu_t& mcu)
@@ -903,7 +895,7 @@ void MCU_Reset(mcu_t& mcu)
 
     MCU_DeviceReset(mcu);
 
-    if (mcu_mk1)
+    if (mcu.mcu_mk1)
     {
         ga_int_enable = 255;
     }
@@ -974,7 +966,7 @@ int SDLCALL work_thread(void* data)
     MCU_WorkThread_Lock();
     while (work_thread_run)
     {
-        if (pcm.config_reg_3c & 0x40)
+        if (mcu.pcm->config_reg_3c & 0x40)
             sample_write_ptr &= ~3;
         else
             sample_write_ptr &= ~1;
@@ -1001,11 +993,11 @@ int SDLCALL work_thread(void* data)
         // if (mcu.cycles % 24000000 == 0)
         //     printf("seconds: %i\n", (int)(mcu.cycles / 24000000));
 
-        PCM_Update(mcu, mcu.cycles);
+        PCM_Update(*mcu.pcm, mcu.cycles);
 
         TIMER_Clock(mcu, mcu.cycles);
 
-        if (!mcu_mk1 && !mcu_jv880 && !mcu_scb55)
+        if (!mcu.mcu_mk1 && !mcu.mcu_jv880 && !mcu.mcu_scb55)
             SM_Update(*mcu.sm, mcu.cycles);
         else
         {
@@ -1015,7 +1007,7 @@ int SDLCALL work_thread(void* data)
 
         MCU_UpdateAnalog(mcu, mcu.cycles);
 
-        if (mcu_mk1)
+        if (mcu.mcu_mk1)
         {
             if (ga_lcd_counter)
             {
@@ -1163,7 +1155,7 @@ static const char* audio_format_to_str(int format)
     return "UNK";
 }
 
-int MCU_OpenAudio(int deviceIndex, int pageSize, int pageNum)
+int MCU_OpenAudio(mcu_t& mcu, int deviceIndex, int pageSize, int pageNum)
 {
     SDL_AudioSpec spec = {};
     SDL_AudioSpec spec_actual = {};
@@ -1172,7 +1164,7 @@ int MCU_OpenAudio(int deviceIndex, int pageSize, int pageNum)
     audio_buffer_size = audio_page_size*pageNum;
     
     spec.format = AUDIO_S16SYS;
-    spec.freq = (mcu_mk1 || mcu_jv880) ? 64000 : 66207;
+    spec.freq = (mcu.mcu_mk1 || mcu.mcu_jv880) ? 64000 : 66207;
     spec.channels = 2;
     spec.callback = audio_callback;
     spec.samples = audio_page_size / 4;
@@ -1257,7 +1249,7 @@ void MCU_GA_SetGAInt(mcu_t& mcu, int line, int value)
         ga_int_trigger = line;
     ga_int[line] = value;
 
-    if (mcu_jv880)
+    if (mcu.mcu_jv880)
         MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_IRQ0, ga_int_trigger != 0);
     else
         MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_IRQ1, ga_int_trigger != 0);
@@ -1265,7 +1257,7 @@ void MCU_GA_SetGAInt(mcu_t& mcu, int line, int value)
 
 void MCU_EncoderTrigger(mcu_t& mcu, int dir)
 {
-    if (!mcu_jv880) return;
+    if (!mcu.mcu_jv880) return;
     MCU_GA_SetGAInt(mcu, dir == 0 ? 3 : 4, 0);
     MCU_GA_SetGAInt(mcu, dir == 0 ? 3 : 4, 1);
 }
@@ -1331,7 +1323,13 @@ int main(int argc, char *argv[])
     bool autodetect = true;
     ResetType resetType = ResetType::NONE;
 
-    romset = ROM_SET_MK2;
+    int romset = ROM_SET_MK2;
+
+    mcu_t mcu;
+    submcu_t sm;
+    pcm_t pcm;
+    MCU_Init(mcu, sm, pcm);
+    lcd_t lcd;
 
     {
         for (int i = 1; i < argc; i++)
@@ -1488,42 +1486,42 @@ int main(int argc, char *argv[])
         printf("ROM set autodetect: %s\n", rs_name[romset]);
     }
 
-    mcu_mk1 = false;
-    mcu_cm300 = false;
-    mcu_st = false;
-    mcu_jv880 = false;
-    mcu_scb55 = false;
-    mcu_sc155 = false;
+    mcu.mcu_mk1 = false;
+    mcu.mcu_cm300 = false;
+    mcu.mcu_st = false;
+    mcu.mcu_jv880 = false;
+    mcu.mcu_scb55 = false;
+    mcu.mcu_sc155 = false;
     switch (romset)
     {
         case ROM_SET_MK2:
         case ROM_SET_SC155MK2:
             if (romset == ROM_SET_SC155MK2)
-                mcu_sc155 = true;
+                mcu.mcu_sc155 = true;
             break;
         case ROM_SET_ST:
-            mcu_st = true;
+            mcu.mcu_st = true;
             break;
         case ROM_SET_MK1:
         case ROM_SET_SC155:
-            mcu_mk1 = true;
-            mcu_st = false;
+            mcu.mcu_mk1 = true;
+            mcu.mcu_st = false;
             if (romset == ROM_SET_SC155)
-                mcu_sc155 = true;
+                mcu.mcu_sc155 = true;
             break;
         case ROM_SET_CM300:
-            mcu_mk1 = true;
-            mcu_cm300 = true;
+            mcu.mcu_mk1 = true;
+            mcu.mcu_cm300 = true;
             break;
         case ROM_SET_JV880:
-            mcu_jv880 = true;
-            rom2_mask /= 2; // rom is half the size
+            mcu.mcu_jv880 = true;
+            mcu.rom2_mask /= 2; // rom is half the size
             lcd_width = 820;
             lcd_height = 100;
             break;
         case ROM_SET_SCB55:
         case ROM_SET_RLP3237:
-            mcu_scb55 = true;
+            mcu.mcu_scb55 = true;
             break;
     }
 
@@ -1541,7 +1539,7 @@ int main(int argc, char *argv[])
         }
         rpaths[i] = basePath + "/" + roms[romset][i];
         s_rf[i] = Files::utf8_fopen(rpaths[i].c_str(), "rb");
-        bool optional = mcu_jv880 && i == 4;
+        bool optional = mcu.mcu_jv880 && i == 4;
         r_ok &= optional || (s_rf[i] != nullptr);
         if(!s_rf[i])
         {
@@ -1562,11 +1560,6 @@ int main(int argc, char *argv[])
 
     LCD_SetBackPath(basePath + "/back.data");
 
-    mcu_t mcu;
-    submcu_t sm;
-    MCU_Init(mcu, sm);
-    lcd_t lcd;
-
     if (fread(mcu.rom1, 1, ROM1_SIZE, s_rf[0]) != ROM1_SIZE)
     {
         fprintf(stderr, "FATAL ERROR: Failed to read the mcu ROM1.\n");
@@ -1579,7 +1572,7 @@ int main(int argc, char *argv[])
 
     if (rom2_read == ROM2_SIZE || rom2_read == ROM2_SIZE / 2)
     {
-        rom2_mask = rom2_read - 1;
+        mcu.rom2_mask = rom2_read - 1;
     }
     else
     {
@@ -1589,7 +1582,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (mcu_mk1)
+    if (mcu.mcu_mk1)
     {
         if (fread(tempbuf, 1, 0x100000, s_rf[2]) != 0x100000)
         {
@@ -1621,7 +1614,7 @@ int main(int argc, char *argv[])
 
         unscramble(tempbuf, waverom3, 0x100000);
     }
-    else if (mcu_jv880)
+    else if (mcu.mcu_jv880)
     {
         if (fread(tempbuf, 1, 0x200000, s_rf[2]) != 0x200000)
         {
@@ -1670,7 +1663,7 @@ int main(int argc, char *argv[])
                 return 1;
             }
 
-            unscramble(tempbuf, mcu_scb55 ? waverom3 : waverom2, 0x100000);
+            unscramble(tempbuf, mcu.mcu_scb55 ? waverom3 : waverom2, 0x100000);
         }
 
         if (s_rf[4] && fread(sm.sm_rom, 1, ROMSM_SIZE, s_rf[4]) != ROMSM_SIZE)
@@ -1692,7 +1685,7 @@ int main(int argc, char *argv[])
         return 2;
     }
 
-    if (!MCU_OpenAudio(audioDeviceIndex, pageSize, pageNum))
+    if (!MCU_OpenAudio(mcu, audioDeviceIndex, pageSize, pageNum))
     {
         fprintf(stderr, "FATAL ERROR: Failed to open the audio stream.\n");
         fflush(stderr);
@@ -1709,7 +1702,7 @@ int main(int argc, char *argv[])
     MCU_PatchROM();
     MCU_Reset(mcu);
     SM_Reset(sm, mcu);
-    PCM_Reset();
+    PCM_Reset(pcm, mcu);
 
     if (resetType != ResetType::NONE) MIDI_Reset(mcu, resetType);
     

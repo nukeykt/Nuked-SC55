@@ -38,6 +38,7 @@
 #include "SDL_atomic.h"
 
 struct submcu_t;
+struct pcm_t;
 
 enum {
     DEV_P1DDR = 0x00,
@@ -211,6 +212,7 @@ struct mcu_t {
     uint8_t io_sd;
 
     submcu_t* sm;
+    pcm_t* pcm;
 
     uint32_t uart_write_ptr;
     uint32_t uart_read_ptr;
@@ -219,6 +221,17 @@ struct mcu_t {
     uint8_t uart_rx_byte;
     uint64_t uart_rx_delay;
     uint64_t uart_tx_delay;
+
+    int romset;
+
+    int mcu_mk1; // 0 - SC-55mkII, SC-55ST. 1 - SC-55, CM-300/SCC-1
+    int mcu_cm300; // 0 - SC-55, 1 - CM-300/SCC-1
+    int mcu_st; // 0 - SC-55mk2, 1 - SC-55ST
+    int mcu_jv880; // 0 - SC-55, 1 - JV880
+    int mcu_scb55; // 0 - sub mcu (e.g SC-55mk2), 1 - no sub mcu (e.g SCB-55)
+    int mcu_sc155; // 0 - SC-55(MK2), 1 - SC-155(MK2)
+
+    int rom2_mask = ROM2_SIZE - 1;
 };
 
 void MCU_ErrorTrap(mcu_t& mcu);
@@ -474,15 +487,6 @@ enum {
 };
 
 extern const char* rs_name[ROM_SET_COUNT];
-
-extern int romset;
-
-extern int mcu_mk1;
-extern int mcu_cm300;
-extern int mcu_st;
-extern int mcu_jv880;
-extern int mcu_scb55;
-extern int mcu_sc155;
 
 extern SDL_atomic_t mcu_button_pressed;
 
