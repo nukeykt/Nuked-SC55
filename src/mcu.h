@@ -102,8 +102,6 @@ enum {
     DEV_P9DR = 0x7f,
 };
 
-extern uint8_t dev_register[0x80];
-
 const uint16_t sr_mask = 0x870f;
 enum {
     STATUS_T = 0x8000,
@@ -200,6 +198,13 @@ struct mcu_t {
     uint8_t sram[SRAM_SIZE];
     uint8_t nvram[NVRAM_SIZE];
     uint8_t cardram[CARDRAM_SIZE];
+
+    uint8_t dev_register[0x80];
+
+    uint16_t ad_val[4];
+    uint8_t ad_nibble;
+    uint8_t sw_pos;
+    uint8_t io_sd;
 };
 
 void MCU_ErrorTrap(mcu_t& mcu);
