@@ -134,8 +134,6 @@ void MCU_ErrorTrap(mcu_t& mcu)
     printf("%.2x %.4x\n", mcu.cp, mcu.pc);
 }
 
-SDL_atomic_t mcu_button_pressed = { 0 };
-
 uint8_t RCU_Read(void)
 {
     return 0;
@@ -412,7 +410,7 @@ uint8_t MCU_DeviceRead(mcu_t& mcu, uint32_t address)
         if (!mcu.mcu_jv880) return 0xff;
 
         uint8_t data = 0xff;
-        uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
+        uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu.mcu_button_pressed);
 
         if (mcu.io_sd == 0b11111011)
             data &= ((button_pressed >> 0) & 0b11111) ^ 0xFF;
@@ -579,7 +577,7 @@ uint8_t MCU_Read(mcu_t& mcu, uint32_t address)
                     LCD_Enable((mcu.io_sd & 8) != 0);
 
                     uint8_t data = 0xff;
-                    uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
+                    uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu.mcu_button_pressed);
 
                     if ((mcu.io_sd & 1) == 0)
                         data &= ((button_pressed >> 0) & 255) ^ 255;
@@ -1058,10 +1056,10 @@ uint8_t MCU_ReadP0(void)
     return 0xff;
 }
 
-uint8_t MCU_ReadP1(void)
+uint8_t MCU_ReadP1(mcu_t& mcu)
 {
     uint8_t data = 0xff;
-    uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
+    uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu.mcu_button_pressed);
 
     if ((mcu_p0_data & 1) == 0)
         data &= ((button_pressed >> 0) & 255) ^ 255;

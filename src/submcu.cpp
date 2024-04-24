@@ -127,7 +127,7 @@ uint8_t SM_Read(submcu_t& sm, uint16_t address)
                 return ret;
             }
             case SM_DEV_P1_DATA:
-                return MCU_ReadP1();
+                return MCU_ReadP1(*sm.mcu);
             case SM_DEV_P1_DIR:
                 return sm.sm_p1_dir;
             case SM_DEV_PRESCALER:
@@ -276,7 +276,7 @@ uint8_t SM_SysRead(submcu_t& sm, uint32_t address)
     }
     else if (address == 0xf5)
     {
-        return MCU_ReadP1();
+        return MCU_ReadP1(*sm.mcu);
     }
     else if (address == 0xf6)
     {
