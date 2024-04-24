@@ -46,6 +46,11 @@
 #include "utf8main.h"
 #include "utils/files.h"
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif
+
 #if __linux__
 #include <unistd.h>
 #include <limits.h>
@@ -105,7 +110,8 @@ static const int ROMSM_SIZE = 0x1000;
 
 static int audio_buffer_size;
 static int audio_page_size;
-static short *sample_buffer;
+static short *sample_buffer = nullptr;
+static float *sample_buffer_float = nullptr;
 
 static int sample_read_ptr;
 static int sample_write_ptr;
@@ -924,6 +930,11 @@ void MCU_WorkThread_Unlock(void)
 
 int SDLCALL work_thread(void* data)
 {
+
+#ifdef _WIN32
+    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+#endif
+   
     work_thread_lock = SDL_CreateMutex();
 
     MCU_WorkThread_Lock();
@@ -1079,12 +1090,21 @@ void unscramble(uint8_t *src, uint8_t *dst, int len)
     }
 }
 
-void audio_callback(void* /*userdata*/, Uint8* stream, int len)
-{
-    len /= 2;
-    memcpy(stream, &sample_buffer[sample_read_ptr], len * 2);
-    memset(&sample_buffer[sample_read_ptr], 0, len * 2);
-    sample_read_ptr += len;
+void audio_callback_short(void* /*userdata*/, Uint8* stream, int len)
+{  
+    memcpy(stream, &sample_buffer[sample_read_ptr], len);
+    memset(&sample_buffer[sample_read_ptr], 0, len);
+    sample_read_ptr += len / sizeof(short);   
+
+    sample_read_ptr %= audio_buffer_size;
+}
+
+void audio_callback_float(void* /*userdata*/, Uint8* stream, int len)
+{    
+    memcpy(stream, &sample_buffer_float[sample_read_ptr], len);
+    memset(&sample_buffer_float[sample_read_ptr], 0, len);
+    sample_read_ptr += len / sizeof(float);   
+
     sample_read_ptr %= audio_buffer_size;
 }
 
@@ -1116,22 +1136,36 @@ static const char* audio_format_to_str(int format)
     return "UNK";
 }
 
-int MCU_OpenAudio(int deviceIndex, int pageSize, int pageNum)
+enum class AudioFormat {
+    INT16,
+    FLOAT32,
+};
+
+int MCU_OpenAudio(int deviceIndex, int pageSize, int pageNum, AudioFormat audioFormat)
 {
     SDL_AudioSpec spec = {};
     SDL_AudioSpec spec_actual = {};
 
-    audio_page_size = (pageSize/2)*2; // must be even
-    audio_buffer_size = audio_page_size*pageNum;
+    audio_page_size = (pageSize / 2) * 2; // must be even
+    audio_buffer_size = audio_page_size * pageNum;
     
-    spec.format = AUDIO_S16SYS;
+    spec.format = audioFormat == AudioFormat::INT16 ?  AUDIO_S16SYS : AUDIO_F32SYS;
     spec.freq = (mcu_mk1 || mcu_jv880) ? 64000 : 66207;
-    spec.channels = 2;
-    spec.callback = audio_callback;
+    spec.channels = 2;   
     spec.samples = audio_page_size / 4;
     
-    sample_buffer = (short*)calloc(audio_buffer_size, sizeof(short));
-    if (!sample_buffer)
+    if (audioFormat == AudioFormat::INT16)
+    {
+        spec.callback = audio_callback_short;
+        sample_buffer = (short*)calloc(audio_buffer_size, sizeof(short));
+    }
+    else if (audioFormat == AudioFormat::FLOAT32)
+    {
+        spec.callback = audio_callback_float;
+        sample_buffer_float = (float*)calloc(audio_buffer_size, sizeof(float));
+    }
+    
+    if (!sample_buffer && !sample_buffer_float)
     {
         printf("Cannot allocate audio buffer.\n");
         return 0;
@@ -1184,22 +1218,33 @@ void MCU_CloseAudio(void)
 {
     SDL_CloseAudio();
     if (sample_buffer) free(sample_buffer);
+    else if (sample_buffer_float) free(sample_buffer_float);
 }
 
 void MCU_PostSample(int *sample)
 {
-    sample[0] >>= 15;
-    if (sample[0] > INT16_MAX)
-        sample[0] = INT16_MAX;
-    else if (sample[0] < INT16_MIN)
-        sample[0] = INT16_MIN;
-    sample[1] >>= 15;
-    if (sample[1] > INT16_MAX)
-        sample[1] = INT16_MAX;
-    else if (sample[1] < INT16_MIN)
-        sample[1] = INT16_MIN;
-    sample_buffer[sample_write_ptr + 0] = sample[0];
-    sample_buffer[sample_write_ptr + 1] = sample[1];
+    if (sample_buffer)
+    {
+        sample[0] >>= 15;
+        if (sample[0] > INT16_MAX)
+            sample[0] = INT16_MAX;
+        else if (sample[0] < INT16_MIN)
+            sample[0] = INT16_MIN;
+        sample[1] >>= 15;
+        if (sample[1] > INT16_MAX)
+            sample[1] = INT16_MAX;
+        else if (sample[1] < INT16_MIN)
+            sample[1] = INT16_MIN;
+        sample_buffer[sample_write_ptr + 0] = sample[0];
+        sample_buffer[sample_write_ptr + 1] = sample[1];
+    }
+    else if (sample_buffer_float)
+    {
+        const float divRec = 1 / 536870912.0f;       
+        sample_buffer_float[sample_write_ptr + 0] = sample[0] * divRec;
+        sample_buffer_float[sample_write_ptr + 1] = sample[1] * divRec;
+    }
+    
     sample_write_ptr = (sample_write_ptr + 2) % audio_buffer_size;
 }
 
@@ -1250,6 +1295,7 @@ enum class ResetType {
     GM_RESET,
 };
 
+
 void MIDI_Reset(ResetType resetType)
 {
     const unsigned char gmReset[] = { 0xF0, 0x7E, 0x7F, 0x09, 0x01, 0xF7 };
@@ -1277,16 +1323,23 @@ int main(int argc, char *argv[])
     (void)argc;
     std::string basePath;
 
+#ifdef _WIN32
+    SetPriorityClass(GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS);
+#endif
+
     int port = 0;
     int audioDeviceIndex = -1;
     int pageSize = 512;
     int pageNum = 32;
     bool autodetect = true;
     ResetType resetType = ResetType::NONE;
+    AudioFormat audioFormat = AudioFormat::INT16;    
 
     romset = ROM_SET_MK2;
 
     {
+        bool isBufferSet = false;
+
         for (int i = 1; i < argc; i++)
         {
             if (!strncmp(argv[i], "-p:", 3))
@@ -1296,6 +1349,10 @@ int main(int argc, char *argv[])
             else if (!strncmp(argv[i], "-a:", 3))
             {
                 audioDeviceIndex = atoi(argv[i] + 3);
+            }
+            else if (!strcmp(argv[i], "-af"))
+            {
+                audioFormat = AudioFormat::FLOAT32;
             }
             else if (!strncmp(argv[i], "-ab:", 4))
             {
@@ -1308,6 +1365,7 @@ int main(int argc, char *argv[])
                     if (pColon && pColon[1] != 0)
                     {
                         pageNum = atoi(++pColon);
+                        isBufferSet = true;
                     }
                 }
                 
@@ -1316,6 +1374,7 @@ int main(int argc, char *argv[])
                 {
                     pageSize = 512;
                     pageNum = 32;
+                    isBufferSet = false;
                 }
             }
             else if (!strcmp(argv[i], "-mk2"))
@@ -1350,7 +1409,13 @@ int main(int argc, char *argv[])
             else if (!strcmp(argv[i], "-gm"))
             {
                 resetType = ResetType::GM_RESET;
-            }
+            }           
+        }
+
+        if (audioFormat == AudioFormat::FLOAT32 && !isBufferSet)
+        {
+            pageSize = 6144;
+            pageNum = 3;
         }
     }
 
@@ -1582,7 +1647,7 @@ int main(int argc, char *argv[])
         return 2;
     }
 
-    if (!MCU_OpenAudio(audioDeviceIndex, pageSize, pageNum))
+    if (!MCU_OpenAudio(audioDeviceIndex, pageSize, pageNum, audioFormat))
     {
         fprintf(stderr, "FATAL ERROR: Failed to open the audio stream.\n");
         fflush(stderr);
