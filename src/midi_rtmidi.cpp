@@ -64,3 +64,21 @@ void MIDI_Quit()
         s_midi_in = nullptr;
     }
 }
+
+int MIDI_GetMidiInDevices(char* devices) {
+    auto rtmidi = new RtMidiIn(RtMidi::UNSPECIFIED, "Nuked SC55", 1024);
+    int numDevices = rtmidi->getPortCount();
+    int length = 0;
+    for (int i = 0; i < numDevices; i++) {
+        std::string pname = rtmidi->getPortName(i);
+        const char* name = pname.c_str();
+        int len = pname.length();
+        if (devices != NULL) {
+            memcpy(devices + length, name, len);
+            *(devices + length + len) = 0;
+        }
+        length += len + 1;
+    }
+    delete rtmidi;
+    return length;
+}

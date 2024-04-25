@@ -35,4 +35,4 @@
 
 int MIDI_Init(int port);
 void MIDI_Quit(void);
-
+int MIDI_GetMidiInDevices(char* devices);
