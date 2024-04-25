@@ -252,6 +252,15 @@ struct mcu_t {
     uint64_t analog_end_time;
 
     int ssr_rd = 0;
+
+    uint32_t operand_type;
+    uint16_t operand_ea;
+    uint8_t operand_ep;
+    uint8_t operand_size;
+    uint8_t operand_reg;
+    uint8_t operand_status;
+    uint16_t operand_data;
+    uint8_t opcode_extended;
 };
 
 void MCU_ErrorTrap(mcu_t& mcu);

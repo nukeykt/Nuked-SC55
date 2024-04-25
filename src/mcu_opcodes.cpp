@@ -491,65 +491,56 @@ void MCU_Jump_PJMP(mcu_t& mcu, uint8_t operand)
     mcu.pc = address;
 }
 
-uint32_t operand_type;
-uint16_t operand_ea;
-uint8_t operand_ep;
-uint8_t operand_size;
-uint8_t operand_reg;
-uint8_t operand_status;
-uint16_t operand_data;
-uint8_t opcode_extended;
-
 uint32_t MCU_Operand_Read(mcu_t& mcu)
 {
-    switch (operand_type)
+    switch (mcu.operand_type)
     {
     case GENERAL_DIRECT:
-        if (operand_size)
-            return mcu.r[operand_reg];
-        return mcu.r[operand_reg] & 0xff;
+        if (mcu.operand_size)
+            return mcu.r[mcu.operand_reg];
+        return mcu.r[mcu.operand_reg] & 0xff;
     case GENERAL_INDIRECT:
     case GENERAL_ABSOLUTE:
-        if (operand_size)
+        if (mcu.operand_size)
         {
-            if (operand_ea & 1)
+            if (mcu.operand_ea & 1)
             {
                 MCU_Interrupt_Exception(mcu, EXCEPTION_SOURCE_ADDRESS_ERROR);
             }
-            return MCU_Read16(mcu, MCU_GetAddress(operand_ep, operand_ea));
+            return MCU_Read16(mcu, MCU_GetAddress(mcu.operand_ep, mcu.operand_ea));
         }
-        return MCU_Read(mcu, MCU_GetAddress(operand_ep, operand_ea));
+        return MCU_Read(mcu, MCU_GetAddress(mcu.operand_ep, mcu.operand_ea));
     case GENERAL_IMMEDIATE:
-        return operand_data;
+        return mcu.operand_data;
     }
     return 0;
 }
 
 void MCU_Operand_Write(mcu_t& mcu, uint32_t data)
 {
-    switch (operand_type)
+    switch (mcu.operand_type)
     {
     case GENERAL_DIRECT:
-        if (operand_size)
-            mcu.r[operand_reg] = data;
+        if (mcu.operand_size)
+            mcu.r[mcu.operand_reg] = data;
         else
         {
-            mcu.r[operand_reg] &= ~0xff;
-            mcu.r[operand_reg] |= data & 0xff;
+            mcu.r[mcu.operand_reg] &= ~0xff;
+            mcu.r[mcu.operand_reg] |= data & 0xff;
         }
         break;
     case GENERAL_INDIRECT:
     case GENERAL_ABSOLUTE:
-        if (operand_size)
+        if (mcu.operand_size)
         {
-            if (operand_ea & 1)
+            if (mcu.operand_ea & 1)
             {
                 MCU_Interrupt_Exception(mcu, EXCEPTION_SOURCE_ADDRESS_ERROR);
             }
-            MCU_Write16(mcu, MCU_GetAddress(operand_ep, operand_ea), data);
+            MCU_Write16(mcu, MCU_GetAddress(mcu.operand_ep, mcu.operand_ea), data);
         }
         else
-            MCU_Write(mcu, MCU_GetAddress(operand_ep, operand_ea), data);
+            MCU_Write(mcu, MCU_GetAddress(mcu.operand_ep, mcu.operand_ea), data);
         break;
     case GENERAL_IMMEDIATE:
         MCU_Interrupt_Exception(mcu, EXCEPTION_SOURCE_INVALID_INSTRUCTION);
@@ -670,21 +661,21 @@ void MCU_Operand_General(mcu_t& mcu, uint8_t operand)
     }
 
     opcode = MCU_ReadCodeAdvance(mcu);
-    opcode_extended = opcode == 0x00;
-    if (opcode_extended)
+    mcu.opcode_extended = opcode == 0x00;
+    if (mcu.opcode_extended)
     {
         opcode = MCU_ReadCodeAdvance(mcu);
     }
     opcode_reg = opcode & 0x07;
     opcode >>= 3;
 
-    operand_type = type;
-    operand_ea = ea;
-    operand_ep = ep;
-    operand_size = siz;
-    operand_reg = reg;
-    operand_data = data;
-    operand_status = 0;
+    mcu.operand_type = type;
+    mcu.operand_ea = ea;
+    mcu.operand_ep = ep;
+    mcu.operand_size = siz;
+    mcu.operand_reg = reg;
+    mcu.operand_data = data;
+    mcu.operand_status = 0;
 
     MCU_Opcode_Table[opcode](mcu, opcode, opcode_reg);
 }
@@ -842,32 +833,32 @@ void MCU_Opcode_NotImplemented(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 void MCU_Opcode_MOVG_Immediate(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 {
     uint32_t data;
-    if (opcode_reg == 6 && (operand_type == GENERAL_INDIRECT || operand_type == GENERAL_ABSOLUTE))
+    if (opcode_reg == 6 && (mcu.operand_type == GENERAL_INDIRECT || mcu.operand_type == GENERAL_ABSOLUTE))
     {
         data = (int8_t)MCU_ReadCodeAdvance(mcu);
         MCU_Operand_Write(mcu, data);
-        MCU_SetStatusCommon(mcu, data, operand_size);
+        MCU_SetStatusCommon(mcu, data, mcu.operand_size);
     }
-    else if (opcode_reg == 7 && (operand_type == GENERAL_INDIRECT || operand_type == GENERAL_ABSOLUTE))
+    else if (opcode_reg == 7 && (mcu.operand_type == GENERAL_INDIRECT || mcu.operand_type == GENERAL_ABSOLUTE))
     {
         data = MCU_ReadCodeAdvance(mcu) << 8;
         data |= MCU_ReadCodeAdvance(mcu);
         MCU_Operand_Write(mcu, data);
-        MCU_SetStatusCommon(mcu, data, operand_size);
+        MCU_SetStatusCommon(mcu, data, mcu.operand_size);
     }
-    else if (opcode_reg == 4 && (operand_type == GENERAL_INDIRECT || operand_type == GENERAL_ABSOLUTE) && operand_size == OPERAND_BYTE)
+    else if (opcode_reg == 4 && (mcu.operand_type == GENERAL_INDIRECT || mcu.operand_type == GENERAL_ABSOLUTE) && mcu.operand_size == OPERAND_BYTE)
     {
         uint32_t t1 = MCU_Operand_Read(mcu);
         uint32_t t2 = MCU_ReadCodeAdvance(mcu);
         MCU_SUB_Common(mcu, t1, t2, 0, OPERAND_BYTE);
     }
-    else if (opcode_reg == 4 && (operand_type == GENERAL_INDIRECT || operand_type == GENERAL_ABSOLUTE) && operand_size == OPERAND_WORD) // FIXME
+    else if (opcode_reg == 4 && (mcu.operand_type == GENERAL_INDIRECT || mcu.operand_type == GENERAL_ABSOLUTE) && mcu.operand_size == OPERAND_WORD) // FIXME
     {
         uint32_t t1 = MCU_Operand_Read(mcu);
         uint32_t t2 = (uint16_t)((int8_t)MCU_ReadCodeAdvance(mcu));
         MCU_SUB_Common(mcu, t1, t2, 0, OPERAND_WORD);
     }
-    else if (opcode_reg == 5 && (operand_type == GENERAL_INDIRECT || operand_type == GENERAL_ABSOLUTE) && operand_size == OPERAND_WORD)
+    else if (opcode_reg == 5 && (mcu.operand_type == GENERAL_INDIRECT || mcu.operand_type == GENERAL_ABSOLUTE) && mcu.operand_size == OPERAND_WORD)
     {
         uint32_t t1, t2;
         t1 = MCU_Operand_Read(mcu);
@@ -875,7 +866,7 @@ void MCU_Opcode_MOVG_Immediate(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
         t2 |= MCU_ReadCodeAdvance(mcu);
         MCU_SUB_Common(mcu, t1, t2, 0, OPERAND_WORD);
     }
-    else if (opcode_reg == 5 && (operand_type == GENERAL_INDIRECT || operand_type == GENERAL_ABSOLUTE) && operand_size == OPERAND_BYTE) // FIXME
+    else if (opcode_reg == 5 && (mcu.operand_type == GENERAL_INDIRECT || mcu.operand_type == GENERAL_ABSOLUTE) && mcu.operand_size == OPERAND_BYTE) // FIXME
     {
         uint32_t t1, t2;
         t1 = MCU_Operand_Read(mcu);
@@ -891,15 +882,15 @@ void MCU_Opcode_MOVG_Immediate(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 
 void MCU_Opcode_BSET_ORC(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 {
-    if (operand_type == GENERAL_IMMEDIATE) // ORC
+    if (mcu.operand_type == GENERAL_IMMEDIATE) // ORC
     {
         uint32_t data = MCU_Operand_Read(mcu);
-        uint32_t val = MCU_ControlRegisterRead(mcu, opcode_reg, operand_size);
+        uint32_t val = MCU_ControlRegisterRead(mcu, opcode_reg, mcu.operand_size);
         val |= data;
-        MCU_ControlRegisterWrite(mcu, opcode_reg, operand_size, val);
+        MCU_ControlRegisterWrite(mcu, opcode_reg, mcu.operand_size, val);
         if (opcode_reg >= 2)
         {
-            MCU_SetStatusCommon(mcu, val, operand_size);
+            MCU_SetStatusCommon(mcu, val, mcu.operand_size);
         }
         mcu.ex_ignore = 1;
     }
@@ -915,15 +906,15 @@ void MCU_Opcode_BSET_ORC(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 
 void MCU_Opcode_BCLR_ANDC(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 {
-    if (operand_type == GENERAL_IMMEDIATE) // ANDC
+    if (mcu.operand_type == GENERAL_IMMEDIATE) // ANDC
     {
         uint32_t data = MCU_Operand_Read(mcu);
-        uint32_t val = MCU_ControlRegisterRead(mcu, opcode_reg, operand_size);
+        uint32_t val = MCU_ControlRegisterRead(mcu, opcode_reg, mcu.operand_size);
         val &= data;
-        MCU_ControlRegisterWrite(mcu, opcode_reg, operand_size, val);
+        MCU_ControlRegisterWrite(mcu, opcode_reg, mcu.operand_size, val);
         if (opcode_reg >= 2)
         {
-            MCU_SetStatusCommon(mcu, val, operand_size);
+            MCU_SetStatusCommon(mcu, val, mcu.operand_size);
         }
         mcu.ex_ignore = 1;
     }
@@ -939,7 +930,7 @@ void MCU_Opcode_BCLR_ANDC(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 
 void MCU_Opcode_BTST(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 {
-    if (operand_type != GENERAL_IMMEDIATE)
+    if (mcu.operand_type != GENERAL_IMMEDIATE)
     {
         uint32_t data = MCU_Operand_Read(mcu);
         uint32_t bit = mcu.r[opcode_reg] & 0x0f;
@@ -953,7 +944,7 @@ void MCU_Opcode_BTST(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 
 void MCU_Opcode_CLR(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 {
-    if (opcode_reg == 3 && operand_type != GENERAL_IMMEDIATE) // CLR
+    if (opcode_reg == 3 && mcu.operand_type != GENERAL_IMMEDIATE) // CLR
     {
         MCU_Operand_Write(mcu, 0);
         MCU_SetStatus(mcu, 0, STATUS_N);
@@ -961,48 +952,48 @@ void MCU_Opcode_CLR(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
         MCU_SetStatus(mcu, 0, STATUS_V);
         MCU_SetStatus(mcu, 0, STATUS_C);
     }
-    else if (opcode_reg == 6 && operand_type != GENERAL_IMMEDIATE) // TST
+    else if (opcode_reg == 6 && mcu.operand_type != GENERAL_IMMEDIATE) // TST
     {
         uint32_t data = MCU_Operand_Read(mcu);
-        MCU_SetStatusCommon(mcu, data, operand_size);
+        MCU_SetStatusCommon(mcu, data, mcu.operand_size);
         MCU_SetStatus(mcu, 0, STATUS_C);
     }
-    else if (opcode_reg == 2 && operand_type == GENERAL_DIRECT && operand_size == 0) // EXTU
+    else if (opcode_reg == 2 && mcu.operand_type == GENERAL_DIRECT && mcu.operand_size == 0) // EXTU
     {
-        uint32_t data = (uint8_t)mcu.r[operand_reg];
-        mcu.r[operand_reg] = data;
+        uint32_t data = (uint8_t)mcu.r[mcu.operand_reg];
+        mcu.r[mcu.operand_reg] = data;
         MCU_SetStatus(mcu, 0, STATUS_N);
         MCU_SetStatus(mcu, data == 0, STATUS_Z);
         MCU_SetStatus(mcu, 0, STATUS_V);
         MCU_SetStatus(mcu, 0, STATUS_C);
     }
-    else if (opcode_reg == 0 && operand_type == GENERAL_DIRECT && operand_size == 0) // SWAP
+    else if (opcode_reg == 0 && mcu.operand_type == GENERAL_DIRECT && mcu.operand_size == 0) // SWAP
     {
-        uint32_t data = mcu.r[operand_reg];
+        uint32_t data = mcu.r[mcu.operand_reg];
         uint32_t data_h = data >> 8;
         uint32_t data_l = data & 0xff;
         data = (data_l << 8) | data_h;
-        mcu.r[operand_reg] = data;
+        mcu.r[mcu.operand_reg] = data;
         MCU_SetStatusCommon(mcu, data, OPERAND_BYTE); // FIXME: might be WORD???
         //MCU_SetStatusCommon(data, OPERAND_WORD);
     }
-    else if (opcode_reg == 5 && operand_type != GENERAL_IMMEDIATE) // NOT
+    else if (opcode_reg == 5 && mcu.operand_type != GENERAL_IMMEDIATE) // NOT
     {
         uint32_t data = MCU_Operand_Read(mcu);
         data = ~data;
         MCU_Operand_Write(mcu, data);
-        MCU_SetStatusCommon(mcu, data, operand_size);
+        MCU_SetStatusCommon(mcu, data, mcu.operand_size);
     }
-    else if (opcode_reg == 4 && operand_type != GENERAL_IMMEDIATE) // NEG
+    else if (opcode_reg == 4 && mcu.operand_type != GENERAL_IMMEDIATE) // NEG
     {
         uint32_t data = MCU_Operand_Read(mcu);
-        data = MCU_SUB_Common(mcu, 0, data, 0, operand_size);
+        data = MCU_SUB_Common(mcu, 0, data, 0, mcu.operand_size);
         MCU_Operand_Write(mcu, data);
     }
-    else if (opcode_reg == 1 && operand_type == GENERAL_DIRECT && operand_size == 0) // EXTS
+    else if (opcode_reg == 1 && mcu.operand_type == GENERAL_DIRECT && mcu.operand_size == 0) // EXTS
     {
-        uint32_t data = mcu.r[operand_reg];
-        mcu.r[operand_reg] = (int8_t)data;
+        uint32_t data = mcu.r[mcu.operand_reg];
+        mcu.r[mcu.operand_reg] = (int8_t)data;
         MCU_SetStatusCommon(mcu, data, OPERAND_WORD);
     }
     else
@@ -1014,19 +1005,19 @@ void MCU_Opcode_CLR(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 void MCU_Opcode_LDC(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 {
     uint32_t data = MCU_Operand_Read(mcu);
-    MCU_ControlRegisterWrite(mcu, opcode_reg, operand_size, data);
+    MCU_ControlRegisterWrite(mcu, opcode_reg, mcu.operand_size, data);
     mcu.ex_ignore = 1;
 }
 
 void MCU_Opcode_STC(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 {
-    uint32_t data = MCU_ControlRegisterRead(mcu, opcode_reg, operand_size);
+    uint32_t data = MCU_ControlRegisterRead(mcu, opcode_reg, mcu.operand_size);
     MCU_Operand_Write(mcu, data);
 }
 
 void MCU_Opcode_BSET(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 {
-    if (operand_type != GENERAL_IMMEDIATE)
+    if (mcu.operand_type != GENERAL_IMMEDIATE)
     {
         uint32_t data = MCU_Operand_Read(mcu);
         uint32_t bit = opcode_reg | ((opcode & 1) << 3);
@@ -1042,7 +1033,7 @@ void MCU_Opcode_BSET(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 
 void MCU_Opcode_BCLR(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 {
-    if (operand_type != GENERAL_IMMEDIATE)
+    if (mcu.operand_type != GENERAL_IMMEDIATE)
     {
         uint32_t data = MCU_Operand_Read(mcu);
         uint32_t bit = opcode_reg | ((opcode & 1) << 3);
@@ -1058,7 +1049,7 @@ void MCU_Opcode_BCLR(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 
 void MCU_Opcode_MOVG(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 {
-    if (opcode_extended)
+    if (mcu.opcode_extended)
     {
         if (opcode == 0x12)
         {
@@ -1076,14 +1067,14 @@ void MCU_Opcode_MOVG(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
         uint32_t data;
         if (d)
         {
-            if (operand_type == GENERAL_DIRECT) // XCH
+            if (mcu.operand_type == GENERAL_DIRECT) // XCH
             {
-                if (operand_size)
+                if (mcu.operand_size)
                 {
                     uint32_t r1 = mcu.r[opcode_reg];
-                    uint32_t r2 = mcu.r[operand_reg];
+                    uint32_t r2 = mcu.r[mcu.operand_reg];
                     mcu.r[opcode_reg] = r2;
-                    mcu.r[operand_reg] = r1;
+                    mcu.r[mcu.operand_reg] = r1;
                 }
                 else
                 {
@@ -1094,27 +1085,27 @@ void MCU_Opcode_MOVG(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
             {
                 data = mcu.r[opcode_reg];
                 MCU_Operand_Write(mcu, data);
-                MCU_SetStatusCommon(mcu, data, operand_size);
+                MCU_SetStatusCommon(mcu, data, mcu.operand_size);
             }
         }
         else
         {
             data = MCU_Operand_Read(mcu);
-            if (operand_size)
+            if (mcu.operand_size)
                 mcu.r[opcode_reg] = data;
             else
             {
                 mcu.r[opcode_reg] &= ~0xff;
                 mcu.r[opcode_reg] |= data & 0xff;
             }
-            MCU_SetStatusCommon(mcu, data, operand_size);
+            MCU_SetStatusCommon(mcu, data, mcu.operand_size);
         }
     }
 }
 
 void MCU_Opcode_BTSTI(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 {
-    if (operand_type != GENERAL_IMMEDIATE)
+    if (mcu.operand_type != GENERAL_IMMEDIATE)
     {
         uint32_t data = MCU_Operand_Read(mcu);
         uint32_t bit = opcode_reg | ((opcode & 1) << 3);
@@ -1128,7 +1119,7 @@ void MCU_Opcode_BTSTI(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 
 void MCU_Opcode_BNOTI(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 {
-    if (operand_type != GENERAL_IMMEDIATE)
+    if (mcu.operand_type != GENERAL_IMMEDIATE)
     {
         uint32_t data = MCU_Operand_Read(mcu);
         uint32_t bit = opcode_reg | ((opcode & 1) << 3);
@@ -1146,14 +1137,14 @@ void MCU_Opcode_OR(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 {
     uint32_t data = MCU_Operand_Read(mcu);
     mcu.r[opcode_reg] |= data;
-    MCU_SetStatusCommon(mcu, mcu.r[opcode_reg], operand_size);
+    MCU_SetStatusCommon(mcu, mcu.r[opcode_reg], mcu.operand_size);
 }
 
 void MCU_Opcode_CMP(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 {
     int32_t t1 = mcu.r[opcode_reg];
     int32_t t2 = MCU_Operand_Read(mcu);
-    MCU_SUB_Common(mcu, t1, t2, 0, operand_size);
+    MCU_SUB_Common(mcu, t1, t2, 0, mcu.operand_size);
 }
 
 void MCU_Opcode_ADDQ(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
@@ -1178,7 +1169,7 @@ void MCU_Opcode_ADDQ(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
         MCU_ErrorTrap(mcu);
         break;
     }
-    t1 = MCU_ADD_Common(mcu, t1, t2, 0, operand_size);
+    t1 = MCU_ADD_Common(mcu, t1, t2, 0, mcu.operand_size);
     MCU_Operand_Write(mcu, t1);
 }
 
@@ -1186,8 +1177,8 @@ void MCU_Opcode_ADD(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 {
     int32_t t1 = mcu.r[opcode_reg];
     int32_t t2 = MCU_Operand_Read(mcu);
-    t1 = MCU_ADD_Common(mcu, t1, t2, 0, operand_size);
-    if (operand_size)
+    t1 = MCU_ADD_Common(mcu, t1, t2, 0, mcu.operand_size);
+    if (mcu.operand_size)
         mcu.r[opcode_reg] = t1;
     else
     {
@@ -1200,8 +1191,8 @@ void MCU_Opcode_SUB(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 {
     int32_t t1 = mcu.r[opcode_reg];
     int32_t t2 = MCU_Operand_Read(mcu);
-    t1 = MCU_SUB_Common(mcu, t1, t2, 0, operand_size);
-    if (operand_size)
+    t1 = MCU_SUB_Common(mcu, t1, t2, 0, mcu.operand_size);
+    if (mcu.operand_size)
         mcu.r[opcode_reg] = t1;
     else
     {
@@ -1214,7 +1205,7 @@ void MCU_Opcode_SUBS(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 {
     int32_t t1 = mcu.r[opcode_reg];
     int32_t t2 = MCU_Operand_Read(mcu);
-    if (operand_size)
+    if (mcu.operand_size)
         mcu.r[opcode_reg] = t1 - t2;
     else
         mcu.r[opcode_reg] = t1 - (int8_t)t2;
@@ -1224,46 +1215,46 @@ void MCU_Opcode_AND(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 {
     uint32_t data = mcu.r[opcode_reg];
     data &= MCU_Operand_Read(mcu);
-    if (operand_size)
+    if (mcu.operand_size)
         mcu.r[opcode_reg] = data;
     else
     {
         mcu.r[opcode_reg] &= ~0xff;
         mcu.r[opcode_reg] |= data & 0xff;
     }
-    MCU_SetStatusCommon(mcu, mcu.r[opcode_reg], operand_size);
+    MCU_SetStatusCommon(mcu, mcu.r[opcode_reg], mcu.operand_size);
 }
 
 void MCU_Opcode_SHLR(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 {
-    if (opcode_reg == 0x03 && operand_type != GENERAL_IMMEDIATE) // SHLR
+    if (opcode_reg == 0x03 && mcu.operand_type != GENERAL_IMMEDIATE) // SHLR
     {
         uint32_t data = MCU_Operand_Read(mcu);
         uint32_t C = data & 1;
         data >>= 1;
         MCU_Operand_Write(mcu, data);
         MCU_SetStatus(mcu, C, STATUS_C);
-        MCU_SetStatusCommon(mcu, data, operand_size);
+        MCU_SetStatusCommon(mcu, data, mcu.operand_size);
     }
-    else if (opcode_reg == 0x02 && operand_type != GENERAL_IMMEDIATE) // SHLL
+    else if (opcode_reg == 0x02 && mcu.operand_type != GENERAL_IMMEDIATE) // SHLL
     {
         uint32_t data = MCU_Operand_Read(mcu);
         uint32_t C;
-        if (operand_size)
+        if (mcu.operand_size)
             C = (data & 0x8000) != 0;
         else
             C = (data & 0x80) != 0;
         data <<= 1;
         MCU_Operand_Write(mcu, data);
         MCU_SetStatus(mcu, C, STATUS_C);
-        MCU_SetStatusCommon(mcu, data, operand_size);
+        MCU_SetStatusCommon(mcu, data, mcu.operand_size);
     }
-    else if (opcode_reg == 0x06 && operand_type != GENERAL_IMMEDIATE) // ROTXL
+    else if (opcode_reg == 0x06 && mcu.operand_type != GENERAL_IMMEDIATE) // ROTXL
     {
         uint32_t data = MCU_Operand_Read(mcu);
         uint32_t bit = (mcu.sr & STATUS_C) != 0;
         uint32_t C;
-        if (operand_size)
+        if (mcu.operand_size)
             C = (data & 0x8000) != 0;
         else
             C = (data & 0x80) != 0;
@@ -1271,13 +1262,13 @@ void MCU_Opcode_SHLR(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
         data |= bit;
         MCU_Operand_Write(mcu, data);
         MCU_SetStatus(mcu, C, STATUS_C);
-        MCU_SetStatusCommon(mcu, data, operand_size);
+        MCU_SetStatusCommon(mcu, data, mcu.operand_size);
     }
-    else if (opcode_reg == 0x04 && operand_type != GENERAL_IMMEDIATE) // ROTL
+    else if (opcode_reg == 0x04 && mcu.operand_type != GENERAL_IMMEDIATE) // ROTL
     {
         uint32_t data = MCU_Operand_Read(mcu);
         uint32_t C;
-        if (operand_size)
+        if (mcu.operand_size)
             C = (data & 0x8000) != 0;
         else
             C = (data & 0x80) != 0;
@@ -1285,27 +1276,27 @@ void MCU_Opcode_SHLR(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
         data |= C;
         MCU_Operand_Write(mcu, data);
         MCU_SetStatus(mcu, C, STATUS_C);
-        MCU_SetStatusCommon(mcu, data, operand_size);
+        MCU_SetStatusCommon(mcu, data, mcu.operand_size);
     }
-    else if (opcode_reg == 0x00 && operand_type != GENERAL_IMMEDIATE) // SHAL
+    else if (opcode_reg == 0x00 && mcu.operand_type != GENERAL_IMMEDIATE) // SHAL
     {
         uint32_t data = MCU_Operand_Read(mcu);
         uint32_t C;
-        if (operand_size)
+        if (mcu.operand_size)
             C = (data & 0x8000) != 0;
         else
             C = (data & 0x80) != 0;
         data <<= 1;
         MCU_Operand_Write(mcu, data);
         MCU_SetStatus(mcu, C, STATUS_C);
-        MCU_SetStatusCommon(mcu, data, operand_size);
+        MCU_SetStatusCommon(mcu, data, mcu.operand_size);
     }
-    else if (opcode_reg == 0x01 && operand_type != GENERAL_IMMEDIATE) // SHAR
+    else if (opcode_reg == 0x01 && mcu.operand_type != GENERAL_IMMEDIATE) // SHAR
     {
         uint32_t data = MCU_Operand_Read(mcu);
         uint32_t C = data & 0x1;
         uint32_t msb;
-        if (operand_size)
+        if (mcu.operand_size)
         {
             msb = data & 0x8000;
             data &= 0x7fff;
@@ -1319,20 +1310,20 @@ void MCU_Opcode_SHLR(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
         data |= msb;
         MCU_Operand_Write(mcu, data);
         MCU_SetStatus(mcu, C, STATUS_C);
-        MCU_SetStatusCommon(mcu, data, operand_size);
+        MCU_SetStatusCommon(mcu, data, mcu.operand_size);
     }
-    else if (opcode_reg == 0x05 && operand_type != GENERAL_IMMEDIATE) // ROTR
+    else if (opcode_reg == 0x05 && mcu.operand_type != GENERAL_IMMEDIATE) // ROTR
     {
         uint32_t data = MCU_Operand_Read(mcu);
         uint32_t C = (data & 0x1) != 0;
         data >>= 1;
-        if (operand_size)
+        if (mcu.operand_size)
             data |= C << 15;
         else
             data |= C << 7;
         MCU_Operand_Write(mcu, data);
         MCU_SetStatus(mcu, C, STATUS_C);
-        MCU_SetStatusCommon(mcu, data, operand_size);
+        MCU_SetStatusCommon(mcu, data, mcu.operand_size);
     }
     else
     {
@@ -1345,11 +1336,11 @@ void MCU_Opcode_MULXU(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
     uint32_t t1 = MCU_Operand_Read(mcu);
     uint32_t t2 = mcu.r[opcode_reg];
     uint32_t N, Z;
-    if (!operand_size)
+    if (!mcu.operand_size)
         t2 &= 0xff;
     t1 *= t2;
 
-    if (operand_size)
+    if (mcu.operand_size)
     {
         opcode_reg &= ~1;
         mcu.r[opcode_reg | 0] = t1 >> 16;
@@ -1385,7 +1376,7 @@ void MCU_Opcode_DIVXU(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
         return;
     }
 
-    if (operand_size)
+    if (mcu.operand_size)
     {
         opcode_reg &= ~1;
         t2 = mcu.r[opcode_reg | 0] << 16;
@@ -1437,7 +1428,7 @@ void MCU_Opcode_DIVXU(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 void MCU_Opcode_ADDS(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 {
     uint32_t data = MCU_Operand_Read(mcu);
-    if (!operand_size)
+    if (!mcu.operand_size)
         data = (int8_t)data;
     mcu.r[opcode_reg] += data;
 }
@@ -1446,7 +1437,7 @@ void MCU_Opcode_XOR(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
 {
     uint32_t data = MCU_Operand_Read(mcu);
     mcu.r[opcode_reg] ^= data;
-    MCU_SetStatusCommon(mcu, mcu.r[opcode_reg], operand_size);
+    MCU_SetStatusCommon(mcu, mcu.r[opcode_reg], mcu.operand_size);
 }
 
 void MCU_Opcode_ADDX(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
@@ -1455,11 +1446,11 @@ void MCU_Opcode_ADDX(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
     int32_t t2 = MCU_Operand_Read(mcu);
     int32_t C = (mcu.sr & STATUS_C) != 0;
     int32_t Z = (mcu.sr & STATUS_Z) != 0;
-    t1 = MCU_ADD_Common(mcu, t1, t2, C, operand_size);
+    t1 = MCU_ADD_Common(mcu, t1, t2, C, mcu.operand_size);
     if (!Z)
         MCU_SetStatus(mcu, 0, STATUS_Z);
         
-    if (operand_size)
+    if (mcu.operand_size)
         mcu.r[opcode_reg] = t1;
     else
     {
@@ -1473,8 +1464,8 @@ void MCU_Opcode_SUBX(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg)
     int32_t t1 = mcu.r[opcode_reg];
     int32_t t2 = MCU_Operand_Read(mcu);
     int32_t C = (mcu.sr & STATUS_C) != 0;
-    t1 = MCU_SUB_Common(mcu, t1, t2, C, operand_size);
-    if (operand_size)
+    t1 = MCU_SUB_Common(mcu, t1, t2, C, mcu.operand_size);
+    if (mcu.operand_size)
         mcu.r[opcode_reg] = t1;
     else
     {
