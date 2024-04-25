@@ -35,6 +35,7 @@
 
 #include <stdint.h>
 #include <string>
+#include "SDL.h"
 
 struct mcu_t;
 
@@ -62,6 +63,10 @@ struct lcd_t {
 
     uint32_t lcd_buffer[lcd_height_max][lcd_width_max];
     uint32_t lcd_background[268][741];
+
+    SDL_Window *window;
+    SDL_Renderer *renderer;
+    SDL_Texture *texture;
 };
 
 

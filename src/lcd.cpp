@@ -35,7 +35,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include "SDL.h"
 #include "SDL_mutex.h"
 #include "lcd.h"
 #include "lcd_font.h"
@@ -152,10 +151,6 @@ void LCD_Write(lcd_t& lcd, uint32_t address, uint8_t data)
     //    printf("\n");
 }
 
-static SDL_Window *window;
-static SDL_Renderer *renderer;
-static SDL_Texture *texture;
-
 const int button_map_sc55[][2] =
 {
     SDL_SCANCODE_Q, MCU_BUTTON_POWER,
@@ -231,17 +226,17 @@ void LCD_Init(lcd_t& lcd, mcu_t& mcu)
 
     title += rs_name[mcu.romset];
 
-    window = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, lcd.lcd_width, lcd.lcd_height, SDL_WINDOW_SHOWN);
-    if (!window)
+    lcd.window = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, lcd.lcd_width, lcd.lcd_height, SDL_WINDOW_SHOWN);
+    if (!lcd.window)
         return;
 
-    renderer = SDL_CreateRenderer(window, -1, 0);
-    if (!renderer)
+    lcd.renderer = SDL_CreateRenderer(lcd.window, -1, 0);
+    if (!lcd.renderer)
         return;
 
-    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGR888, SDL_TEXTUREACCESS_STREAMING, lcd.lcd_width, lcd.lcd_height);
+    lcd.texture = SDL_CreateTexture(lcd.renderer, SDL_PIXELFORMAT_BGR888, SDL_TEXTUREACCESS_STREAMING, lcd.lcd_width, lcd.lcd_height);
 
-    if (!texture)
+    if (!lcd.texture)
         return;
 
     raw = Files::utf8_fopen(lcd.m_back_path.c_str(), "rb");
@@ -506,9 +501,9 @@ void LCD_Update(lcd_t& lcd)
 
         MCU_WorkThread_Unlock();
 
-        SDL_UpdateTexture(texture, NULL, lcd.lcd_buffer, lcd_width_max * 4);
-        SDL_RenderCopy(renderer, texture, NULL, NULL);
-        SDL_RenderPresent(renderer);
+        SDL_UpdateTexture(lcd.texture, NULL, lcd.lcd_buffer, lcd_width_max * 4);
+        SDL_RenderCopy(lcd.renderer, lcd.texture, NULL, NULL);
+        SDL_RenderPresent(lcd.renderer);
     }
 
     SDL_Event sdl_event;
