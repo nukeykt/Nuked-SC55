@@ -187,8 +187,8 @@ if(USE_RTMIDI)
 endif()
 
 
-set(SC55_SRC
-    src/mcu.cpp src/mcu.h # main() is here!
+set(SC55_BACKEND_SRC
+    src/mcu.cpp src/mcu.h
     src/lcd.cpp src/lcd.h src/lcd_font.h
     src/mcu_interrupt.cpp src/mcu_interrupt.h
     src/mcu_opcodes.cpp src/mcu_opcodes.h
@@ -200,13 +200,19 @@ set(SC55_SRC
     src/utils/files.cpp src/utils/files.h
 )
 
+set(SC55_FRONTEND_SRC
+    src/main_frontend.cpp # main() is here!
+)
+
 if(USE_RTMIDI)
-    list(APPEND SC55_SRC src/midi_rtmidi.cpp)
+    list(APPEND SC55_FRONTEND_SRC src/midi_rtmidi.cpp)
 elseif(WIN32)
-    list(APPEND SC55_SRC src/midi_win32.cpp)
+    list(APPEND SC55_FRONTEND_SRC src/midi_win32.cpp)
 endif()
 
-add_executable(nuked-sc55 ${SC55_SRC} ${UTF8MAIN_SRCS})
+add_library(nuked-sc55-backend ${SC55_BACKEND_SRC})
+add_executable(nuked-sc55 ${SC55_FRONTEND_SRC} ${UTF8MAIN_SRCS})
+target_link_libraries(nuked-sc55 PRIVATE nuked-sc55-backend)
 set_nopie(nuked-sc55)
 
 if(MSVC)
@@ -214,9 +220,12 @@ if(MSVC)
 endif()
 
 if(TARGET SDL2::SDL2)
+    target_link_libraries(nuked-sc55-backend PRIVATE SDL2::SDL2)
     target_link_libraries(nuked-sc55 PRIVATE SDL2::SDL2)
 else()
     string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES)
+    target_include_directories(nuked-sc55-backend PRIVATE ${SDL2_INCLUDE_DIRS})
+    target_link_libraries(nuked-sc55-backend PRIVATE ${SDL2_LIBRARIES})
     target_include_directories(nuked-sc55 PRIVATE ${SDL2_INCLUDE_DIRS})
     target_link_libraries(nuked-sc55 PRIVATE ${SDL2_LIBRARIES})
 endif()

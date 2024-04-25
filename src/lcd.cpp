@@ -401,7 +401,7 @@ void LCD_Update(lcd_t& lcd)
 
     if (!lcd.mcu->mcu_cm300 && !lcd.mcu->mcu_st && !lcd.mcu->mcu_scb55)
     {
-        MCU_WorkThread_Lock();
+        MCU_WorkThread_Lock(*lcd.mcu);
 
         if (!lcd.lcd_enable && !lcd.mcu->mcu_jv880)
         {
@@ -499,7 +499,7 @@ void LCD_Update(lcd_t& lcd)
             }
         }
 
-        MCU_WorkThread_Unlock();
+        MCU_WorkThread_Unlock(*lcd.mcu);
 
         SDL_UpdateTexture(lcd.texture, NULL, lcd.lcd_buffer, lcd_width_max * 4);
         SDL_RenderCopy(lcd.renderer, lcd.texture, NULL, NULL);

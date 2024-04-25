@@ -36,6 +36,7 @@
 #include <stdint.h>
 #include "mcu_interrupt.h"
 #include "SDL_atomic.h"
+#include "SDL.h"
 
 struct submcu_t;
 struct pcm_t;
@@ -187,6 +188,10 @@ static const int ROMSM_SIZE = 0x1000;
 
 static const uint32_t uart_buffer_size = 8192;
 
+typedef void(*mcu_step_begin_callback)(void* userdata);
+typedef void(*mcu_sample_callback)(void* userdata, int* sample);
+typedef bool(*mcu_wait_callback)(void* userdata);
+
 struct mcu_t {
     uint16_t r[8];
     uint16_t pc;
@@ -261,7 +266,20 @@ struct mcu_t {
     uint8_t operand_status;
     uint16_t operand_data;
     uint8_t opcode_extended;
+
+    void* callback_userdata;
+    mcu_step_begin_callback step_begin_callback;
+    // if FE doesn't need more samples, returns true to signal for the mcu to wait
+    mcu_wait_callback wait_callback;
+    mcu_sample_callback sample_callback;
+
+    SDL_mutex *work_thread_lock;
 };
+
+void MCU_Init(mcu_t& mcu, submcu_t& sm, pcm_t& pcm, mcu_timer_t& timer, lcd_t& lcd);
+void MCU_Reset(mcu_t& mcu);
+void MCU_PatchROM(mcu_t& mcu);
+void MCU_Step(mcu_t& mcu);
 
 void MCU_ErrorTrap(mcu_t& mcu);
 
@@ -525,8 +543,8 @@ void MCU_GA_SetGAInt(mcu_t& mcu, int line, int value);
 
 void MCU_EncoderTrigger(mcu_t& mcu, int dir);
 
-void MCU_PostSample(int *sample);
+void MCU_PostSample(mcu_t& mcu, int *sample);
 void MCU_PostUART(mcu_t& mcu, uint8_t data);
 
-void MCU_WorkThread_Lock(void);
-void MCU_WorkThread_Unlock(void);
+void MCU_WorkThread_Lock(mcu_t& mcu);
+void MCU_WorkThread_Unlock(mcu_t& mcu);
