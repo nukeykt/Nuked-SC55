@@ -246,6 +246,12 @@ struct mcu_t {
 
     uint8_t mcu_p0_data = 0x00;
     uint8_t mcu_p1_data = 0x00;
+
+    int adf_rd = 0;
+
+    uint64_t analog_end_time;
+
+    int ssr_rd = 0;
 };
 
 void MCU_ErrorTrap(mcu_t& mcu);

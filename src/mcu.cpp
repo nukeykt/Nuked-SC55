@@ -246,12 +246,6 @@ void MCU_AnalogSample(mcu_t& mcu, int channel)
     mcu.dev_register[DEV_ADDRAL + dest] = (value << 6) & 0xc0;
 }
 
-int adf_rd = 0;
-
-uint64_t analog_end_time;
-
-int ssr_rd = 0;
-
 void MCU_DeviceWrite(mcu_t& mcu, uint32_t address, uint8_t data)
 {
     address &= 0x7f;
@@ -333,7 +327,7 @@ void MCU_DeviceWrite(mcu_t& mcu, uint32_t address, uint8_t data)
     {
         mcu.dev_register[address] &= ~0x7f;
         mcu.dev_register[address] |= data & 0x7f;
-        if ((data & 0x80) == 0 && adf_rd)
+        if ((data & 0x80) == 0 && mcu.adf_rd)
         {
             mcu.dev_register[address] &= ~0x80;
             MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_ANALOG, 0);
@@ -344,23 +338,23 @@ void MCU_DeviceWrite(mcu_t& mcu, uint32_t address, uint8_t data)
     }
     case DEV_SSR:
     {
-        if ((data & 0x80) == 0 && (ssr_rd & 0x80) != 0)
+        if ((data & 0x80) == 0 && (mcu.ssr_rd & 0x80) != 0)
         {
             mcu.dev_register[address] &= ~0x80;
             mcu.uart_tx_delay = mcu.cycles + 3000;
             MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_UART_TX, 0);
         }
-        if ((data & 0x40) == 0 && (ssr_rd & 0x40) != 0)
+        if ((data & 0x40) == 0 && (mcu.ssr_rd & 0x40) != 0)
         {
             mcu.uart_rx_delay = mcu.cycles + 3000;
             mcu.dev_register[address] &= ~0x40;
             MCU_Interrupt_SetRequest(mcu, INTERRUPT_SOURCE_UART_RX, 0);
         }
-        if ((data & 0x20) == 0 && (ssr_rd & 0x20) != 0)
+        if ((data & 0x20) == 0 && (mcu.ssr_rd & 0x20) != 0)
         {
             mcu.dev_register[address] &= ~0x20;
         }
-        if ((data & 0x10) == 0 && (ssr_rd & 0x10) != 0)
+        if ((data & 0x10) == 0 && (mcu.ssr_rd & 0x10) != 0)
         {
             mcu.dev_register[address] &= ~0x10;
         }
@@ -396,10 +390,10 @@ uint8_t MCU_DeviceRead(mcu_t& mcu, uint32_t address)
     case DEV_ADDRDL:
         return mcu.dev_register[address];
     case DEV_ADCSR:
-        adf_rd = (mcu.dev_register[address] & 0x80) != 0;
+        mcu.adf_rd = (mcu.dev_register[address] & 0x80) != 0;
         return mcu.dev_register[address];
     case DEV_SSR:
-        ssr_rd = mcu.dev_register[address];
+        mcu.ssr_rd = mcu.dev_register[address];
         return mcu.dev_register[address];
     case DEV_RDR:
         return mcu.uart_rx_byte;
@@ -470,22 +464,22 @@ void MCU_UpdateAnalog(mcu_t& mcu, uint64_t cycles)
 
     if (ctrl & 0x20)
     {
-        if (analog_end_time == 0)
-            analog_end_time = cycles + 200;
-        else if (analog_end_time < cycles)
+        if (mcu.analog_end_time == 0)
+            mcu.analog_end_time = cycles + 200;
+        else if (mcu.analog_end_time < cycles)
         {
             if (isscan)
             {
                 int base = ctrl & 4;
                 for (int i = 0; i <= (ctrl & 3); i++)
                     MCU_AnalogSample(mcu, base + i);
-                analog_end_time = cycles + 200;
+                mcu.analog_end_time = cycles + 200;
             }
             else
             {
                 MCU_AnalogSample(mcu, ctrl & 7);
                 mcu.dev_register[DEV_ADCSR] &= ~0x20;
-                analog_end_time = 0;
+                mcu.analog_end_time = 0;
             }
             mcu.dev_register[DEV_ADCSR] |= 0x80;
             if (ctrl & 0x40)
@@ -493,7 +487,7 @@ void MCU_UpdateAnalog(mcu_t& mcu, uint64_t cycles)
         }
     }
     else
-        analog_end_time = 0;
+        mcu.analog_end_time = 0;
 }
 
 uint8_t MCU_Read(mcu_t& mcu, uint32_t address)
