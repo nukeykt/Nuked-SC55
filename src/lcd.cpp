@@ -505,30 +505,30 @@ void LCD_Update(lcd_t& lcd)
         SDL_RenderCopy(lcd.renderer, lcd.texture, NULL, NULL);
         SDL_RenderPresent(lcd.renderer);
     }
+}
 
-    SDL_Event sdl_event;
-    while (SDL_PollEvent(&sdl_event))
+void LCD_HandleEvent(lcd_t& lcd, const SDL_Event& sdl_event)
+{
+    if (sdl_event.type == SDL_KEYDOWN)
     {
-        if (sdl_event.type == SDL_KEYDOWN)
-        {
-            if (sdl_event.key.keysym.scancode == SDL_SCANCODE_COMMA)
-                MCU_EncoderTrigger(*lcd.mcu, 0);
-            if (sdl_event.key.keysym.scancode == SDL_SCANCODE_PERIOD)
-                MCU_EncoderTrigger(*lcd.mcu, 1);
-        }
+        if (sdl_event.key.keysym.scancode == SDL_SCANCODE_COMMA)
+            MCU_EncoderTrigger(*lcd.mcu, 0);
+        if (sdl_event.key.keysym.scancode == SDL_SCANCODE_PERIOD)
+            MCU_EncoderTrigger(*lcd.mcu, 1);
+    }
 
-        switch (sdl_event.type)
-        {
-            case SDL_QUIT:
-                lcd.lcd_quit_requested = true;
-                break;
+    switch (sdl_event.type)
+    {
+        case SDL_QUIT:
+            lcd.lcd_quit_requested = true;
+            break;
 
-            case SDL_KEYDOWN:
-            case SDL_KEYUP:
+        case SDL_KEYDOWN:
+        case SDL_KEYUP:
             {
                 if (sdl_event.key.repeat)
-                    continue;
-                
+                    break;
+
                 int mask = 0;
                 uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&lcd.mcu->mcu_button_pressed);
 
@@ -644,7 +644,5 @@ void LCD_Update(lcd_t& lcd)
 #endif
                 break;
             }
-        }
     }
 }
-

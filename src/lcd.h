@@ -78,3 +78,4 @@ void LCD_Enable(lcd_t& lcd, uint32_t enable);
 bool LCD_QuitRequested(lcd_t& lcd);
 void LCD_Sync(void);
 void LCD_Update(lcd_t& lcd);
+void LCD_HandleEvent(lcd_t& lcd, const SDL_Event& sdl_event);

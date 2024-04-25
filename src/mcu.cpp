@@ -1029,6 +1029,13 @@ static void MCU_Run(mcu_t& mcu)
             working = false;
 
         LCD_Update(*mcu.lcd);
+
+        SDL_Event sdl_event;
+        while (SDL_PollEvent(&sdl_event))
+        {
+            LCD_HandleEvent(*mcu.lcd, sdl_event);
+        }
+
         SDL_Delay(15);
     }
 
