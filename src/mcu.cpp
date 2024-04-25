@@ -574,7 +574,7 @@ uint8_t MCU_Read(mcu_t& mcu, uint32_t address)
                     if (mcu.mcu_cm300)
                         return 0xff;
 
-                    LCD_Enable((mcu.io_sd & 8) != 0);
+                    LCD_Enable(*mcu.lcd, (mcu.io_sd & 8) != 0);
 
                     uint8_t data = 0xff;
                     uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu.mcu_button_pressed);
@@ -712,11 +712,11 @@ void MCU_Write(mcu_t& mcu, uint32_t address, uint8_t value)
                 if (address >= (base | 0x400) && address < (base | 0x800))
                 {
                     if (address == (base | 0x404) || address == (base | 0x405))
-                        LCD_Write(address & 1, value);
+                        LCD_Write(*mcu.lcd, address & 1, value);
                     else if (address == (base | 0x401))
                     {
                         mcu.io_sd = value;
-                        LCD_Enable((value & 1) == 0);
+                        LCD_Enable(*mcu.lcd, (value & 1) == 0);
                     }
                     else if (address == (base | 0x402))
                         mcu.ga_int_enable = (value << 1);
@@ -781,16 +781,16 @@ void MCU_Write(mcu_t& mcu, uint32_t address, uint8_t value)
                 else if (address >= 0xf000 && address < 0xf100)
                 {
                     mcu.io_sd = address & 0xff;
-                    LCD_Enable((mcu.io_sd & 8) != 0);
+                    LCD_Enable(*mcu.lcd, (mcu.io_sd & 8) != 0);
                 }
                 else if (address == 0xf105)
                 {
-                    LCD_Write(0, value);
+                    LCD_Write(*mcu.lcd, 0, value);
                     mcu.ga_lcd_counter = 500;
                 }
                 else if (address == 0xf104)
                 {
-                    LCD_Write(1, value);
+                    LCD_Write(*mcu.lcd, 1, value);
                     mcu.ga_lcd_counter = 500;
                 }
                 else if (address == 0xf107)
@@ -849,13 +849,14 @@ void MCU_ReadInstruction(mcu_t& mcu)
     }
 }
 
-void MCU_Init(mcu_t& mcu, submcu_t& sm, pcm_t& pcm, mcu_timer_t& timer)
+void MCU_Init(mcu_t& mcu, submcu_t& sm, pcm_t& pcm, mcu_timer_t& timer, lcd_t& lcd)
 {
     memset(&mcu, 0, sizeof(mcu_t));
     mcu.sw_pos = 3;
     mcu.sm = &sm;
     mcu.pcm = &pcm;
     mcu.timer = &timer;
+    mcu.lcd = &lcd;
     mcu.romset = ROM_SET_MK2;
     mcu.rom2_mask = ROM2_SIZE - 1;
 }
@@ -1021,7 +1022,7 @@ int SDLCALL work_thread(void* data)
     return 0;
 }
 
-static void MCU_Run(mcu_t& mcu, lcd_t& lcd)
+static void MCU_Run(mcu_t& mcu)
 {
     bool working = true;
 
@@ -1030,10 +1031,10 @@ static void MCU_Run(mcu_t& mcu, lcd_t& lcd)
 
     while (working)
     {
-        if(LCD_QuitRequested())
+        if(LCD_QuitRequested(*mcu.lcd))
             working = false;
 
-        LCD_Update(lcd);
+        LCD_Update(*mcu.lcd);
         SDL_Delay(15);
     }
 
@@ -1319,12 +1320,13 @@ int main(int argc, char *argv[])
     mcu_t mcu;
     submcu_t sm;
     mcu_timer_t timer;
+    // allocate pcm because the bitmaps will overflow the stack
+    lcd_t* lcd = (lcd_t*)malloc(sizeof(lcd_t));
     // allocate pcm because the waveroms will overflow the stack
     pcm_t* pcm = (pcm_t*)malloc(sizeof(pcm_t));
     PCM_Reset(*pcm, mcu);
-    MCU_Init(mcu, sm, *pcm, timer);
+    MCU_Init(mcu, sm, *pcm, timer, *lcd);
     TIMER_Init(timer, mcu);
-    lcd_t lcd;
 
     {
         for (int i = 1; i < argc; i++)
@@ -1481,6 +1483,7 @@ int main(int argc, char *argv[])
         printf("ROM set autodetect: %s\n", rs_name[romset]);
     }
 
+    mcu.romset = romset;
     mcu.mcu_mk1 = false;
     mcu.mcu_cm300 = false;
     mcu.mcu_st = false;
@@ -1511,8 +1514,6 @@ int main(int argc, char *argv[])
         case ROM_SET_JV880:
             mcu.mcu_jv880 = true;
             mcu.rom2_mask /= 2; // rom is half the size
-            lcd_width = 820;
-            lcd_height = 100;
             break;
         case ROM_SET_SCB55:
         case ROM_SET_RLP3237:
@@ -1553,7 +1554,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    LCD_SetBackPath(basePath + "/back.data");
+    LCD_SetBackPath(*lcd, basePath + "/back.data");
 
     if (fread(mcu.rom1, 1, ROM1_SIZE, s_rf[0]) != ROM1_SIZE)
     {
@@ -1693,18 +1694,18 @@ int main(int argc, char *argv[])
         fflush(stderr);
     }
 
-    LCD_Init(lcd, mcu);
+    LCD_Init(*lcd, mcu);
     MCU_PatchROM(mcu);
     MCU_Reset(mcu);
     SM_Reset(sm, mcu);
 
     if (resetType != ResetType::NONE) MIDI_Reset(mcu, resetType);
     
-    MCU_Run(mcu, lcd);
+    MCU_Run(mcu);
 
     MCU_CloseAudio();
     MIDI_Quit();
-    LCD_UnInit();
+    LCD_UnInit(*lcd);
     SDL_Quit();
 
     free(pcm);
