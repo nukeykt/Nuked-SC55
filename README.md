@@ -7,6 +7,8 @@ Supported models:
 - CM-300/SCC-1 (v1.10/v1.20 firmwares are confirmed to work)
 - SC-55st (v1.01)
 - JV-880 (v1.0.0)
+- SCB-55/RLP-3194
+- RLP-3237
 
 Special thanks:
 - John McMaster: SC-55 PCM chip decap.
@@ -16,6 +18,11 @@ Special thanks:
 - mattw.
 - HardWareMan.
 - giulioz: JV-880 support
+
+## License
+
+Nuked SC-55 can be distributed and used under the original MAME license (see LICENSE file).
+Non-commercial license was chosen to prevent making and selling SC-55 emulation boxes using (or around) this code, as well as preventing from using it in the commercial music production.
 
 ## Status
 
@@ -91,12 +98,18 @@ R15209312 (WAVE A) -> jv880_waverom1.bin
 R15209313 (WAVE B) -> jv880_waverom2.bin
 Expansion PCBs -> jv880_waverom_expansion.bin (optional)
 
+SCB-55/RLP-3194:
+R15199827 (H8/532 mcu) -> scb55_rom1.bin
+R15279828 (H8/532 extra code) -> scb55_rom2.bin
+R15209359 (WAVE 16M) -> scb55_waverom1.bin
+R15279813 (WAVE 8M) -> scb55_waverom2.bin
+
+RLP-3237:
+R15199827 (H8/532 mcu) -> rlp3237_rom1.bin
+R15209486 (H8/532 extra code) -> rlp3237_rom2.bin
+R15279824 (WAVE 16M) -> rlp3237_waverom1.bin
+
 ```
-
-## License
-
-Nuked SC-55 can be distributed and used under the original MAME license (see LICENSE file).
-Non-commercial license was chosen to prevent making and selling SC-55 emulation boxes using (or around) this code, as well as preventing from using it in the commercial music production.
 
 ## Additional info
 
@@ -149,6 +162,6 @@ COMMA -> ENCODER L
 PERIOD -> ENCODER R
 ```
 
-- `-mk2`, `-st`, `mk1`, `-cm300` and `-jv880` command line arguments can be used to specify rom set. If no model is specified emulator will try to autodetect rom set (based on file names). 
+- `-mk2`, `-st`, `-mk1`, `-cm300`, `-jv880`, `-scb55` and `-rlp3237` command line arguments can be used to specify rom set. If no model is specified emulator will try to autodetect rom set (based on file names). 
 
 - Due to a bug in the SC-55mk2's firmware, some parameters don't reset properly on startup. Do GM, GS or MT-32 reset using buttons to fix this issue.

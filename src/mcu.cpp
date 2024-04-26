@@ -56,7 +56,9 @@ const char* rs_name[ROM_SET_COUNT] = {
     "SC-55st",
     "SC-55mk1",
     "CM-300/SCC-1",
-    "JV880"
+    "JV-880",
+    "SCB-55",
+    "RLP-3237"
 };
 
 const char* roms[ROM_SET_COUNT][5] =
@@ -90,6 +92,18 @@ const char* roms[ROM_SET_COUNT][5] =
     "jv880_waverom1.bin",
     "jv880_waverom2.bin",
     "jv880_waverom_expansion.bin",
+
+    "scb55_rom1.bin",
+    "scb55_rom2.bin",
+    "scb55_waverom1.bin",
+    "scb55_waverom2.bin",
+    "",
+
+    "rlp3237_rom1.bin",
+    "rlp3237_rom2.bin",
+    "rlp3237_waverom1.bin",
+    "",
+    "",
 };
 
 int romset = ROM_SET_MK2;
@@ -121,6 +135,7 @@ int mcu_mk1 = 0; // 0 - SC-55mkII, SC-55ST. 1 - SC-55, CM-300/SCC-1
 int mcu_cm300 = 0; // 0 - SC-55, 1 - CM-300/SCC-1
 int mcu_st = 0; // 0 - SC-55mk2, 1 - SC-55ST
 int mcu_jv880 = 0; // 0 - SC-55, 1 - JV880
+int mcu_scb55 = 0; // 0 - sub mcu (e.g SC-55mk2), 1 - no sub mcu (e.g SCB-55)
 
 static int ga_int[8];
 static int ga_int_enable = 0;
@@ -496,7 +511,7 @@ uint8_t MCU_Read(uint32_t address)
                 {
                     ret = PCM_Read(address & 0x3f);
                 }
-                else if (address >= 0xec00 && address < 0xf000)
+                else if (!mcu_scb55 && address >= 0xec00 && address < 0xf000)
                 {
                     ret = SM_SysRead(address & 0xff);
                 }
@@ -713,7 +728,7 @@ void MCU_Write(uint32_t address, uint8_t value)
                 {
                     PCM_Write(address & 0x3f, value);
                 }
-                else if (address >= 0xec00 && address < 0xf000)
+                else if (!mcu_scb55 && address >= 0xec00 && address < 0xf000)
                 {
                     SM_SysWrite(address & 0xff, value);
                 }
@@ -960,7 +975,7 @@ int SDLCALL work_thread(void* data)
 
         TIMER_Clock(mcu.cycles);
 
-        if (!mcu_mk1 && !mcu_jv880)
+        if (!mcu_mk1 && !mcu_jv880 && !mcu_scb55)
             SM_Update(mcu.cycles);
         else
         {
@@ -1343,6 +1358,16 @@ int main(int argc, char *argv[])
                 romset = ROM_SET_JV880;
                 autodetect = false;
             }
+            else if (!strcmp(argv[i], "-scb55"))
+            {
+                romset = ROM_SET_SCB55;
+                autodetect = false;
+            }
+            else if (!strcmp(argv[i], "-rlp3237"))
+            {
+                romset = ROM_SET_RLP3237;
+                autodetect = false;
+            }
             else if (!strcmp(argv[i], "-gs"))
             {
                 resetType = ResetType::GS_RESET;
@@ -1378,6 +1403,8 @@ int main(int argc, char *argv[])
             bool good = true;
             for (size_t j = 0; j < 5; j++)
             {
+                if (roms[i][j][0] == '\0')
+                    continue;
                 std::string path = basePath + "/" + roms[i][j];
                 auto h = Files::utf8_fopen(path.c_str(), "rb");
                 if (!h)
@@ -1419,22 +1446,25 @@ int main(int argc, char *argv[])
             lcd_width = 820;
             lcd_height = 100;
             break;
+        case ROM_SET_SCB55:
+        case ROM_SET_RLP3237:
+            mcu_scb55 = true;
+            break;
     }
 
-    std::string rpaths[5] =
-    {
-        basePath + "/" + roms[romset][0],
-        basePath + "/" + roms[romset][1],
-        basePath + "/" + roms[romset][2],
-        basePath + "/" + roms[romset][3],
-        basePath + "/" + roms[romset][4]
-    };
+    std::string rpaths[5];
 
     bool r_ok = true;
     std::string errors_list;
 
     for(size_t i = 0; i < 5; ++i)
     {
+        if (roms[romset][i][0] == '\0')
+        {
+            rpaths[i] = "";
+            continue;
+        }
+        rpaths[i] = basePath + "/" + roms[romset][i];
         s_rf[i] = Files::utf8_fopen(rpaths[i].c_str(), "rb");
         bool optional = mcu_jv880 && i == 4;
         r_ok &= optional || (s_rf[i] != nullptr);
@@ -1553,17 +1583,20 @@ int main(int argc, char *argv[])
 
         unscramble(tempbuf, waverom1, 0x200000);
 
-        if (fread(tempbuf, 1, 0x100000, s_rf[3]) != 0x100000)
+        if (s_rf[3])
         {
-            fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom2.\n");
-            fflush(stderr);
-            closeAllR();
-            return 1;
+            if (fread(tempbuf, 1, 0x100000, s_rf[3]) != 0x100000)
+            {
+                fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom2.\n");
+                fflush(stderr);
+                closeAllR();
+                return 1;
+            }
+
+            unscramble(tempbuf, mcu_scb55 ? waverom3 : waverom2, 0x100000);
         }
 
-        unscramble(tempbuf, waverom2, 0x100000);
-
-        if (fread(sm_rom, 1, ROMSM_SIZE, s_rf[4]) != ROMSM_SIZE)
+        if (s_rf[4] && fread(sm_rom, 1, ROMSM_SIZE, s_rf[4]) != ROMSM_SIZE)
         {
             fprintf(stderr, "FATAL ERROR: Failed to read the sub mcu ROM.\n");
             fflush(stderr);
