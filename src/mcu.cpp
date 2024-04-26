@@ -1376,6 +1376,27 @@ int main(int argc, char *argv[])
             {
                 resetType = ResetType::GM_RESET;
             }
+            else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "-help") || !strcmp(argv[i], "--help"))
+            {
+                // TODO: Might want to try to find a way to print out the executable's actual name (without any full paths).
+                printf("Usage: nuked-sc55 [options]\n");
+                printf("Options:\n");
+                printf("  -h, -help, --help              Display this information.\n");
+                printf("\n");
+                printf("  -p:<port_number>               Set MIDI port.\n");
+                printf("  -a:<device_number>             Set Audio Device index.\n");
+                printf("  -ab:<page_size>:[page_count]   Set Audio Buffer size.\n");
+                printf("\n");
+                printf("  -mk2                           Use SC-55mk2 ROM set.\n");
+                printf("  -st                            Use SC-55st ROM set.\n");
+                printf("  -mk1                           Use SC-55mk1 ROM set.\n");
+                printf("  -cm300                         Use CM-300/SCC-1 ROM set.\n");
+                printf("  -jv880                         Use JV-880 ROM set.\n");
+                printf("\n");
+                printf("  -gs                            Reset system in GS mode.\n");
+                printf("  -gm                            Reset system in GM mode.\n");
+                return 0;
+            }
         }
     }
 
