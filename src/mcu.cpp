@@ -1291,6 +1291,7 @@ int main(int argc, char *argv[])
 {
     (void)argc;
     std::string basePath;
+    std::string romPath;
 
     int port = 0;
     int audioDeviceIndex = -1;
@@ -1311,6 +1312,13 @@ int main(int argc, char *argv[])
             else if (!strncmp(argv[i], "-a:", 3))
             {
                 audioDeviceIndex = atoi(argv[i] + 3);
+            }
+            else if (!strncmp(argv[i], "-d:", 3))
+            {
+                romPath = argv[i] + 3;
+                while (romPath.find_last_of("/") == romPath.length()-1) {
+                    romPath.erase(romPath.length()-1);
+                }
             }
             else if (!strncmp(argv[i], "-ab:", 4))
             {
@@ -1387,6 +1395,8 @@ int main(int argc, char *argv[])
                 printf("  -a:<device_number>             Set Audio Device index.\n");
                 printf("  -ab:<page_size>:[page_count]   Set Audio Buffer size.\n");
                 printf("\n");
+                printf("  -d:<rom_path>                  Set ROM directory.\n");
+                printf("\n");
                 printf("  -mk2                           Use SC-55mk2 ROM set.\n");
                 printf("  -st                            Use SC-55st ROM set.\n");
                 printf("  -mk1                           Use SC-55mk1 ROM set.\n");
@@ -1419,6 +1429,11 @@ int main(int argc, char *argv[])
     if(Files::dirExists(basePath + "/../share/nuked-sc55"))
         basePath += "/../share/nuked-sc55";
 
+    if (romPath.empty()) {
+        romPath = basePath;
+    }
+    printf("ROM path is: %s\n", romPath.c_str());
+
     if (autodetect)
     {
         for (size_t i = 0; i < ROM_SET_COUNT; i++)
@@ -1428,7 +1443,7 @@ int main(int argc, char *argv[])
             {
                 if (roms[i][j][0] == '\0')
                     continue;
-                std::string path = basePath + "/" + roms[i][j];
+                std::string path = romPath + "/" + roms[i][j];
                 auto h = Files::utf8_fopen(path.c_str(), "rb");
                 if (!h)
                 {
@@ -1487,7 +1502,7 @@ int main(int argc, char *argv[])
             rpaths[i] = "";
             continue;
         }
-        rpaths[i] = basePath + "/" + roms[romset][i];
+        rpaths[i] = romPath + "/" + roms[romset][i];
         s_rf[i] = Files::utf8_fopen(rpaths[i].c_str(), "rb");
         bool optional = mcu_jv880 && i == 4;
         r_ok &= optional || (s_rf[i] != nullptr);
