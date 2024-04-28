@@ -70,7 +70,7 @@ struct lcd_t {
 };
 
 
-void LCD_SetBackPath(lcd_t& lcd, const std::string &path);
+void LCD_LoadBack(lcd_t& lcd, const std::string& path);
 void LCD_Init(lcd_t& lcd, mcu_t& mcu);
 void LCD_UnInit(lcd_t& lcd);
 void LCD_Write(lcd_t& lcd, uint32_t address, uint8_t data);

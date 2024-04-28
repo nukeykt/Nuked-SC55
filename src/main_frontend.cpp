@@ -45,6 +45,7 @@
 #include "midi.h"
 #include "utf8main.h"
 #include "utils/files.h"
+#include "emu.h"
 
 #if __linux__
 #include <unistd.h>
@@ -388,6 +389,25 @@ void FE_Run(mcu_t& mcu)
     SDL_WaitThread(thread, 0);
 }
 
+int FE_Init()
+{
+    if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0)
+    {
+        fprintf(stderr, "FATAL ERROR: Failed to initialize the SDL2: %s.\n", SDL_GetError());
+        fflush(stderr);
+        return 2;
+    }
+
+    return 0;
+}
+
+void FE_Quit()
+{
+    FE_CloseAudio();
+    MIDI_Quit();
+    SDL_Quit();
+}
+
 int main(int argc, char *argv[])
 {
     (void)argc;
@@ -401,21 +421,6 @@ int main(int argc, char *argv[])
     ResetType resetType = ResetType::NONE;
 
     int romset = ROM_SET_MK2;
-
-    mcu_t mcu;
-    submcu_t sm;
-    mcu_timer_t timer;
-    // allocate pcm because the bitmaps will overflow the stack
-    lcd_t* lcd = (lcd_t*)malloc(sizeof(lcd_t));
-    // allocate pcm because the waveroms will overflow the stack
-    pcm_t* pcm = (pcm_t*)malloc(sizeof(pcm_t));
-    PCM_Reset(*pcm, mcu);
-    MCU_Init(mcu, sm, *pcm, timer, *lcd);
-    mcu.callback_userdata = &mcu;
-    mcu.step_begin_callback = FE_StepBegin;
-    mcu.sample_callback = FE_ReceiveSample;
-    mcu.wait_callback = FE_Wait;
-    TIMER_Init(timer, mcu);
 
     {
         for (int i = 1; i < argc; i++)
@@ -572,41 +577,56 @@ int main(int argc, char *argv[])
         printf("ROM set autodetect: %s\n", rs_name[romset]);
     }
 
-    mcu.romset = romset;
-    mcu.mcu_mk1 = false;
-    mcu.mcu_cm300 = false;
-    mcu.mcu_st = false;
-    mcu.mcu_jv880 = false;
-    mcu.mcu_scb55 = false;
-    mcu.mcu_sc155 = false;
+    if (FE_Init() != 0)
+    {
+        return 2;
+    }
+
+    emu_backend_t emu;
+    EMU_Init(emu);
+    // TODO: Clean up, shouldn't need to reach into emu for this
+    emu.mcu->callback_userdata = emu.mcu;
+    emu.mcu->step_begin_callback = FE_StepBegin;
+    emu.mcu->sample_callback = FE_ReceiveSample;
+    emu.mcu->wait_callback = FE_Wait;
+
+    LCD_LoadBack(*emu.lcd, basePath + "/back.data");
+
+    emu.mcu->romset = romset;
+    emu.mcu->mcu_mk1 = false;
+    emu.mcu->mcu_cm300 = false;
+    emu.mcu->mcu_st = false;
+    emu.mcu->mcu_jv880 = false;
+    emu.mcu->mcu_scb55 = false;
+    emu.mcu->mcu_sc155 = false;
     switch (romset)
     {
         case ROM_SET_MK2:
         case ROM_SET_SC155MK2:
             if (romset == ROM_SET_SC155MK2)
-                mcu.mcu_sc155 = true;
+                emu.mcu->mcu_sc155 = true;
             break;
         case ROM_SET_ST:
-            mcu.mcu_st = true;
+            emu.mcu->mcu_st = true;
             break;
         case ROM_SET_MK1:
         case ROM_SET_SC155:
-            mcu.mcu_mk1 = true;
-            mcu.mcu_st = false;
+            emu.mcu->mcu_mk1 = true;
+            emu.mcu->mcu_st = false;
             if (romset == ROM_SET_SC155)
-                mcu.mcu_sc155 = true;
+                emu.mcu->mcu_sc155 = true;
             break;
         case ROM_SET_CM300:
-            mcu.mcu_mk1 = true;
-            mcu.mcu_cm300 = true;
+            emu.mcu->mcu_mk1 = true;
+            emu.mcu->mcu_cm300 = true;
             break;
         case ROM_SET_JV880:
-            mcu.mcu_jv880 = true;
-            mcu.rom2_mask /= 2; // rom is half the size
+            emu.mcu->mcu_jv880 = true;
+            emu.mcu->rom2_mask /= 2; // rom is half the size
             break;
         case ROM_SET_SCB55:
         case ROM_SET_RLP3237:
-            mcu.mcu_scb55 = true;
+            emu.mcu->mcu_scb55 = true;
             break;
     }
 
@@ -624,7 +644,7 @@ int main(int argc, char *argv[])
         }
         rpaths[i] = basePath + "/" + roms[romset][i];
         s_rf[i] = Files::utf8_fopen(rpaths[i].c_str(), "rb");
-        bool optional = mcu.mcu_jv880 && i == 4;
+        bool optional = emu.mcu->mcu_jv880 && i == 4;
         r_ok &= optional || (s_rf[i] != nullptr);
         if(!s_rf[i])
         {
@@ -643,9 +663,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    LCD_SetBackPath(*lcd, basePath + "/back.data");
-
-    if (fread(mcu.rom1, 1, ROM1_SIZE, s_rf[0]) != ROM1_SIZE)
+    if (fread(emu.mcu->rom1, 1, ROM1_SIZE, s_rf[0]) != ROM1_SIZE)
     {
         fprintf(stderr, "FATAL ERROR: Failed to read the mcu ROM1.\n");
         fflush(stderr);
@@ -653,11 +671,11 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    size_t rom2_read = fread(mcu.rom2, 1, ROM2_SIZE, s_rf[1]);
+    size_t rom2_read = fread(emu.mcu->rom2, 1, ROM2_SIZE, s_rf[1]);
 
     if (rom2_read == ROM2_SIZE || rom2_read == ROM2_SIZE / 2)
     {
-        mcu.rom2_mask = rom2_read - 1;
+        emu.mcu->rom2_mask = rom2_read - 1;
     }
     else
     {
@@ -667,7 +685,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (mcu.mcu_mk1)
+    if (emu.mcu->mcu_mk1)
     {
         if (fread(tempbuf, 1, 0x100000, s_rf[2]) != 0x100000)
         {
@@ -677,7 +695,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        unscramble(tempbuf, pcm->waverom1, 0x100000);
+        unscramble(tempbuf, emu.pcm->waverom1, 0x100000);
 
         if (fread(tempbuf, 1, 0x100000, s_rf[3]) != 0x100000)
         {
@@ -687,7 +705,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        unscramble(tempbuf, pcm->waverom2, 0x100000);
+        unscramble(tempbuf, emu.pcm->waverom2, 0x100000);
 
         if (fread(tempbuf, 1, 0x100000, s_rf[4]) != 0x100000)
         {
@@ -697,9 +715,9 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        unscramble(tempbuf, pcm->waverom3, 0x100000);
+        unscramble(tempbuf, emu.pcm->waverom3, 0x100000);
     }
-    else if (mcu.mcu_jv880)
+    else if (emu.mcu->mcu_jv880)
     {
         if (fread(tempbuf, 1, 0x200000, s_rf[2]) != 0x200000)
         {
@@ -709,7 +727,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        unscramble(tempbuf, pcm->waverom1, 0x200000);
+        unscramble(tempbuf, emu.pcm->waverom1, 0x200000);
 
         if (fread(tempbuf, 1, 0x200000, s_rf[3]) != 0x200000)
         {
@@ -719,10 +737,10 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        unscramble(tempbuf, pcm->waverom2, 0x200000);
+        unscramble(tempbuf, emu.pcm->waverom2, 0x200000);
 
         if (s_rf[4] && fread(tempbuf, 1, 0x800000, s_rf[4]))
-            unscramble(tempbuf, pcm->waverom_exp, 0x800000);
+            unscramble(tempbuf, emu.pcm->waverom_exp, 0x800000);
         else
             printf("WaveRom EXP not found, skipping it.\n");
     }
@@ -736,7 +754,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        unscramble(tempbuf, pcm->waverom1, 0x200000);
+        unscramble(tempbuf, emu.pcm->waverom1, 0x200000);
 
         if (s_rf[3])
         {
@@ -748,10 +766,10 @@ int main(int argc, char *argv[])
                 return 1;
             }
 
-            unscramble(tempbuf, mcu.mcu_scb55 ? pcm->waverom3 : pcm->waverom2, 0x100000);
+            unscramble(tempbuf, emu.mcu->mcu_scb55 ? emu.pcm->waverom3 : emu.pcm->waverom2, 0x100000);
         }
 
-        if (s_rf[4] && fread(sm.sm_rom, 1, ROMSM_SIZE, s_rf[4]) != ROMSM_SIZE)
+        if (s_rf[4] && fread(emu.sm->sm_rom, 1, ROMSM_SIZE, s_rf[4]) != ROMSM_SIZE)
         {
             fprintf(stderr, "FATAL ERROR: Failed to read the sub mcu ROM.\n");
             fflush(stderr);
@@ -763,41 +781,28 @@ int main(int argc, char *argv[])
     // Close all files as they no longer needed being open
     closeAllR();
 
-    if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0)
-    {
-        fprintf(stderr, "FATAL ERROR: Failed to initialize the SDL2: %s.\n", SDL_GetError());
-        fflush(stderr);
-        return 2;
-    }
+    EMU_Reset(emu);
 
-    if (!FE_OpenAudio(mcu, audioDeviceIndex, pageSize, pageNum))
+    if (!FE_OpenAudio(*emu.mcu, audioDeviceIndex, pageSize, pageNum))
     {
         fprintf(stderr, "FATAL ERROR: Failed to open the audio stream.\n");
         fflush(stderr);
         return 2;
     }
 
-    if(!MIDI_Init(mcu, port))
+    if(!MIDI_Init(*emu.mcu, port))
     {
         fprintf(stderr, "ERROR: Failed to initialize the MIDI Input.\nWARNING: Continuing without MIDI Input...\n");
         fflush(stderr);
     }
 
-    LCD_Init(*lcd, mcu);
-    MCU_PatchROM(mcu);
-    MCU_Reset(mcu);
-    SM_Reset(sm, mcu);
-
-    if (resetType != ResetType::NONE) MIDI_Reset(mcu, resetType);
+    if (resetType != ResetType::NONE) MIDI_Reset(*emu.mcu, resetType);
     
-    FE_Run(mcu);
+    FE_Run(*emu.mcu);
 
-    FE_CloseAudio();
-    MIDI_Quit();
-    LCD_UnInit(*lcd);
-    SDL_Quit();
+    EMU_Free(emu);
 
-    free(pcm);
+    FE_Quit();
 
     return 0;
 }

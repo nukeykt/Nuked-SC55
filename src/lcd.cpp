@@ -195,15 +195,22 @@ const int button_map_jv880[][2] =
 };
 
 
-void LCD_SetBackPath(lcd_t& lcd, const std::string &path)
+void LCD_LoadBack(lcd_t& lcd, const std::string& path)
 {
     lcd.m_back_path = path;
+
+    FILE *raw;
+
+    raw = Files::utf8_fopen(lcd.m_back_path.c_str(), "rb");
+    if (!raw)
+        return;
+
+    fread(lcd.lcd_background, 1, sizeof(lcd.lcd_background), raw);
+    fclose(raw);
 }
 
 void LCD_Init(lcd_t& lcd, mcu_t& mcu)
 {
-    FILE *raw;
-
     if (lcd.lcd_init)
         return;
 
@@ -238,13 +245,6 @@ void LCD_Init(lcd_t& lcd, mcu_t& mcu)
 
     if (!lcd.texture)
         return;
-
-    raw = Files::utf8_fopen(lcd.m_back_path.c_str(), "rb");
-    if (!raw)
-        return;
-
-    fread(lcd.lcd_background, 1, sizeof(lcd.lcd_background), raw);
-    fclose(raw);
 
     lcd.lcd_init = 1;
 }
