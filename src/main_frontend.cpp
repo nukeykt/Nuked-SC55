@@ -47,6 +47,7 @@
 #include "utils/files.h"
 #include "emu.h"
 #include "ringbuffer.h"
+#include "math_util.h"
 
 #if __linux__
 #include <unistd.h>
@@ -65,83 +66,59 @@ const char* rs_name[ROM_SET_COUNT] = {
     "SC-155mk2"
 };
 
-const char* roms[ROM_SET_COUNT][5] =
-{
-    "rom1.bin",
-    "rom2.bin",
-    "waverom1.bin",
-    "waverom2.bin",
-    "rom_sm.bin",
-
-    "rom1.bin",
-    "rom2_st.bin",
-    "waverom1.bin",
-    "waverom2.bin",
-    "rom_sm.bin",
-
-    "sc55_rom1.bin",
-    "sc55_rom2.bin",
-    "sc55_waverom1.bin",
-    "sc55_waverom2.bin",
-    "sc55_waverom3.bin",
-
-    "cm300_rom1.bin",
-    "cm300_rom2.bin",
-    "cm300_waverom1.bin",
-    "cm300_waverom2.bin",
-    "cm300_waverom3.bin",
-
-    "jv880_rom1.bin",
-    "jv880_rom2.bin",
-    "jv880_waverom1.bin",
-    "jv880_waverom2.bin",
-    "jv880_waverom_expansion.bin",
-
-    "scb55_rom1.bin",
-    "scb55_rom2.bin",
-    "scb55_waverom1.bin",
-    "scb55_waverom2.bin",
-    "",
-
-    "rlp3237_rom1.bin",
-    "rlp3237_rom2.bin",
-    "rlp3237_waverom1.bin",
-    "",
-    "",
-
-    "sc155_rom1.bin",
-    "sc155_rom2.bin",
-    "sc155_waverom1.bin",
-    "sc155_waverom2.bin",
-    "sc155_waverom3.bin",
-
-    "rom1.bin",
-    "rom2.bin",
-    "waverom1.bin",
-    "waverom2.bin",
-    "rom_sm.bin",
-};
-
 static int audio_buffer_size;
 static int audio_page_size;
 
 static SDL_AudioDeviceID sdl_audio;
 
-ringbuffer_t buf;
+struct fe_emu_instance_t {
+    emu_backend_t emu;
+    ringbuffer_t  sample_buffer;
+    SDL_Thread*   thread;
+};
+
+const size_t FE_MAX_INSTANCES = 16;
+
+struct frontend_t {
+    fe_emu_instance_t instances[FE_MAX_INSTANCES];
+    size_t instances_in_use = 0;
+};
+
+frontend_t global_fe;
+
+void FE_RouteMIDI(frontend_t& fe, uint8_t* first, uint8_t* last)
+{
+    if (*first >= 0x80)
+    {
+        uint8_t channel = *first & 0x0F;
+
+        while (first != last)
+        {
+            MCU_PostUART(*fe.instances[channel % fe.instances_in_use].emu.mcu, *first);
+            ++first;
+        }
+    }
+    else
+    {
+        printf("data packet?!\n");
+    }
+}
 
 void FE_StepBegin(void* userdata)
 {
-    mcu_t& mcu = *(mcu_t*)userdata;
-    buf.oversampling = mcu.pcm->config_reg_3c & 0x40;
+    fe_emu_instance_t& fe = *(fe_emu_instance_t*)userdata;
+    RB_SetOversamplingEnabled(fe.sample_buffer, fe.emu.pcm->config_reg_3c & 0x40);
 }
 
 bool FE_Wait(void* userdata)
 {
-    return RB_IsFull(buf);
+    fe_emu_instance_t& fe = *(fe_emu_instance_t*)userdata;
+    return RB_IsFull(fe.sample_buffer);
 }
 
 void FE_ReceiveSample(void* userdata, int *sample)
 {
+    fe_emu_instance_t& fe = *(fe_emu_instance_t*)userdata;
     sample[0] >>= 15;
     if (sample[0] > INT16_MAX)
         sample[0] = INT16_MAX;
@@ -152,43 +129,27 @@ void FE_ReceiveSample(void* userdata, int *sample)
         sample[1] = INT16_MAX;
     else if (sample[1] < INT16_MIN)
         sample[1] = INT16_MIN;
-    RB_Write(buf, sample[0], sample[1]);
-}
-
-uint8_t tempbuf[0x800000];
-
-void unscramble(uint8_t *src, uint8_t *dst, int len)
-{
-    for (int i = 0; i < len; i++)
-    {
-        int address = i & ~0xfffff;
-        static const int aa[] = {
-            2, 0, 3, 4, 1, 9, 13, 10, 18, 17, 6, 15, 11, 16, 8, 5, 12, 7, 14, 19
-        };
-        for (int j = 0; j < 20; j++)
-        {
-            if (i & (1 << j))
-                address |= 1<<aa[j];
-        }
-        uint8_t srcdata = src[address];
-        uint8_t data = 0;
-        static const int dd[] = {
-            2, 0, 4, 5, 7, 6, 3, 1
-        };
-        for (int j = 0; j < 8; j++)
-        {
-            if (srcdata & (1 << dd[j]))
-                data |= 1<<j;
-        }
-        dst[i] = data;
-    }
+    RB_Write(fe.sample_buffer, sample[0], sample[1]);
 }
 
 void audio_callback(void* /*userdata*/, Uint8* stream, int len)
 {
     const size_t num_samples = len / sizeof(int16_t);
     memset(stream, 0, len);
-    RB_Read(buf, (int16_t*)stream, num_samples);
+
+    size_t renderable_count = num_samples;
+    for (int i = 0; i < global_fe.instances_in_use; ++i)
+    {
+        renderable_count = min(
+            renderable_count,
+            RB_ReadableSampleCount(global_fe.instances[i].sample_buffer)
+        );
+    }
+
+    for (int i = 0; i < global_fe.instances_in_use; ++i)
+    {
+        RB_ReadMix(global_fe.instances[i].sample_buffer, (int16_t*)stream, renderable_count);
+    }
 }
 
 static const char* audio_format_to_str(int format)
@@ -219,7 +180,7 @@ static const char* audio_format_to_str(int format)
     return "UNK";
 }
 
-int FE_OpenAudio(mcu_t& mcu, int deviceIndex, int pageSize, int pageNum)
+int FE_OpenAudio(fe_emu_instance_t& fe, int deviceIndex, int pageSize, int pageNum)
 {
     SDL_AudioSpec spec = {};
     SDL_AudioSpec spec_actual = {};
@@ -228,12 +189,10 @@ int FE_OpenAudio(mcu_t& mcu, int deviceIndex, int pageSize, int pageNum)
     audio_buffer_size = audio_page_size*pageNum;
     
     spec.format = AUDIO_S16SYS;
-    spec.freq = (mcu.mcu_mk1 || mcu.mcu_jv880) ? 64000 : 66207;
+    spec.freq = (fe.emu.mcu->mcu_mk1 || fe.emu.mcu->mcu_jv880) ? 64000 : 66207;
     spec.channels = 2;
     spec.callback = audio_callback;
     spec.samples = audio_page_size / 4;
-
-    RB_Init(buf, audio_buffer_size / 2);
     
     int num = SDL_GetNumAudioDevices(0);
     if (num == 0)
@@ -279,28 +238,6 @@ int FE_OpenAudio(mcu_t& mcu, int deviceIndex, int pageSize, int pageNum)
 void FE_CloseAudio(void)
 {
     SDL_CloseAudio();
-    RB_Free(buf);
-}
-
-
-static const size_t rf_num = 5;
-static FILE *s_rf[rf_num] =
-{
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr
-};
-
-static void closeAllR()
-{
-    for(size_t i = 0; i < rf_num; ++i)
-    {
-        if(s_rf[i])
-            fclose(s_rf[i]);
-        s_rf[i] = nullptr;
-    }
 }
 
 enum class ResetType {
@@ -347,31 +284,44 @@ int SDLCALL FE_RunMCU(void* data)
     return 0;
 }
 
-void FE_Run(mcu_t& mcu)
+void FE_Run(frontend_t& fe)
 {
     bool working = true;
 
     work_thread_run = true;
-    SDL_Thread *thread = SDL_CreateThread(FE_RunMCU, "work thread", &mcu);
+
+    for (int i = 0; i < fe.instances_in_use; ++i)
+    {
+        fe.instances[i].thread = SDL_CreateThread(FE_RunMCU, "work thread", fe.instances[i].emu.mcu);
+    }
 
     while (working)
     {
-        if (LCD_QuitRequested(*mcu.lcd))
-            working = false;
+        for (int i = 0; i < fe.instances_in_use; ++i)
+        {
+            if (LCD_QuitRequested(*fe.instances[i].emu.lcd))
+                working = false;
 
-        LCD_Update(*mcu.lcd);
+            LCD_Update(*fe.instances[i].emu.lcd);
+        }
 
         SDL_Event sdl_event;
         while (SDL_PollEvent(&sdl_event))
         {
-            LCD_HandleEvent(*mcu.lcd, sdl_event);
+            for (int i = 0; i < fe.instances_in_use; ++i)
+            {
+                LCD_HandleEvent(*fe.instances[i].emu.lcd, sdl_event);
+            }
         }
 
         SDL_Delay(15);
     }
 
     work_thread_run = false;
-    SDL_WaitThread(thread, 0);
+    for (int i = 0; i < fe.instances_in_use; ++i)
+    {
+        SDL_WaitThread(fe.instances[i].thread, 0);
+    }
 }
 
 int FE_Init()
@@ -386,8 +336,43 @@ int FE_Init()
     return 0;
 }
 
+bool FE_CreateInstance(const std::string& basePath, int romset)
+{
+    fe_emu_instance_t& fe = global_fe.instances[global_fe.instances_in_use];
+    ++global_fe.instances_in_use;
+
+    EMU_Init(fe.emu);
+    // TODO: Clean up, shouldn't need to reach into emu for this
+    fe.emu.mcu->callback_userdata = &fe;
+    fe.emu.mcu->step_begin_callback = FE_StepBegin;
+    fe.emu.mcu->sample_callback = FE_ReceiveSample;
+    fe.emu.mcu->wait_callback = FE_Wait;
+
+    LCD_LoadBack(*fe.emu.lcd, basePath + "/back.data");
+
+    if (EMU_LoadRoms(fe.emu, romset, basePath) != 0)
+    {
+        fprintf(stderr, "ERROR: Failed to load roms.\n");
+        return false;
+    }
+    EMU_Reset(fe.emu);
+
+    return true;
+}
+
+void FE_DestroyInstance(fe_emu_instance_t& fe)
+{
+    EMU_Free(fe.emu);
+    RB_Free(fe.sample_buffer);
+    fe.thread = nullptr;
+}
+
 void FE_Quit()
 {
+    for (int i = 0; i < global_fe.instances_in_use; ++i)
+    {
+        FE_DestroyInstance(global_fe.instances[i]);
+    }
     FE_CloseAudio();
     MIDI_Quit();
     SDL_Quit();
@@ -404,6 +389,7 @@ int main(int argc, char *argv[])
     int pageNum = 32;
     bool autodetect = true;
     ResetType resetType = ResetType::NONE;
+    int instance_count = 1;
 
     int romset = ROM_SET_MK2;
 
@@ -438,6 +424,11 @@ int main(int argc, char *argv[])
                     pageSize = 512;
                     pageNum = 32;
                 }
+            }
+            else if (!strncmp(argv[i], "-instances:", 11))
+            {
+                instance_count = atoi(argv[i] + 11);
+                instance_count = clamp<int>(instance_count, 1, FE_MAX_INSTANCES);
             }
             else if (!strcmp(argv[i], "-mk2"))
             {
@@ -492,6 +483,7 @@ int main(int argc, char *argv[])
                 printf("  -p:<port_number>               Set MIDI port.\n");
                 printf("  -a:<device_number>             Set Audio Device index.\n");
                 printf("  -ab:<page_size>:[page_count]   Set Audio Buffer size.\n");
+                printf("  -instances:<instance_count>    Set number of emulator instances.\n");
                 printf("\n");
                 printf("  -mk2                           Use SC-55mk2 ROM set.\n");
                 printf("  -st                            Use SC-55st ROM set.\n");
@@ -537,255 +529,55 @@ int main(int argc, char *argv[])
 
     if (autodetect)
     {
-        for (size_t i = 0; i < ROM_SET_COUNT; i++)
-        {
-            bool good = true;
-            for (size_t j = 0; j < 5; j++)
-            {
-                if (roms[i][j][0] == '\0')
-                    continue;
-                std::string path = basePath + "/" + roms[i][j];
-                auto h = Files::utf8_fopen(path.c_str(), "rb");
-                if (!h)
-                {
-                    good = false;
-                    break;
-                }
-                fclose(h);
-            }
-            if (good)
-            {
-                romset = i;
-                break;
-            }
-        }
+        romset = EMU_DetectRoms(basePath);
         printf("ROM set autodetect: %s\n", rs_name[romset]);
     }
 
     if (FE_Init() != 0)
     {
-        return 2;
-    }
-
-    emu_backend_t emu;
-    EMU_Init(emu);
-    // TODO: Clean up, shouldn't need to reach into emu for this
-    emu.mcu->callback_userdata = emu.mcu;
-    emu.mcu->step_begin_callback = FE_StepBegin;
-    emu.mcu->sample_callback = FE_ReceiveSample;
-    emu.mcu->wait_callback = FE_Wait;
-
-    LCD_LoadBack(*emu.lcd, basePath + "/back.data");
-
-    emu.mcu->romset = romset;
-    emu.mcu->mcu_mk1 = false;
-    emu.mcu->mcu_cm300 = false;
-    emu.mcu->mcu_st = false;
-    emu.mcu->mcu_jv880 = false;
-    emu.mcu->mcu_scb55 = false;
-    emu.mcu->mcu_sc155 = false;
-    switch (romset)
-    {
-        case ROM_SET_MK2:
-        case ROM_SET_SC155MK2:
-            if (romset == ROM_SET_SC155MK2)
-                emu.mcu->mcu_sc155 = true;
-            break;
-        case ROM_SET_ST:
-            emu.mcu->mcu_st = true;
-            break;
-        case ROM_SET_MK1:
-        case ROM_SET_SC155:
-            emu.mcu->mcu_mk1 = true;
-            emu.mcu->mcu_st = false;
-            if (romset == ROM_SET_SC155)
-                emu.mcu->mcu_sc155 = true;
-            break;
-        case ROM_SET_CM300:
-            emu.mcu->mcu_mk1 = true;
-            emu.mcu->mcu_cm300 = true;
-            break;
-        case ROM_SET_JV880:
-            emu.mcu->mcu_jv880 = true;
-            emu.mcu->rom2_mask /= 2; // rom is half the size
-            break;
-        case ROM_SET_SCB55:
-        case ROM_SET_RLP3237:
-            emu.mcu->mcu_scb55 = true;
-            break;
-    }
-
-    std::string rpaths[5];
-
-    bool r_ok = true;
-    std::string errors_list;
-
-    for(size_t i = 0; i < 5; ++i)
-    {
-        if (roms[romset][i][0] == '\0')
-        {
-            rpaths[i] = "";
-            continue;
-        }
-        rpaths[i] = basePath + "/" + roms[romset][i];
-        s_rf[i] = Files::utf8_fopen(rpaths[i].c_str(), "rb");
-        bool optional = emu.mcu->mcu_jv880 && i == 4;
-        r_ok &= optional || (s_rf[i] != nullptr);
-        if(!s_rf[i])
-        {
-            if(!errors_list.empty())
-                errors_list.append(", ");
-
-            errors_list.append(rpaths[i]);
-        }
-    }
-
-    if (!r_ok)
-    {
-        fprintf(stderr, "FATAL ERROR: One of required data ROM files is missing: %s.\n", errors_list.c_str());
-        fflush(stderr);
-        closeAllR();
         return 1;
     }
-
-    if (fread(emu.mcu->rom1, 1, ROM1_SIZE, s_rf[0]) != ROM1_SIZE)
+    
+    for (int i = 0; i < instance_count; ++i)
     {
-        fprintf(stderr, "FATAL ERROR: Failed to read the mcu ROM1.\n");
-        fflush(stderr);
-        closeAllR();
-        return 1;
-    }
-
-    size_t rom2_read = fread(emu.mcu->rom2, 1, ROM2_SIZE, s_rf[1]);
-
-    if (rom2_read == ROM2_SIZE || rom2_read == ROM2_SIZE / 2)
-    {
-        emu.mcu->rom2_mask = rom2_read - 1;
-    }
-    else
-    {
-        fprintf(stderr, "FATAL ERROR: Failed to read the mcu ROM2.\n");
-        fflush(stderr);
-        closeAllR();
-        return 1;
-    }
-
-    if (emu.mcu->mcu_mk1)
-    {
-        if (fread(tempbuf, 1, 0x100000, s_rf[2]) != 0x100000)
+        if (!FE_CreateInstance(basePath, romset))
         {
-            fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom1.\n");
-            fflush(stderr);
-            closeAllR();
-            return 1;
-        }
-
-        unscramble(tempbuf, emu.pcm->waverom1, 0x100000);
-
-        if (fread(tempbuf, 1, 0x100000, s_rf[3]) != 0x100000)
-        {
-            fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom2.\n");
-            fflush(stderr);
-            closeAllR();
-            return 1;
-        }
-
-        unscramble(tempbuf, emu.pcm->waverom2, 0x100000);
-
-        if (fread(tempbuf, 1, 0x100000, s_rf[4]) != 0x100000)
-        {
-            fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom3.\n");
-            fflush(stderr);
-            closeAllR();
-            return 1;
-        }
-
-        unscramble(tempbuf, emu.pcm->waverom3, 0x100000);
-    }
-    else if (emu.mcu->mcu_jv880)
-    {
-        if (fread(tempbuf, 1, 0x200000, s_rf[2]) != 0x200000)
-        {
-            fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom1.\n");
-            fflush(stderr);
-            closeAllR();
-            return 1;
-        }
-
-        unscramble(tempbuf, emu.pcm->waverom1, 0x200000);
-
-        if (fread(tempbuf, 1, 0x200000, s_rf[3]) != 0x200000)
-        {
-            fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom2.\n");
-            fflush(stderr);
-            closeAllR();
-            return 1;
-        }
-
-        unscramble(tempbuf, emu.pcm->waverom2, 0x200000);
-
-        if (s_rf[4] && fread(tempbuf, 1, 0x800000, s_rf[4]))
-            unscramble(tempbuf, emu.pcm->waverom_exp, 0x800000);
-        else
-            printf("WaveRom EXP not found, skipping it.\n");
-    }
-    else
-    {
-        if (fread(tempbuf, 1, 0x200000, s_rf[2]) != 0x200000)
-        {
-            fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom1.\n");
-            fflush(stderr);
-            closeAllR();
-            return 1;
-        }
-
-        unscramble(tempbuf, emu.pcm->waverom1, 0x200000);
-
-        if (s_rf[3])
-        {
-            if (fread(tempbuf, 1, 0x100000, s_rf[3]) != 0x100000)
-            {
-                fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom2.\n");
-                fflush(stderr);
-                closeAllR();
-                return 1;
-            }
-
-            unscramble(tempbuf, emu.mcu->mcu_scb55 ? emu.pcm->waverom3 : emu.pcm->waverom2, 0x100000);
-        }
-
-        if (s_rf[4] && fread(emu.sm->sm_rom, 1, ROMSM_SIZE, s_rf[4]) != ROMSM_SIZE)
-        {
-            fprintf(stderr, "FATAL ERROR: Failed to read the sub mcu ROM.\n");
-            fflush(stderr);
-            closeAllR();
+            fprintf(stderr, "Failed to create instance %d\n", i);
             return 1;
         }
     }
 
-    // Close all files as they no longer needed being open
-    closeAllR();
-
-    EMU_Reset(emu);
-
-    if (!FE_OpenAudio(*emu.mcu, audioDeviceIndex, pageSize, pageNum))
+    // TODO: fix this hack, need to separate audio buffer size calculation
+    // to avoid passing single fe instance here - we actually want to use the
+    // same buffer size for all instances
+    if (!FE_OpenAudio(global_fe.instances[0], audioDeviceIndex, pageSize, pageNum))
     {
         fprintf(stderr, "FATAL ERROR: Failed to open the audio stream.\n");
         fflush(stderr);
-        return 2;
+        return 1;
     }
 
-    if(!MIDI_Init(*emu.mcu, port))
+    for (int i = 0; i < global_fe.instances_in_use; ++i)
+    {
+        fe_emu_instance_t& fe = global_fe.instances[i];
+        RB_Init(fe.sample_buffer, audio_buffer_size / 2);
+    }
+
+    if (!MIDI_Init(global_fe, port))
     {
         fprintf(stderr, "ERROR: Failed to initialize the MIDI Input.\nWARNING: Continuing without MIDI Input...\n");
         fflush(stderr);
     }
 
-    if (resetType != ResetType::NONE) MIDI_Reset(*emu.mcu, resetType);
-    
-    FE_Run(*emu.mcu);
+    if (resetType != ResetType::NONE)
+    {
+        for (int i = 0; i < global_fe.instances_in_use; ++i)
+        {
+            MIDI_Reset(*global_fe.instances[i].emu.mcu, resetType);
+        }
+    }
 
-    EMU_Free(emu);
+    FE_Run(global_fe);
 
     FE_Quit();
 

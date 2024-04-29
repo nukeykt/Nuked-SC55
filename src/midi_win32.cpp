@@ -43,7 +43,9 @@ static MIDIHDR midi_buffer;
 
 static char midi_in_buffer[1024];
 
-static mcu_t* midi_mcu_instance = nullptr;
+static frontend_t* midi_frontend = nullptr;
+
+void FE_RouteMIDI(frontend_t& fe, uint8_t* first, uint8_t* last);
 
 void CALLBACK MIDI_Callback(
     HMIDIIN   hMidiIn,
@@ -67,14 +69,24 @@ void CALLBACK MIDI_Callback(
                 case 0xa0:
                 case 0xb0:
                 case 0xe0:
-                    MCU_PostUART(*midi_mcu_instance, b1);
-                    MCU_PostUART(*midi_mcu_instance, (dwParam1 >> 8) & 0xff);
-                    MCU_PostUART(*midi_mcu_instance, (dwParam1 >> 16) & 0xff);
+                    {
+                        uint8_t buf[3] = {
+                            b1,
+                            (dwParam1 >> 8) & 0xff,
+                            (dwParam1 >> 16) & 0xff,
+                        };
+                        FE_RouteMIDI(*midi_frontend, (uint8_t*)buf, (uint8_t*)(buf + 3));
+                    }
                     break;
                 case 0xc0:
                 case 0xd0:
-                    MCU_PostUART(*midi_mcu_instance, b1);
-                    MCU_PostUART(*midi_mcu_instance, (dwParam1 >> 8) & 0xff);
+                    {
+                        uint8_t buf[2] = {
+                            b1,
+                            (dwParam1 >> 8) & 0xff,
+                        };
+                        FE_RouteMIDI(*midi_frontend, (uint8_t*)buf, (uint8_t*)(buf + 2));
+                    }
                     break;
             }
             break;
@@ -88,7 +100,12 @@ void CALLBACK MIDI_Callback(
             {
                 for (int i = 0; i < midi_buffer.dwBytesRecorded; i++)
                 {
-                    MCU_PostUART(*midi_mcu_instance, midi_in_buffer[i]);
+                    //MCU_PostUART(*midi_mcu_instance, midi_in_buffer[i]);
+                    FE_RouteMIDI(
+                        *midi_frontend,
+                        (uint8_t*)midi_in_buffer,
+                        (uint8_t*)midi_in_buffer + midi_buffer.dwBytesRecorded
+                    );
                 }
             }
 
@@ -103,9 +120,9 @@ void CALLBACK MIDI_Callback(
     }
 }
 
-int MIDI_Init(mcu_t& mcu, int port)
+int MIDI_Init(frontend_t& frontend, int port)
 {
-    midi_mcu_instance = &mcu;
+    midi_frontend = &frontend;
 
     int num = midiInGetNumDevs();
 
@@ -153,5 +170,5 @@ void MIDI_Quit()
         midiInClose(midi_handle);
         midi_handle = 0;
     }
-    midi_mcu_instance = nullptr;
+    midi_frontend = nullptr;
 }

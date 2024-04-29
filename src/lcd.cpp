@@ -211,6 +211,7 @@ void LCD_LoadBack(lcd_t& lcd, const std::string& path)
 
 void LCD_Init(lcd_t& lcd, mcu_t& mcu)
 {
+    lcd.lcd_init = 0;
     if (lcd.lcd_init)
         return;
 
@@ -509,6 +510,23 @@ void LCD_Update(lcd_t& lcd)
 
 void LCD_HandleEvent(lcd_t& lcd, const SDL_Event& sdl_event)
 {
+    switch (sdl_event.type)
+    {
+        case SDL_KEYDOWN:
+        case SDL_KEYUP:
+            if (sdl_event.key.windowID != SDL_GetWindowID(lcd.window))
+            {
+                return;
+            }
+        case SDL_WINDOWEVENT:
+            if (sdl_event.window.windowID != SDL_GetWindowID(lcd.window))
+            {
+                return;
+            }
+        default:
+            break;
+    }
+
     if (sdl_event.type == SDL_KEYDOWN)
     {
         if (sdl_event.key.keysym.scancode == SDL_SCANCODE_COMMA)
@@ -521,6 +539,13 @@ void LCD_HandleEvent(lcd_t& lcd, const SDL_Event& sdl_event)
     {
         case SDL_QUIT:
             lcd.lcd_quit_requested = true;
+            break;
+
+        case SDL_WINDOWEVENT:
+            if (sdl_event.window.event == SDL_WINDOWEVENT_CLOSE)
+            {
+                lcd.lcd_quit_requested = true;
+            }
             break;
 
         case SDL_KEYDOWN:

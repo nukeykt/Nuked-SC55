@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include "math_util.h"
 
 const int RB_CHANNEL_COUNT = 2;
 
@@ -31,6 +32,19 @@ inline void RB_Free(ringbuffer_t& rb)
     free(rb.samples);
 }
 
+inline void RB_SetOversamplingEnabled(ringbuffer_t& rb, bool enabled)
+{
+    rb.oversampling = enabled;
+    if (rb.oversampling)
+    {
+        rb.write_head &= ~3;
+    }
+    else
+    {
+        rb.write_head &= ~1;
+    }
+}
+
 inline bool RB_IsFull(ringbuffer_t& rb)
 {
     if (rb.oversampling)
@@ -45,11 +59,6 @@ inline bool RB_IsFull(ringbuffer_t& rb)
 
 inline void RB_Write(ringbuffer_t& rb, int16_t left, int16_t right)
 {
-    if (RB_IsFull(rb))
-    {
-        fprintf(stderr, "Ringbuffer overflow\n");
-        exit(1);
-    }
     rb.samples[rb.write_head + 0] = left;
     rb.samples[rb.write_head + 1] = right;
     rb.write_head = (rb.write_head + RB_CHANNEL_COUNT) % rb.sample_count;
@@ -68,7 +77,7 @@ inline size_t RB_ReadableSampleCount(ringbuffer_t& rb)
 }
 
 // Reads up to `sample_count` samples and returns the number of samples
-// actually read
+// actually read.
 inline size_t RB_Read(ringbuffer_t& rb, int16_t* dest, size_t sample_count)
 {
     size_t have_count = RB_ReadableSampleCount(rb);
@@ -78,6 +87,23 @@ inline size_t RB_Read(ringbuffer_t& rb, int16_t* dest, size_t sample_count)
     for (size_t i = 0; i < read_count; ++i)
     {
         *dest = rb.samples[read_head];
+        ++dest;
+        read_head = (read_head + 1) % rb.sample_count;
+    }
+    rb.read_head = read_head;
+    return read_count;
+}
+
+// Reads up to `sample_count` samples and returns the number of samples
+// actually read. Mixes samples into dest by adding and clipping.
+inline size_t RB_ReadMix(ringbuffer_t& rb, int16_t* dest, size_t sample_count)
+{
+    size_t have_count = RB_ReadableSampleCount(rb);
+    size_t read_count = sample_count < have_count ? sample_count : have_count;
+    size_t read_head = rb.read_head;
+    for (size_t i = 0; i < read_count; ++i)
+    {
+        *dest = saturating_add(*dest, rb.samples[read_head]);
         ++dest;
         read_head = (read_head + 1) % rb.sample_count;
     }

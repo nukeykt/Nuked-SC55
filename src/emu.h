@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 struct mcu_t;
 struct submcu_t;
 struct mcu_timer_t;
@@ -20,3 +22,5 @@ void EMU_Free(emu_backend_t& emu);
 // Should be called after loading roms
 void EMU_Reset(emu_backend_t& emu);
 
+int EMU_DetectRoms(const std::string& basePath);
+int EMU_LoadRoms(emu_backend_t& emu, int romset, const std::string& basePath);
