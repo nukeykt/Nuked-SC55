@@ -46,6 +46,7 @@
 #include "utf8main.h"
 #include "utils/files.h"
 #include "emu.h"
+#include "ringbuffer.h"
 
 #if __linux__
 #include <unistd.h>
@@ -123,25 +124,20 @@ const char* roms[ROM_SET_COUNT][5] =
 
 static int audio_buffer_size;
 static int audio_page_size;
-static short *sample_buffer;
-
-static int sample_read_ptr;
-static int sample_write_ptr;
 
 static SDL_AudioDeviceID sdl_audio;
+
+ringbuffer_t buf;
 
 void FE_StepBegin(void* userdata)
 {
     mcu_t& mcu = *(mcu_t*)userdata;
-    if (mcu.pcm->config_reg_3c & 0x40)
-        sample_write_ptr &= ~3;
-    else
-        sample_write_ptr &= ~1;
+    buf.oversampling = mcu.pcm->config_reg_3c & 0x40;
 }
 
 bool FE_Wait(void* userdata)
 {
-    return sample_read_ptr == sample_write_ptr;
+    return RB_IsFull(buf);
 }
 
 void FE_ReceiveSample(void* userdata, int *sample)
@@ -156,9 +152,7 @@ void FE_ReceiveSample(void* userdata, int *sample)
         sample[1] = INT16_MAX;
     else if (sample[1] < INT16_MIN)
         sample[1] = INT16_MIN;
-    sample_buffer[sample_write_ptr + 0] = sample[0];
-    sample_buffer[sample_write_ptr + 1] = sample[1];
-    sample_write_ptr = (sample_write_ptr + 2) % audio_buffer_size;
+    RB_Write(buf, sample[0], sample[1]);
 }
 
 uint8_t tempbuf[0x800000];
@@ -192,11 +186,9 @@ void unscramble(uint8_t *src, uint8_t *dst, int len)
 
 void audio_callback(void* /*userdata*/, Uint8* stream, int len)
 {
-    len /= 2;
-    memcpy(stream, &sample_buffer[sample_read_ptr], len * 2);
-    memset(&sample_buffer[sample_read_ptr], 0, len * 2);
-    sample_read_ptr += len;
-    sample_read_ptr %= audio_buffer_size;
+    const size_t num_samples = len / sizeof(int16_t);
+    memset(stream, 0, len);
+    RB_Read(buf, (int16_t*)stream, num_samples);
 }
 
 static const char* audio_format_to_str(int format)
@@ -240,15 +232,8 @@ int FE_OpenAudio(mcu_t& mcu, int deviceIndex, int pageSize, int pageNum)
     spec.channels = 2;
     spec.callback = audio_callback;
     spec.samples = audio_page_size / 4;
-    
-    sample_buffer = (short*)calloc(audio_buffer_size, sizeof(short));
-    if (!sample_buffer)
-    {
-        printf("Cannot allocate audio buffer.\n");
-        return 0;
-    }
-    sample_read_ptr = 0;
-    sample_write_ptr = 0;
+
+    RB_Init(buf, audio_buffer_size / 2);
     
     int num = SDL_GetNumAudioDevices(0);
     if (num == 0)
@@ -294,7 +279,7 @@ int FE_OpenAudio(mcu_t& mcu, int deviceIndex, int pageSize, int pageNum)
 void FE_CloseAudio(void)
 {
     SDL_CloseAudio();
-    if (sample_buffer) free(sample_buffer);
+    RB_Free(buf);
 }
 
 

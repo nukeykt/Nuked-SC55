@@ -197,6 +197,7 @@ set(SC55_BACKEND_SRC
     src/pcm.cpp src/pcm.h
     src/submcu.cpp src/submcu.h
     src/emu.cpp src/emu.h
+    src/ringbuffer.h
 
     src/utils/files.cpp src/utils/files.h
 )
