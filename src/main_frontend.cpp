@@ -86,21 +86,41 @@ struct frontend_t {
 
 frontend_t global_fe;
 
+void FE_SendMIDI(frontend_t& fe, size_t n, uint8_t* first, uint8_t* last)
+{
+    while (first != last)
+    {
+        MCU_PostUART(*fe.instances[n].emu.mcu, *first);
+        ++first;
+    }
+}
+
+void FE_BroadcastMIDI(frontend_t& fe, uint8_t* first, uint8_t* last)
+{
+    for (size_t i = 0; i < fe.instances_in_use; ++i)
+    {
+        FE_SendMIDI(fe, i, first, last);
+    }
+}
+
 void FE_RouteMIDI(frontend_t& fe, uint8_t* first, uint8_t* last)
 {
-    if (*first >= 0x80)
+    if (*first < 0x80)
     {
-        uint8_t channel = *first & 0x0F;
+        printf("FE_RouteMIDI received data byte %02x\n", *first);
+        return;
+    }
 
-        while (first != last)
-        {
-            MCU_PostUART(*fe.instances[channel % fe.instances_in_use].emu.mcu, *first);
-            ++first;
-        }
+    const bool is_sysex = *first == 0xF0;
+    const uint8_t channel = *first & 0x0F;
+
+    if (is_sysex)
+    {
+        FE_BroadcastMIDI(fe, first, last);
     }
     else
     {
-        printf("data packet?!\n");
+        FE_SendMIDI(fe, channel % fe.instances_in_use, first, last);
     }
 }
 

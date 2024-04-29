@@ -98,15 +98,11 @@ void CALLBACK MIDI_Callback(
 
             if (wMsg == MIM_LONGDATA)
             {
-                for (int i = 0; i < midi_buffer.dwBytesRecorded; i++)
-                {
-                    //MCU_PostUART(*midi_mcu_instance, midi_in_buffer[i]);
-                    FE_RouteMIDI(
-                        *midi_frontend,
-                        (uint8_t*)midi_in_buffer,
-                        (uint8_t*)midi_in_buffer + midi_buffer.dwBytesRecorded
-                    );
-                }
+                FE_RouteMIDI(
+                    *midi_frontend,
+                    (uint8_t*)midi_in_buffer,
+                    (uint8_t*)midi_in_buffer + midi_buffer.dwBytesRecorded
+                );
             }
 
             midiInPrepareHeader(midi_handle, &midi_buffer, sizeof(MIDIHDR));
