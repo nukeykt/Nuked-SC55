@@ -66,11 +66,6 @@ const char* rs_name[ROM_SET_COUNT] = {
     "SC-155mk2"
 };
 
-static int audio_buffer_size;
-static int audio_page_size;
-
-static SDL_AudioDeviceID sdl_audio;
-
 struct fe_emu_instance_t {
     emu_backend_t emu;
     ringbuffer_t  sample_buffer;
@@ -82,9 +77,30 @@ const size_t FE_MAX_INSTANCES = 16;
 struct frontend_t {
     fe_emu_instance_t instances[FE_MAX_INSTANCES];
     size_t instances_in_use = 0;
+
+    int audio_buffer_size = 0;
+    int audio_page_size = 0;
+
+    SDL_AudioDeviceID sdl_audio = 0;
 };
 
-frontend_t global_fe;
+bool FE_AllocateInstance(frontend_t& container, fe_emu_instance_t** result)
+{
+    if (container.instances_in_use == FE_MAX_INSTANCES)
+    {
+        return false;
+    }
+
+    fe_emu_instance_t& fe = container.instances[container.instances_in_use];
+    ++container.instances_in_use;
+
+    if (result)
+    {
+        *result = &fe;
+    }
+
+    return true;
+}
 
 void FE_SendMIDI(frontend_t& fe, size_t n, uint8_t* first, uint8_t* last)
 {
@@ -152,23 +168,25 @@ void FE_ReceiveSample(void* userdata, int *sample)
     RB_Write(fe.sample_buffer, sample[0], sample[1]);
 }
 
-void audio_callback(void* /*userdata*/, Uint8* stream, int len)
+void FE_AudioCallback(void* userdata, Uint8* stream, int len)
 {
+    frontend_t& frontend = *(frontend_t*)userdata;
+
     const size_t num_samples = len / sizeof(int16_t);
     memset(stream, 0, len);
 
     size_t renderable_count = num_samples;
-    for (int i = 0; i < global_fe.instances_in_use; ++i)
+    for (int i = 0; i < frontend.instances_in_use; ++i)
     {
         renderable_count = min(
             renderable_count,
-            RB_ReadableSampleCount(global_fe.instances[i].sample_buffer)
+            RB_ReadableSampleCount(frontend.instances[i].sample_buffer)
         );
     }
 
-    for (int i = 0; i < global_fe.instances_in_use; ++i)
+    for (int i = 0; i < frontend.instances_in_use; ++i)
     {
-        RB_ReadMix(global_fe.instances[i].sample_buffer, (int16_t*)stream, renderable_count);
+        RB_ReadMix(frontend.instances[i].sample_buffer, (int16_t*)stream, renderable_count);
     }
 }
 
@@ -200,19 +218,25 @@ static const char* audio_format_to_str(int format)
     return "UNK";
 }
 
-int FE_OpenAudio(fe_emu_instance_t& fe, int deviceIndex, int pageSize, int pageNum)
+int FE_OpenAudio(frontend_t& fe, int deviceIndex, int pageSize, int pageNum)
 {
     SDL_AudioSpec spec = {};
     SDL_AudioSpec spec_actual = {};
 
-    audio_page_size = (pageSize/2)*2; // must be even
-    audio_buffer_size = audio_page_size*pageNum;
+    fe.audio_page_size = (pageSize/2)*2; // must be even
+    fe.audio_buffer_size = fe.audio_page_size*pageNum;
+
+    // TODO: we just assume the first instance has the correct mcu type for
+    // all instances, which is PROBABLY correct but maybe we want to do some
+    // crazy stuff like running different mcu types concurrently in the future?
+    const mcu_t& mcu = *fe.instances[0].emu.mcu;
     
     spec.format = AUDIO_S16SYS;
-    spec.freq = (fe.emu.mcu->mcu_mk1 || fe.emu.mcu->mcu_jv880) ? 64000 : 66207;
+    spec.freq = (mcu.mcu_mk1 || mcu.mcu_jv880) ? 64000 : 66207;
     spec.channels = 2;
-    spec.callback = audio_callback;
-    spec.samples = audio_page_size / 4;
+    spec.callback = FE_AudioCallback;
+    spec.userdata = &fe;
+    spec.samples = fe.audio_page_size / 4;
     
     int num = SDL_GetNumAudioDevices(0);
     if (num == 0)
@@ -229,8 +253,8 @@ int FE_OpenAudio(fe_emu_instance_t& fe, int deviceIndex, int pageSize, int pageN
     
     const char* audioDevicename = deviceIndex == -1 ? "Default device" : SDL_GetAudioDeviceName(deviceIndex, 0);
     
-    sdl_audio = SDL_OpenAudioDevice(deviceIndex == -1 ? NULL : audioDevicename, 0, &spec, &spec_actual, 0);
-    if (!sdl_audio)
+    fe.sdl_audio = SDL_OpenAudioDevice(deviceIndex == -1 ? NULL : audioDevicename, 0, &spec, &spec_actual, 0);
+    if (!fe.sdl_audio)
     {
         return 0;
     }
@@ -250,7 +274,7 @@ int FE_OpenAudio(fe_emu_instance_t& fe, int deviceIndex, int pageSize, int pageN
            spec_actual.samples);
     fflush(stdout);
 
-    SDL_PauseAudioDevice(sdl_audio, 0);
+    SDL_PauseAudioDevice(fe.sdl_audio, 0);
 
     return 1;
 }
@@ -356,26 +380,31 @@ int FE_Init()
     return 0;
 }
 
-bool FE_CreateInstance(const std::string& basePath, int romset)
+bool FE_CreateInstance(frontend_t& container, const std::string& basePath, int romset)
 {
-    fe_emu_instance_t& fe = global_fe.instances[global_fe.instances_in_use];
-    ++global_fe.instances_in_use;
+    fe_emu_instance_t* fe = nullptr;
 
-    EMU_Init(fe.emu);
+    if (!FE_AllocateInstance(container, &fe))
+    {
+        fprintf(stderr, "ERROR: Failed to allocate instance.\n");
+        return false;
+    }
+
+    EMU_Init(fe->emu);
     // TODO: Clean up, shouldn't need to reach into emu for this
-    fe.emu.mcu->callback_userdata = &fe;
-    fe.emu.mcu->step_begin_callback = FE_StepBegin;
-    fe.emu.mcu->sample_callback = FE_ReceiveSample;
-    fe.emu.mcu->wait_callback = FE_Wait;
+    fe->emu.mcu->callback_userdata = fe;
+    fe->emu.mcu->step_begin_callback = FE_StepBegin;
+    fe->emu.mcu->sample_callback = FE_ReceiveSample;
+    fe->emu.mcu->wait_callback = FE_Wait;
 
-    LCD_LoadBack(*fe.emu.lcd, basePath + "/back.data");
+    LCD_LoadBack(*fe->emu.lcd, basePath + "/back.data");
 
-    if (EMU_LoadRoms(fe.emu, romset, basePath) != 0)
+    if (EMU_LoadRoms(fe->emu, romset, basePath) != 0)
     {
         fprintf(stderr, "ERROR: Failed to load roms.\n");
         return false;
     }
-    EMU_Reset(fe.emu);
+    EMU_Reset(fe->emu);
 
     return true;
 }
@@ -387,11 +416,11 @@ void FE_DestroyInstance(fe_emu_instance_t& fe)
     fe.thread = nullptr;
 }
 
-void FE_Quit()
+void FE_Quit(frontend_t& container)
 {
-    for (int i = 0; i < global_fe.instances_in_use; ++i)
+    for (int i = 0; i < container.instances_in_use; ++i)
     {
-        FE_DestroyInstance(global_fe.instances[i]);
+        FE_DestroyInstance(container.instances[i]);
     }
     FE_CloseAudio();
     MIDI_Quit();
@@ -412,6 +441,8 @@ int main(int argc, char *argv[])
     int instance_count = 1;
 
     int romset = ROM_SET_MK2;
+
+    frontend_t frontend;
 
     {
         for (int i = 1; i < argc; i++)
@@ -557,33 +588,30 @@ int main(int argc, char *argv[])
     {
         return 1;
     }
-    
+
     for (int i = 0; i < instance_count; ++i)
     {
-        if (!FE_CreateInstance(basePath, romset))
+        if (!FE_CreateInstance(frontend, basePath, romset))
         {
             fprintf(stderr, "Failed to create instance %d\n", i);
             return 1;
         }
     }
 
-    // TODO: fix this hack, need to separate audio buffer size calculation
-    // to avoid passing single fe instance here - we actually want to use the
-    // same buffer size for all instances
-    if (!FE_OpenAudio(global_fe.instances[0], audioDeviceIndex, pageSize, pageNum))
+    if (!FE_OpenAudio(frontend, audioDeviceIndex, pageSize, pageNum))
     {
         fprintf(stderr, "FATAL ERROR: Failed to open the audio stream.\n");
         fflush(stderr);
         return 1;
     }
 
-    for (int i = 0; i < global_fe.instances_in_use; ++i)
+    for (int i = 0; i < frontend.instances_in_use; ++i)
     {
-        fe_emu_instance_t& fe = global_fe.instances[i];
-        RB_Init(fe.sample_buffer, audio_buffer_size / 2);
+        fe_emu_instance_t& fe = frontend.instances[i];
+        RB_Init(fe.sample_buffer, frontend.audio_buffer_size / 2);
     }
 
-    if (!MIDI_Init(global_fe, port))
+    if (!MIDI_Init(frontend, port))
     {
         fprintf(stderr, "ERROR: Failed to initialize the MIDI Input.\nWARNING: Continuing without MIDI Input...\n");
         fflush(stderr);
@@ -591,15 +619,15 @@ int main(int argc, char *argv[])
 
     if (resetType != ResetType::NONE)
     {
-        for (int i = 0; i < global_fe.instances_in_use; ++i)
+        for (int i = 0; i < frontend.instances_in_use; ++i)
         {
-            MIDI_Reset(*global_fe.instances[i].emu.mcu, resetType);
+            MIDI_Reset(*frontend.instances[i].emu.mcu, resetType);
         }
     }
 
-    FE_Run(global_fe);
+    FE_Run(frontend);
 
-    FE_Quit();
+    FE_Quit(frontend);
 
     return 0;
 }
