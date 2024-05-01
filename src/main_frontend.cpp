@@ -378,7 +378,11 @@ bool FE_CreateInstance(frontend_t& container, const std::string& basePath, int r
         return false;
     }
 
-    EMU_Init(fe->emu);
+    if (!EMU_Init(fe->emu))
+    {
+        fprintf(stderr, "ERROR: Failed to init emulator.\n");
+        return false;
+    }
     // TODO: Clean up, shouldn't need to reach into emu for this
     fe->emu.mcu->callback_userdata = fe;
     fe->emu.mcu->step_begin_callback = FE_StepBegin;
