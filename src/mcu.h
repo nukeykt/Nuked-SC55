@@ -240,23 +240,23 @@ struct mcu_t {
     int mcu_scb55; // 0 - sub mcu (e.g SC-55mk2), 1 - no sub mcu (e.g SCB-55)
     int mcu_sc155; // 0 - SC-55(MK2), 1 - SC-155(MK2)
 
-    int rom2_mask = ROM2_SIZE - 1;
+    int rom2_mask;
 
     int ga_int[8];
-    int ga_int_enable = 0;
-    int ga_int_trigger = 0;
-    int ga_lcd_counter = 0;
+    int ga_int_enable;
+    int ga_int_trigger;
+    int ga_lcd_counter;
 
-    SDL_atomic_t mcu_button_pressed = { 0 };
+    SDL_atomic_t mcu_button_pressed;
 
-    uint8_t mcu_p0_data = 0x00;
-    uint8_t mcu_p1_data = 0x00;
+    uint8_t mcu_p0_data;
+    uint8_t mcu_p1_data;
 
-    int adf_rd = 0;
+    int adf_rd;
 
     uint64_t analog_end_time;
 
-    int ssr_rd = 0;
+    int ssr_rd;
 
     uint32_t operand_type;
     uint16_t operand_ea;
@@ -276,7 +276,7 @@ struct mcu_t {
     SDL_mutex *work_thread_lock;
 };
 
-void MCU_Init(mcu_t& mcu, submcu_t& sm, pcm_t& pcm, mcu_timer_t& timer, lcd_t& lcd);
+bool MCU_Init(mcu_t& mcu, submcu_t& sm, pcm_t& pcm, mcu_timer_t& timer, lcd_t& lcd);
 void MCU_Reset(mcu_t& mcu);
 void MCU_PatchROM(mcu_t& mcu);
 void MCU_Step(mcu_t& mcu);
@@ -532,8 +532,6 @@ enum {
     ROM_SET_SC155MK2,
     ROM_SET_COUNT
 };
-
-extern const char* rs_name[ROM_SET_COUNT];
 
 uint8_t MCU_ReadP0(mcu_t& mcu);
 uint8_t MCU_ReadP1(mcu_t& mcu);

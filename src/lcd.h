@@ -35,9 +35,12 @@
 
 #include <stdint.h>
 #include <string>
-#include "SDL.h"
 
 struct mcu_t;
+
+struct SDL_Window;
+struct SDL_Renderer;
+struct SDL_Texture;
 
 static const int lcd_width_max = 1024;
 static const int lcd_height_max = 1024;
@@ -48,18 +51,16 @@ struct lcd_t {
     int lcd_width;
     int lcd_height;
 
-    uint32_t lcd_init = 0;
+    uint32_t lcd_init;
 
     uint32_t LCD_DL, LCD_N, LCD_F, LCD_D, LCD_C, LCD_B, LCD_ID, LCD_S;
     uint32_t LCD_DD_RAM, LCD_AC, LCD_CG_RAM;
-    uint32_t LCD_RAM_MODE = 0;
+    uint32_t LCD_RAM_MODE;
     uint8_t LCD_Data[80];
     uint8_t LCD_CG[64];
 
-    uint8_t lcd_enable = 1;
-    bool lcd_quit_requested = false;
-
-    std::string m_back_path = "back.data";
+    uint8_t lcd_enable;
+    bool lcd_quit_requested;
 
     uint32_t lcd_buffer[lcd_height_max][lcd_width_max];
     uint32_t lcd_background[268][741];
@@ -71,7 +72,7 @@ struct lcd_t {
 
 
 void LCD_LoadBack(lcd_t& lcd, const std::string& path);
-void LCD_Init(lcd_t& lcd, mcu_t& mcu);
+bool LCD_Init(lcd_t& lcd, mcu_t& mcu);
 void LCD_UnInit(lcd_t& lcd);
 void LCD_Write(lcd_t& lcd, uint32_t address, uint8_t data);
 void LCD_Enable(lcd_t& lcd, uint32_t enable);

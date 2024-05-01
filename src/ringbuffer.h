@@ -16,15 +16,19 @@ struct ringbuffer_t {
     bool oversampling;
 };
 
-inline void RB_Init(ringbuffer_t& rb, size_t frame_count)
+inline bool RB_Init(ringbuffer_t& rb, size_t frame_count)
 {
-    rb.samples = (int16_t*)malloc(sizeof(int16_t) * RB_CHANNEL_COUNT * frame_count);
-    memset(rb.samples, 0, sizeof(int16_t) * RB_CHANNEL_COUNT * frame_count);
+    rb.samples = (int16_t*)calloc(RB_CHANNEL_COUNT * frame_count, sizeof(int16_t));
+    if (!rb.samples)
+    {
+        return false;
+    }
     rb.frame_count = frame_count;
     rb.sample_count = RB_CHANNEL_COUNT * frame_count;
     rb.read_head = 0;
     rb.write_head = 0;
     rb.oversampling = false;
+    return true;
 }
 
 inline void RB_Free(ringbuffer_t& rb)

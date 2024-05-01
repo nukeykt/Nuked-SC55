@@ -71,21 +71,21 @@ void CALLBACK MIDI_Callback(
                 case 0xe0:
                     {
                         uint8_t buf[3] = {
-                            b1,
-                            (dwParam1 >> 8) & 0xff,
-                            (dwParam1 >> 16) & 0xff,
+                            (uint8_t)b1,
+                            (uint8_t)((dwParam1 >> 8) & 0xff),
+                            (uint8_t)((dwParam1 >> 16) & 0xff),
                         };
-                        FE_RouteMIDI(*midi_frontend, (uint8_t*)buf, (uint8_t*)(buf + 3));
+                        FE_RouteMIDI(*midi_frontend, (uint8_t*)buf, (uint8_t*)buf + sizeof(buf));
                     }
                     break;
                 case 0xc0:
                 case 0xd0:
                     {
                         uint8_t buf[2] = {
-                            b1,
-                            (dwParam1 >> 8) & 0xff,
+                            (uint8_t)b1,
+                            (uint8_t)((dwParam1 >> 8) & 0xff),
                         };
-                        FE_RouteMIDI(*midi_frontend, (uint8_t*)buf, (uint8_t*)(buf + 2));
+                        FE_RouteMIDI(*midi_frontend, (uint8_t*)buf, (uint8_t*)buf + sizeof(buf));
                     }
                     break;
             }

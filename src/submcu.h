@@ -76,7 +76,8 @@ struct submcu_t {
     uint8_t uart_rx_gotbyte;
 };
 
-void SM_Reset(submcu_t& sm, mcu_t& mcu);
+void SM_Init(submcu_t& sm, mcu_t& mcu);
+void SM_Reset(submcu_t& sm);
 void SM_Update(submcu_t& sm, uint64_t cycles);
 void SM_SysWrite(submcu_t& sm, uint32_t address, uint8_t data);
 uint8_t SM_SysRead(submcu_t& sm, uint32_t address);

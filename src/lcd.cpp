@@ -35,12 +35,14 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include "SDL.h"
 #include "SDL_mutex.h"
 #include "lcd.h"
 #include "lcd_font.h"
 #include "mcu.h"
 #include "submcu.h"
 #include "utils/files.h"
+#include "emu.h"
 
 void LCD_Enable(lcd_t& lcd, uint32_t enable)
 {
@@ -197,11 +199,9 @@ const int button_map_jv880[][2] =
 
 void LCD_LoadBack(lcd_t& lcd, const std::string& path)
 {
-    lcd.m_back_path = path;
-
     FILE *raw;
 
-    raw = Files::utf8_fopen(lcd.m_back_path.c_str(), "rb");
+    raw = Files::utf8_fopen(path.c_str(), "rb");
     if (!raw)
         return;
 
@@ -209,11 +209,13 @@ void LCD_LoadBack(lcd_t& lcd, const std::string& path)
     fclose(raw);
 }
 
-void LCD_Init(lcd_t& lcd, mcu_t& mcu)
+bool LCD_Init(lcd_t& lcd, mcu_t& mcu)
 {
-    lcd.lcd_init = 0;
     if (lcd.lcd_init)
-        return;
+        return false;
+
+    memset(&lcd, 0, sizeof(lcd_t));
+    lcd.mcu = &mcu;
 
     if (mcu.romset == ROM_SET_JV880)
     {
@@ -226,28 +228,25 @@ void LCD_Init(lcd_t& lcd, mcu_t& mcu)
         lcd.lcd_height = 268;
     }
 
-    lcd.mcu = &mcu;
-
-    lcd.lcd_quit_requested = false;
-
     std::string title = "Nuked SC-55: ";
 
-    title += rs_name[mcu.romset];
+    title += EMU_RomsetName(mcu.romset);
 
     lcd.window = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, lcd.lcd_width, lcd.lcd_height, SDL_WINDOW_SHOWN);
     if (!lcd.window)
-        return;
+        return false;
 
     lcd.renderer = SDL_CreateRenderer(lcd.window, -1, 0);
     if (!lcd.renderer)
-        return;
+        return false;
 
     lcd.texture = SDL_CreateTexture(lcd.renderer, SDL_PIXELFORMAT_BGR888, SDL_TEXTUREACCESS_STREAMING, lcd.lcd_width, lcd.lcd_height);
 
     if (!lcd.texture)
-        return;
+        return false;
 
     lcd.lcd_init = 1;
+    return true;
 }
 
 void LCD_UnInit(lcd_t& lcd)
@@ -518,11 +517,13 @@ void LCD_HandleEvent(lcd_t& lcd, const SDL_Event& sdl_event)
             {
                 return;
             }
+            break;
         case SDL_WINDOWEVENT:
             if (sdl_event.window.windowID != SDL_GetWindowID(lcd.window))
             {
                 return;
             }
+            break;
         default:
             break;
     }

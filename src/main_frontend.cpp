@@ -54,18 +54,6 @@
 #include <limits.h>
 #endif
 
-const char* rs_name[ROM_SET_COUNT] = {
-    "SC-55mk2",
-    "SC-55st",
-    "SC-55mk1",
-    "CM-300/SCC-1",
-    "JV-880",
-    "SCB-55",
-    "RLP-3237",
-    "SC-155",
-    "SC-155mk2"
-};
-
 struct fe_emu_instance_t {
     emu_backend_t emu;
     ringbuffer_t  sample_buffer;
@@ -176,7 +164,7 @@ void FE_AudioCallback(void* userdata, Uint8* stream, int len)
     memset(stream, 0, len);
 
     size_t renderable_count = num_samples;
-    for (int i = 0; i < frontend.instances_in_use; ++i)
+    for (size_t i = 0; i < frontend.instances_in_use; ++i)
     {
         renderable_count = min(
             renderable_count,
@@ -184,7 +172,7 @@ void FE_AudioCallback(void* userdata, Uint8* stream, int len)
         );
     }
 
-    for (int i = 0; i < frontend.instances_in_use; ++i)
+    for (size_t i = 0; i < frontend.instances_in_use; ++i)
     {
         RB_ReadMix(frontend.instances[i].sample_buffer, (int16_t*)stream, renderable_count);
     }
@@ -218,7 +206,7 @@ static const char* audio_format_to_str(int format)
     return "UNK";
 }
 
-int FE_OpenAudio(frontend_t& fe, int deviceIndex, int pageSize, int pageNum)
+bool FE_OpenAudio(frontend_t& fe, int deviceIndex, int pageSize, int pageNum)
 {
     SDL_AudioSpec spec = {};
     SDL_AudioSpec spec_actual = {};
@@ -242,7 +230,7 @@ int FE_OpenAudio(frontend_t& fe, int deviceIndex, int pageSize, int pageNum)
     if (num == 0)
     {
         printf("No audio output device found.\n");
-        return 0;
+        return false;
     }
     
     if (deviceIndex < -1 || deviceIndex >= num)
@@ -256,7 +244,7 @@ int FE_OpenAudio(frontend_t& fe, int deviceIndex, int pageSize, int pageNum)
     fe.sdl_audio = SDL_OpenAudioDevice(deviceIndex == -1 ? NULL : audioDevicename, 0, &spec, &spec_actual, 0);
     if (!fe.sdl_audio)
     {
-        return 0;
+        return false;
     }
 
     printf("Audio device: %s\n", audioDevicename);
@@ -276,7 +264,7 @@ int FE_OpenAudio(frontend_t& fe, int deviceIndex, int pageSize, int pageNum)
 
     SDL_PauseAudioDevice(fe.sdl_audio, 0);
 
-    return 1;
+    return true;
 }
 
 void FE_CloseAudio(void)
@@ -334,14 +322,14 @@ void FE_Run(frontend_t& fe)
 
     work_thread_run = true;
 
-    for (int i = 0; i < fe.instances_in_use; ++i)
+    for (size_t i = 0; i < fe.instances_in_use; ++i)
     {
         fe.instances[i].thread = SDL_CreateThread(FE_RunMCU, "work thread", fe.instances[i].emu.mcu);
     }
 
     while (working)
     {
-        for (int i = 0; i < fe.instances_in_use; ++i)
+        for (size_t i = 0; i < fe.instances_in_use; ++i)
         {
             if (LCD_QuitRequested(*fe.instances[i].emu.lcd))
                 working = false;
@@ -352,7 +340,7 @@ void FE_Run(frontend_t& fe)
         SDL_Event sdl_event;
         while (SDL_PollEvent(&sdl_event))
         {
-            for (int i = 0; i < fe.instances_in_use; ++i)
+            for (size_t i = 0; i < fe.instances_in_use; ++i)
             {
                 LCD_HandleEvent(*fe.instances[i].emu.lcd, sdl_event);
             }
@@ -362,22 +350,22 @@ void FE_Run(frontend_t& fe)
     }
 
     work_thread_run = false;
-    for (int i = 0; i < fe.instances_in_use; ++i)
+    for (size_t i = 0; i < fe.instances_in_use; ++i)
     {
         SDL_WaitThread(fe.instances[i].thread, 0);
     }
 }
 
-int FE_Init()
+bool FE_Init()
 {
     if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0)
     {
         fprintf(stderr, "FATAL ERROR: Failed to initialize the SDL2: %s.\n", SDL_GetError());
         fflush(stderr);
-        return 2;
+        return false;
     }
 
-    return 0;
+    return true;
 }
 
 bool FE_CreateInstance(frontend_t& container, const std::string& basePath, int romset)
@@ -399,7 +387,7 @@ bool FE_CreateInstance(frontend_t& container, const std::string& basePath, int r
 
     LCD_LoadBack(*fe->emu.lcd, basePath + "/back.data");
 
-    if (EMU_LoadRoms(fe->emu, romset, basePath) != 0)
+    if (!EMU_LoadRoms(fe->emu, romset, basePath))
     {
         fprintf(stderr, "ERROR: Failed to load roms.\n");
         return false;
@@ -418,7 +406,7 @@ void FE_DestroyInstance(fe_emu_instance_t& fe)
 
 void FE_Quit(frontend_t& container)
 {
-    for (int i = 0; i < container.instances_in_use; ++i)
+    for (size_t i = 0; i < container.instances_in_use; ++i)
     {
         FE_DestroyInstance(container.instances[i]);
     }
@@ -580,12 +568,13 @@ int main(int argc, char *argv[])
 
     if (autodetect)
     {
-        romset = EMU_DetectRoms(basePath);
-        printf("ROM set autodetect: %s\n", rs_name[romset]);
+        romset = EMU_DetectRomset(basePath);
+        printf("ROM set autodetect: %s\n", EMU_RomsetName(romset));
     }
 
-    if (FE_Init() != 0)
+    if (!FE_Init())
     {
+        fprintf(stderr, "FATAL ERROR: Failed to initialize frontend\n");
         return 1;
     }
 
@@ -593,7 +582,7 @@ int main(int argc, char *argv[])
     {
         if (!FE_CreateInstance(frontend, basePath, romset))
         {
-            fprintf(stderr, "Failed to create instance %d\n", i);
+            fprintf(stderr, "FATAL ERROR: Failed to create instance %d\n", i);
             return 1;
         }
     }
@@ -605,10 +594,14 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    for (int i = 0; i < frontend.instances_in_use; ++i)
+    for (size_t i = 0; i < frontend.instances_in_use; ++i)
     {
         fe_emu_instance_t& fe = frontend.instances[i];
-        RB_Init(fe.sample_buffer, frontend.audio_buffer_size / 2);
+        if (!RB_Init(fe.sample_buffer, frontend.audio_buffer_size / 2))
+        {
+            fprintf(stderr, "FATAL ERROR: Failed to allocate ringbuffer %lld\n", i);
+            return 1;
+        }
     }
 
     if (!MIDI_Init(frontend, port))
@@ -619,7 +612,7 @@ int main(int argc, char *argv[])
 
     if (resetType != ResetType::NONE)
     {
-        for (int i = 0; i < frontend.instances_in_use; ++i)
+        for (size_t i = 0; i < frontend.instances_in_use; ++i)
         {
             MIDI_Reset(*frontend.instances[i].emu.mcu, resetType);
         }

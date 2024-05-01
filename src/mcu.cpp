@@ -765,7 +765,7 @@ void MCU_ReadInstruction(mcu_t& mcu)
     }
 }
 
-void MCU_Init(mcu_t& mcu, submcu_t& sm, pcm_t& pcm, mcu_timer_t& timer, lcd_t& lcd)
+bool MCU_Init(mcu_t& mcu, submcu_t& sm, pcm_t& pcm, mcu_timer_t& timer, lcd_t& lcd)
 {
     memset(&mcu, 0, sizeof(mcu_t));
     mcu.sw_pos = 3;
@@ -776,6 +776,11 @@ void MCU_Init(mcu_t& mcu, submcu_t& sm, pcm_t& pcm, mcu_timer_t& timer, lcd_t& l
     mcu.romset = ROM_SET_MK2;
     mcu.rom2_mask = ROM2_SIZE - 1;
     mcu.work_thread_lock = SDL_CreateMutex();
+    if (!mcu.work_thread_lock)
+    {
+        return false;
+    }
+    return true;
 }
 
 void MCU_Deinit(mcu_t& mcu)
@@ -928,6 +933,7 @@ void MCU_Step(mcu_t& mcu)
 
 void MCU_PatchROM(mcu_t& mcu)
 {
+    (void)mcu;
     //rom2[0x1333] = 0x11;
     //rom2[0x1334] = 0x19;
     //rom1[0x622d] = 0x19;
@@ -935,6 +941,7 @@ void MCU_PatchROM(mcu_t& mcu)
 
 uint8_t MCU_ReadP0(mcu_t& mcu)
 {
+    (void)mcu;
     return 0xff;
 }
 

@@ -74,5 +74,5 @@ struct pcm_t {
 
 void PCM_Write(pcm_t& pcm, uint32_t address, uint8_t data);
 uint8_t PCM_Read(pcm_t& pcm, uint32_t address);
-void PCM_Reset(pcm_t& pcm, mcu_t& mcu);
+void PCM_Init(pcm_t& pcm, mcu_t& mcu);
 void PCM_Update(pcm_t& pcm, uint64_t cycles);

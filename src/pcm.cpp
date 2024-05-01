@@ -261,7 +261,7 @@ uint8_t PCM_Read(pcm_t& pcm, uint32_t address)
     return 0;
 }
 
-void PCM_Reset(pcm_t& pcm, mcu_t& mcu)
+void PCM_Init(pcm_t& pcm, mcu_t& mcu)
 {
     memset(&pcm, 0, sizeof(pcm));
     pcm.mcu = &mcu;

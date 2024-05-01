@@ -308,7 +308,13 @@ void SM_SetStatus(submcu_t& sm, uint32_t condition, uint32_t mask)
         sm.sr &= ~mask;
 }
 
-void SM_Reset(submcu_t& sm, mcu_t& mcu)
+void SM_Init(submcu_t& sm, mcu_t& mcu)
+{
+    memset(&sm, 0, sizeof(submcu_t));
+    sm.mcu = &mcu;
+}
+
+void SM_Reset(submcu_t& sm)
 {
     sm.pc = SM_GetVectorAddress(sm, SM_VECTOR_RESET);
     sm.a = 0;
@@ -318,24 +324,6 @@ void SM_Reset(submcu_t& sm, mcu_t& mcu)
     sm.sr = 0;
     sm.cycles = 0;
     sm.sleep = 0;
-    sm.mcu = &mcu;
-
-    memset(sm.sm_ram, 0, sizeof(sm.sm_ram));
-    memset(sm.sm_shared_ram, 0, sizeof(sm.sm_shared_ram));
-    memset(sm.sm_access, 0, sizeof(sm.sm_access));
-
-    sm.sm_p0_dir = 0;
-    sm.sm_p1_dir = 0;
-
-    memset(sm.sm_device_mode, 0, sizeof(sm.sm_device_mode));
-
-    sm.sm_cts = 0;
-
-    sm.sm_timer_cycles = 0;
-    sm.sm_timer_prescaler = 0;
-    sm.sm_timer_counter = 0;
-
-    sm.uart_rx_gotbyte = 0;
 }
 
 uint8_t SM_ReadAdvance(submcu_t& sm)
