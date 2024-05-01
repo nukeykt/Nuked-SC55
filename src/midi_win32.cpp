@@ -94,7 +94,15 @@ void CALLBACK MIDI_Callback(
         case MIM_LONGDATA:
         case MIM_LONGERROR:
         {
-            midiInUnprepareHeader(midi_handle, &midi_buffer, sizeof(MIDIHDR));
+            MMRESULT result = midiInUnprepareHeader(midi_handle, &midi_buffer, sizeof(MIDIHDR));
+            if (result == MMSYSERR_INVALHANDLE)
+            {
+                // If this happens, the frontend probably called MIDI_Quit and
+                // midi_frontend is no longer valid. We got here because this
+                // callback is running in a separate thread and might be called
+                // after MIDI_Quit.
+                break;
+            }
 
             if (wMsg == MIM_LONGDATA)
             {
