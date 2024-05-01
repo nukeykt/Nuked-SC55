@@ -174,8 +174,6 @@ const char* roms[ROM_SET_COUNT][5] =
     "rom_sm.bin",
 };
 
-uint8_t tempbuf[0x800000];
-
 void unscramble(uint8_t *src, uint8_t *dst, int len)
 {
     for (int i = 0; i < len; i++)
@@ -200,26 +198,6 @@ void unscramble(uint8_t *src, uint8_t *dst, int len)
                 data |= 1<<j;
         }
         dst[i] = data;
-    }
-}
-
-static const size_t rf_num = 5;
-static FILE *s_rf[rf_num] =
-{
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr
-};
-
-static void closeAllR()
-{
-    for(size_t i = 0; i < rf_num; ++i)
-    {
-        if(s_rf[i])
-            fclose(s_rf[i]);
-        s_rf[i] = nullptr;
     }
 }
 
@@ -249,8 +227,36 @@ int EMU_DetectRomset(const std::string& basePath)
     return ROM_SET_MK2;
 }
 
+void EMU_CloseAll(FILE** files, size_t count)
+{
+    for (size_t i = 0; i < count; ++i)
+    {
+        if (files[i])
+            fclose(files[i]);
+        files[i] = nullptr;
+    }
+}
+
 bool EMU_LoadRoms(emu_backend_t& emu, int romset, const std::string& basePath)
 {
+    uint8_t* tempbuf = (uint8_t*)malloc(0x800000);
+    if (!tempbuf)
+    {
+        fprintf(stderr, "FATAL ERROR: Failed to allocate tempbuf\n");
+        fflush(stderr);
+        return false;
+    }
+
+    const size_t rf_num = 5;
+    FILE *s_rf[rf_num] =
+    {
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr
+    };
+
     emu.mcu->romset = romset;
     emu.mcu->mcu_mk1 = false;
     emu.mcu->mcu_cm300 = false;
@@ -318,7 +324,8 @@ bool EMU_LoadRoms(emu_backend_t& emu, int romset, const std::string& basePath)
     {
         fprintf(stderr, "FATAL ERROR: One of required data ROM files is missing: %s.\n", errors_list.c_str());
         fflush(stderr);
-        closeAllR();
+        EMU_CloseAll(s_rf, rf_num);
+        free(tempbuf);
         return false;
     }
 
@@ -326,7 +333,8 @@ bool EMU_LoadRoms(emu_backend_t& emu, int romset, const std::string& basePath)
     {
         fprintf(stderr, "FATAL ERROR: Failed to read the mcu ROM1.\n");
         fflush(stderr);
-        closeAllR();
+        EMU_CloseAll(s_rf, rf_num);
+        free(tempbuf);
         return false;
     }
 
@@ -340,7 +348,8 @@ bool EMU_LoadRoms(emu_backend_t& emu, int romset, const std::string& basePath)
     {
         fprintf(stderr, "FATAL ERROR: Failed to read the mcu ROM2.\n");
         fflush(stderr);
-        closeAllR();
+        EMU_CloseAll(s_rf, rf_num);
+        free(tempbuf);
         return false;
     }
 
@@ -350,7 +359,8 @@ bool EMU_LoadRoms(emu_backend_t& emu, int romset, const std::string& basePath)
         {
             fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom1.\n");
             fflush(stderr);
-            closeAllR();
+            EMU_CloseAll(s_rf, rf_num);
+            free(tempbuf);
             return false;
         }
 
@@ -360,7 +370,8 @@ bool EMU_LoadRoms(emu_backend_t& emu, int romset, const std::string& basePath)
         {
             fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom2.\n");
             fflush(stderr);
-            closeAllR();
+            EMU_CloseAll(s_rf, rf_num);
+            free(tempbuf);
             return false;
         }
 
@@ -370,7 +381,8 @@ bool EMU_LoadRoms(emu_backend_t& emu, int romset, const std::string& basePath)
         {
             fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom3.\n");
             fflush(stderr);
-            closeAllR();
+            EMU_CloseAll(s_rf, rf_num);
+            free(tempbuf);
             return false;
         }
 
@@ -382,7 +394,8 @@ bool EMU_LoadRoms(emu_backend_t& emu, int romset, const std::string& basePath)
         {
             fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom1.\n");
             fflush(stderr);
-            closeAllR();
+            EMU_CloseAll(s_rf, rf_num);
+            free(tempbuf);
             return false;
         }
 
@@ -392,7 +405,8 @@ bool EMU_LoadRoms(emu_backend_t& emu, int romset, const std::string& basePath)
         {
             fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom2.\n");
             fflush(stderr);
-            closeAllR();
+            EMU_CloseAll(s_rf, rf_num);
+            free(tempbuf);
             return false;
         }
 
@@ -409,7 +423,8 @@ bool EMU_LoadRoms(emu_backend_t& emu, int romset, const std::string& basePath)
         {
             fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom1.\n");
             fflush(stderr);
-            closeAllR();
+            EMU_CloseAll(s_rf, rf_num);
+            free(tempbuf);
             return false;
         }
 
@@ -421,7 +436,8 @@ bool EMU_LoadRoms(emu_backend_t& emu, int romset, const std::string& basePath)
             {
                 fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom2.\n");
                 fflush(stderr);
-                closeAllR();
+                EMU_CloseAll(s_rf, rf_num);
+                free(tempbuf);
                 return false;
             }
 
@@ -432,13 +448,15 @@ bool EMU_LoadRoms(emu_backend_t& emu, int romset, const std::string& basePath)
         {
             fprintf(stderr, "FATAL ERROR: Failed to read the sub mcu ROM.\n");
             fflush(stderr);
-            closeAllR();
+            EMU_CloseAll(s_rf, rf_num);
+            free(tempbuf);
             return false;
         }
     }
 
     // Close all files as they no longer needed being open
-    closeAllR();
+    EMU_CloseAll(s_rf, rf_num);
+    free(tempbuf);
 
     return true;
 }
