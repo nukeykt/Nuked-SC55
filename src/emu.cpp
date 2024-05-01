@@ -39,9 +39,9 @@
 #include "pcm.h"
 #include "utils/files.h"
 
-bool EMU_Init(emu_backend_t& emu)
+bool EMU_Init(emu_t& emu)
 {
-    memset(&emu, 0, sizeof(emu_backend_t));
+    memset(&emu, 0, sizeof(emu_t));
 
     emu.mcu = (mcu_t*)malloc(sizeof(mcu_t));
     if (!emu.mcu)
@@ -98,7 +98,7 @@ bool EMU_Init(emu_backend_t& emu)
     return true;
 }
 
-void EMU_Free(emu_backend_t& emu)
+void EMU_Free(emu_t& emu)
 {
     if (emu.lcd)
     {
@@ -131,7 +131,7 @@ void EMU_Free(emu_backend_t& emu)
     }
 }
 
-void EMU_Reset(emu_backend_t& emu)
+void EMU_Reset(emu_t& emu)
 {
     MCU_PatchROM(*emu.mcu);
     MCU_Reset(*emu.mcu);
@@ -270,7 +270,7 @@ void EMU_CloseAll(FILE** files, size_t count)
     }
 }
 
-bool EMU_LoadRoms(emu_backend_t& emu, int romset, const std::string& basePath)
+bool EMU_LoadRoms(emu_t& emu, int romset, const std::string& basePath)
 {
     uint8_t* tempbuf = (uint8_t*)malloc(0x800000);
     if (!tempbuf)

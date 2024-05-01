@@ -55,9 +55,9 @@
 #endif
 
 struct fe_emu_instance_t {
-    emu_backend_t emu;
-    ringbuffer_t  sample_buffer;
-    SDL_Thread*   thread;
+    emu_t        emu;
+    ringbuffer_t sample_buffer;
+    SDL_Thread*  thread;
 };
 
 const size_t FE_MAX_INSTANCES = 16;
