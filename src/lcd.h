@@ -51,8 +51,6 @@ struct lcd_t {
     int lcd_width;
     int lcd_height;
 
-    uint32_t lcd_init;
-
     uint32_t LCD_DL, LCD_N, LCD_F, LCD_D, LCD_C, LCD_B, LCD_ID, LCD_S;
     uint32_t LCD_DD_RAM, LCD_AC, LCD_CG_RAM;
     uint32_t LCD_RAM_MODE;

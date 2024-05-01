@@ -211,9 +211,6 @@ void LCD_LoadBack(lcd_t& lcd, const std::string& path)
 
 bool LCD_Init(lcd_t& lcd, mcu_t& mcu)
 {
-    if (lcd.lcd_init)
-        return false;
-
     memset(&lcd, 0, sizeof(lcd_t));
     lcd.mcu = &mcu;
 
@@ -245,14 +242,12 @@ bool LCD_Init(lcd_t& lcd, mcu_t& mcu)
     if (!lcd.texture)
         return false;
 
-    lcd.lcd_init = 1;
     return true;
 }
 
 void LCD_UnInit(lcd_t& lcd)
 {
-    if (!lcd.lcd_init)
-        return;
+    (void)lcd;
 }
 
 uint32_t lcd_col1 = 0x000000;
@@ -396,9 +391,6 @@ void LCD_FontRenderLR(lcd_t& lcd, uint8_t ch)
 
 void LCD_Update(lcd_t& lcd)
 {
-    if (!lcd.lcd_init)
-        return;
-
     if (!lcd.mcu->mcu_cm300 && !lcd.mcu->mcu_st && !lcd.mcu->mcu_scb55)
     {
         MCU_WorkThread_Lock(*lcd.mcu);
