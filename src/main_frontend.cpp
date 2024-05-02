@@ -257,11 +257,6 @@ bool FE_OpenAudio(frontend_t& fe, int deviceIndex, int pageSize, int pageNum)
     return true;
 }
 
-void FE_CloseAudio(void)
-{
-    SDL_CloseAudio();
-}
-
 enum class ResetType {
     NONE,
     GS_RESET,
@@ -406,11 +401,14 @@ void FE_DestroyInstance(fe_emu_instance_t& fe)
 
 void FE_Quit(frontend_t& container)
 {
+    // Important to close audio devices first since this will stop the SDL
+    // audio thread. Otherwise we might get a UAF destroying ringbuffers
+    // while they're still in use.
+    SDL_CloseAudioDevice(container.sdl_audio);
     for (size_t i = 0; i < container.instances_in_use; ++i)
     {
         FE_DestroyInstance(container.instances[i]);
     }
-    FE_CloseAudio();
     MIDI_Quit();
     SDL_Quit();
 }
