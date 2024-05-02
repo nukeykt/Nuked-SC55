@@ -138,6 +138,12 @@ void EMU_Reset(emu_t& emu)
     SM_Reset(*emu.sm);
 }
 
+void EMU_SetSampleCallback(emu_t& emu, mcu_sample_callback callback, void* userdata)
+{
+    emu.mcu->callback_userdata = userdata;
+    emu.mcu->sample_callback = callback;
+}
+
 const char* rs_name[ROM_SET_COUNT] = {
     "SC-55mk2",
     "SC-55st",

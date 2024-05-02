@@ -130,18 +130,6 @@ void FE_RouteMIDI(frontend_t& fe, uint8_t* first, uint8_t* last)
     }
 }
 
-void FE_StepBegin(void* userdata)
-{
-    fe_emu_instance_t& fe = *(fe_emu_instance_t*)userdata;
-    RB_SetOversamplingEnabled(fe.sample_buffer, fe.emu.pcm->config_reg_3c & 0x40);
-}
-
-bool FE_Wait(void* userdata)
-{
-    fe_emu_instance_t& fe = *(fe_emu_instance_t*)userdata;
-    return RB_IsFull(fe.sample_buffer);
-}
-
 void FE_ReceiveSample(void* userdata, int *sample)
 {
     fe_emu_instance_t& fe = *(fe_emu_instance_t*)userdata;
@@ -309,6 +297,17 @@ int SDLCALL FE_RunInstance(void* userdata)
     MCU_WorkThread_Lock(*instance.emu.mcu);
     while (instance.running)
     {
+        RB_SetOversamplingEnabled(instance.sample_buffer, instance.emu.pcm->config_reg_3c & 0x40);
+        if (RB_IsFull(instance.sample_buffer))
+        {
+            MCU_WorkThread_Unlock(*instance.emu.mcu);
+            while (RB_IsFull(instance.sample_buffer))
+            {
+                SDL_Delay(1);
+            }
+            MCU_WorkThread_Lock(*instance.emu.mcu);
+        }
+
         MCU_Step(*instance.emu.mcu);
     }
     MCU_WorkThread_Unlock(*instance.emu.mcu);
@@ -382,11 +381,8 @@ bool FE_CreateInstance(frontend_t& container, const std::string& basePath, int r
         fprintf(stderr, "ERROR: Failed to init emulator.\n");
         return false;
     }
-    // TODO: Clean up, shouldn't need to reach into emu for this
-    fe->emu.mcu->callback_userdata = fe;
-    fe->emu.mcu->step_begin_callback = FE_StepBegin;
-    fe->emu.mcu->sample_callback = FE_ReceiveSample;
-    fe->emu.mcu->wait_callback = FE_Wait;
+
+    EMU_SetSampleCallback(fe->emu, FE_ReceiveSample, fe);
 
     LCD_LoadBack(*fe->emu.lcd, basePath + "/back.data");
 

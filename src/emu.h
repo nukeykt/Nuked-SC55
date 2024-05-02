@@ -33,9 +33,9 @@
  */
 #pragma once
 
+#include "mcu.h"
 #include <string>
 
-struct mcu_t;
 struct submcu_t;
 struct mcu_timer_t;
 struct lcd_t;
@@ -54,6 +54,8 @@ void EMU_Free(emu_t& emu);
 
 // Should be called after loading roms
 void EMU_Reset(emu_t& emu);
+
+void EMU_SetSampleCallback(emu_t& emu, mcu_sample_callback callback, void* userdata);
 
 int EMU_DetectRomset(const std::string& basePath);
 bool EMU_LoadRoms(emu_t& emu, int romset, const std::string& basePath);

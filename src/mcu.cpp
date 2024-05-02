@@ -765,6 +765,12 @@ void MCU_ReadInstruction(mcu_t& mcu)
     }
 }
 
+void MCU_DefaultSampleCallback(void* userdata, int* sample)
+{
+    (void)userdata;
+    (void)sample;
+}
+
 bool MCU_Init(mcu_t& mcu, submcu_t& sm, pcm_t& pcm, mcu_timer_t& timer, lcd_t& lcd)
 {
     memset(&mcu, 0, sizeof(mcu_t));
@@ -775,6 +781,7 @@ bool MCU_Init(mcu_t& mcu, submcu_t& sm, pcm_t& pcm, mcu_timer_t& timer, lcd_t& l
     mcu.lcd = &lcd;
     mcu.romset = ROM_SET_MK2;
     mcu.rom2_mask = ROM2_SIZE - 1;
+    mcu.sample_callback = MCU_DefaultSampleCallback;
     mcu.work_thread_lock = SDL_CreateMutex();
     if (!mcu.work_thread_lock)
     {
@@ -878,18 +885,6 @@ void MCU_WorkThread_Unlock(mcu_t& mcu)
 
 void MCU_Step(mcu_t& mcu)
 {
-    mcu.step_begin_callback(mcu.callback_userdata);
-
-    if (mcu.wait_callback(mcu.callback_userdata))
-    {
-        MCU_WorkThread_Unlock(mcu);
-        while (mcu.wait_callback(mcu.callback_userdata))
-        {
-            SDL_Delay(1);
-        }
-        MCU_WorkThread_Lock(mcu);
-    }
-
     if (!mcu.ex_ignore)
         MCU_Interrupt_Handle(mcu);
     else

@@ -188,9 +188,7 @@ static const int ROMSM_SIZE = 0x1000;
 
 static const uint32_t uart_buffer_size = 8192;
 
-typedef void(*mcu_step_begin_callback)(void* userdata);
 typedef void(*mcu_sample_callback)(void* userdata, int* sample);
-typedef bool(*mcu_wait_callback)(void* userdata);
 
 struct mcu_t {
     uint16_t r[8];
@@ -268,9 +266,6 @@ struct mcu_t {
     uint8_t opcode_extended;
 
     void* callback_userdata;
-    mcu_step_begin_callback step_begin_callback;
-    // if FE doesn't need more samples, returns true to signal for the mcu to wait
-    mcu_wait_callback wait_callback;
     mcu_sample_callback sample_callback;
 
     SDL_mutex *work_thread_lock;
