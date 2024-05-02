@@ -58,6 +58,7 @@ struct fe_emu_instance_t {
     emu_t        emu;
     ringbuffer_t sample_buffer;
     SDL_Thread*  thread;
+    bool         running;
 };
 
 const size_t FE_MAX_INSTANCES = 16;
@@ -80,6 +81,7 @@ bool FE_AllocateInstance(frontend_t& container, fe_emu_instance_t** result)
     }
 
     fe_emu_instance_t& fe = container.instances[container.instances_in_use];
+    memset(&fe, 0, sizeof(fe_emu_instance_t));
     ++container.instances_in_use;
 
     if (result)
@@ -300,18 +302,16 @@ void MIDI_Reset(mcu_t& mcu, ResetType resetType)
 
 }
 
-static bool work_thread_run = false;
-
-int SDLCALL FE_RunMCU(void* data)
+int SDLCALL FE_RunInstance(void* userdata)
 {
-    mcu_t& mcu = *(mcu_t*)data;
+    fe_emu_instance_t& instance = *(fe_emu_instance_t*)userdata;
 
-    MCU_WorkThread_Lock(mcu);
-    while (work_thread_run)
+    MCU_WorkThread_Lock(*instance.emu.mcu);
+    while (instance.running)
     {
-        MCU_Step(mcu);
+        MCU_Step(*instance.emu.mcu);
     }
-    MCU_WorkThread_Unlock(mcu);
+    MCU_WorkThread_Unlock(*instance.emu.mcu);
 
     return 0;
 }
@@ -320,11 +320,10 @@ void FE_Run(frontend_t& fe)
 {
     bool working = true;
 
-    work_thread_run = true;
-
     for (size_t i = 0; i < fe.instances_in_use; ++i)
     {
-        fe.instances[i].thread = SDL_CreateThread(FE_RunMCU, "work thread", fe.instances[i].emu.mcu);
+        fe.instances[i].running = true;
+        fe.instances[i].thread = SDL_CreateThread(FE_RunInstance, "work thread", &fe.instances[i]);
     }
 
     while (working)
@@ -349,9 +348,9 @@ void FE_Run(frontend_t& fe)
         SDL_Delay(15);
     }
 
-    work_thread_run = false;
     for (size_t i = 0; i < fe.instances_in_use; ++i)
     {
+        fe.instances[i].running = false;
         SDL_WaitThread(fe.instances[i].thread, 0);
     }
 }
@@ -406,6 +405,7 @@ void FE_DestroyInstance(fe_emu_instance_t& fe)
     EMU_Free(fe.emu);
     RB_Free(fe.sample_buffer);
     fe.thread = nullptr;
+    fe.running = false;
 }
 
 void FE_Quit(frontend_t& container)
