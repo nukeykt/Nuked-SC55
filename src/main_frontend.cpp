@@ -134,37 +134,34 @@ void FE_ReceiveSample(void* userdata, int *sample)
 {
     fe_emu_instance_t& fe = *(fe_emu_instance_t*)userdata;
     sample[0] >>= 15;
-    if (sample[0] > INT16_MAX)
-        sample[0] = INT16_MAX;
-    else if (sample[0] < INT16_MIN)
-        sample[0] = INT16_MIN;
     sample[1] >>= 15;
-    if (sample[1] > INT16_MAX)
-        sample[1] = INT16_MAX;
-    else if (sample[1] < INT16_MIN)
-        sample[1] = INT16_MIN;
-    RB_Write(fe.sample_buffer, sample[0], sample[1]);
+
+    audio_frame_t frame;
+    frame.left = (int16_t)clamp<int>(sample[0], INT16_MIN, INT16_MAX);
+    frame.right = (int16_t)clamp<int>(sample[1], INT16_MIN, INT16_MAX);
+
+    RB_Write(fe.sample_buffer, frame);
 }
 
 void FE_AudioCallback(void* userdata, Uint8* stream, int len)
 {
     frontend_t& frontend = *(frontend_t*)userdata;
 
-    const size_t num_samples = len / sizeof(int16_t);
+    const size_t num_frames = len / sizeof(audio_frame_t);
     memset(stream, 0, len);
 
-    size_t renderable_count = num_samples;
+    size_t renderable_count = num_frames;
     for (size_t i = 0; i < frontend.instances_in_use; ++i)
     {
         renderable_count = min(
             renderable_count,
-            RB_ReadableSampleCount(frontend.instances[i].sample_buffer)
+            RB_ReadableFrameCount(frontend.instances[i].sample_buffer)
         );
     }
 
     for (size_t i = 0; i < frontend.instances_in_use; ++i)
     {
-        RB_ReadMix(frontend.instances[i].sample_buffer, (int16_t*)stream, renderable_count);
+        RB_ReadMix(frontend.instances[i].sample_buffer, (audio_frame_t*)stream, renderable_count);
     }
 }
 
