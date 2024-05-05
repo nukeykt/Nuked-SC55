@@ -923,40 +923,13 @@ void MCU_UpdateUART_TX(void)
     // printf("tx:%x\n", dev_register[DEV_TDR]);
 }
 
-static bool work_thread_run = false;
-
-static SDL_mutex *work_thread_lock;
-
-void MCU_WorkThread_Lock(void)
+int SDLCALL work_thread(void)
 {
-    SDL_LockMutex(work_thread_lock);
-}
-
-void MCU_WorkThread_Unlock(void)
-{
-    SDL_UnlockMutex(work_thread_lock);
-}
-
-int SDLCALL work_thread(void* data)
-{
-    work_thread_lock = SDL_CreateMutex();
-
-    MCU_WorkThread_Lock();
-    while (work_thread_run)
     {
         if (pcm.config_reg_3c & 0x40)
             sample_write_ptr &= ~3;
         else
             sample_write_ptr &= ~1;
-        if (sample_read_ptr == sample_write_ptr)
-        {
-            MCU_WorkThread_Unlock();
-            while (sample_read_ptr == sample_write_ptr)
-            {
-                SDL_Delay(1);
-            }
-            MCU_WorkThread_Lock();
-        }
 
         if (!mcu.ex_ignore)
             MCU_Interrupt_Handle();
@@ -998,9 +971,6 @@ int SDLCALL work_thread(void* data)
             }
         }
     }
-    MCU_WorkThread_Unlock();
-
-    SDL_DestroyMutex(work_thread_lock);
 
     return 0;
 }
@@ -1008,21 +978,23 @@ int SDLCALL work_thread(void* data)
 static void MCU_Run()
 {
     bool working = true;
+    Uint64 counts_per_second = SDL_GetPerformanceFrequency();
 
-    work_thread_run = true;
-    SDL_Thread *thread = SDL_CreateThread(work_thread, "work thread", 0);
-
+    Uint64 start_count = SDL_GetPerformanceCounter();
     while (working)
     {
         if(LCD_QuitRequested())
             working = false;
 
-        LCD_Update();
-        SDL_Delay(15);
-    }
+        work_thread();
+        Uint64 end_count = SDL_GetPerformanceCounter();
 
-    work_thread_run = false;
-    SDL_WaitThread(thread, 0);
+        if( ( end_count - start_count ) > ( 1.0/60.0 * counts_per_second ) )
+        {
+            start_count = SDL_GetPerformanceCounter();
+            LCD_Update();
+        }
+    }
 }
 
 void MCU_PatchROM(void)

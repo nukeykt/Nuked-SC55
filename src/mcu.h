@@ -450,6 +450,3 @@ void MCU_EncoderTrigger(int dir);
 
 void MCU_PostSample(int *sample);
 void MCU_PostUART(uint8_t data);
-
-void MCU_WorkThread_Lock(void);
-void MCU_WorkThread_Unlock(void);
