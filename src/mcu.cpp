@@ -58,7 +58,9 @@ const char* rs_name[ROM_SET_COUNT] = {
     "CM-300/SCC-1",
     "JV-880",
     "SCB-55",
-    "RLP-3237"
+    "RLP-3237",
+    "SC-155",
+    "SC-155mk2"
 };
 
 const char* roms[ROM_SET_COUNT][5] =
@@ -104,6 +106,18 @@ const char* roms[ROM_SET_COUNT][5] =
     "rlp3237_waverom1.bin",
     "",
     "",
+
+    "sc155_rom1.bin",
+    "sc155_rom2.bin",
+    "sc155_waverom1.bin",
+    "sc155_waverom2.bin",
+    "sc155_waverom3.bin",
+
+    "rom1.bin",
+    "rom2.bin",
+    "waverom1.bin",
+    "waverom2.bin",
+    "rom_sm.bin",
 };
 
 int romset = ROM_SET_MK2;
@@ -136,6 +150,7 @@ int mcu_cm300 = 0; // 0 - SC-55, 1 - CM-300/SCC-1
 int mcu_st = 0; // 0 - SC-55mk2, 1 - SC-55ST
 int mcu_jv880 = 0; // 0 - SC-55, 1 - JV880
 int mcu_scb55 = 0; // 0 - sub mcu (e.g SC-55mk2), 1 - no sub mcu (e.g SCB-55)
+int mcu_sc155 = 0; // 0 - SC-55(MK2), 1 - SC-155(MK2)
 
 static int ga_int[8];
 static int ga_int_enable = 0;
@@ -167,6 +182,20 @@ enum {
     ANALOG_LEVEL_BATTERY = 0x2a0,
 };
 
+uint16_t MCU_SC155Sliders(uint32_t index)
+{
+    // 0 - 1/9
+    // 1 - 2/10
+    // 2 - 3/11
+    // 3 - 4/12
+    // 4 - 5/13
+    // 5 - 6/14
+    // 6 - 7/15
+    // 7 - 8/16
+    // 8 - ALL
+    return 0x0;
+}
+
 uint16_t MCU_AnalogReadPin(uint32_t pin)
 {
     if (mcu_cm300)
@@ -177,39 +206,69 @@ uint16_t MCU_AnalogReadPin(uint32_t pin)
             return ANALOG_LEVEL_BATTERY;
         return 0x3ff;
     }
-    uint8_t rcu;
-    if (pin == 7)
+    if (0)
     {
-        if (mcu_mk1)
-            return ANALOG_LEVEL_BATTERY;
-        switch ((io_sd >> 2) & 3)
-        {
-        case 0: // Battery voltage
-            return ANALOG_LEVEL_BATTERY;
-        case 1: // NC
-            return 0;
-        case 2: // SW
-            switch (sw_pos)
-            {
-            case 0:
-            default:
-                return ANALOG_LEVEL_SW_0;
-            case 1:
-                return ANALOG_LEVEL_SW_1;
-            case 2:
-                return ANALOG_LEVEL_SW_2;
-            case 3:
-                return ANALOG_LEVEL_SW_3;
-            }
-        case 3: // RCU
-            break;
-        }
+READ_RCU:
+        uint8_t rcu = RCU_Read();
+        if (rcu & (1 << pin))
+            return ANALOG_LEVEL_RCU_HIGH;
+        else
+            return ANALOG_LEVEL_RCU_LOW;
     }
-    rcu = RCU_Read();
-    if (rcu & (1 << pin))
-        return ANALOG_LEVEL_RCU_HIGH;
+    if (mcu_mk1)
+    {
+        if (mcu_sc155 && (dev_register[DEV_P9DR] & 1) != 0)
+        {
+            return MCU_SC155Sliders(pin);
+        }
+        if (pin == 7)
+        {
+            if (mcu_sc155 && (dev_register[DEV_P9DR] & 2) != 0)
+                return MCU_SC155Sliders(8);
+            else
+                return ANALOG_LEVEL_BATTERY;
+        }
+        else
+            goto READ_RCU;
+    }
     else
-        return ANALOG_LEVEL_RCU_LOW;
+    {
+        if (mcu_sc155 && (io_sd & 16) != 0)
+        {
+            return MCU_SC155Sliders(pin);
+        }
+        if (pin == 7)
+        {
+            if (mcu_mk1)
+                return ANALOG_LEVEL_BATTERY;
+            switch ((io_sd >> 2) & 3)
+            {
+            case 0: // Battery voltage
+                return ANALOG_LEVEL_BATTERY;
+            case 1: // NC
+                if (mcu_sc155)
+                    return MCU_SC155Sliders(8);
+                return 0;
+            case 2: // SW
+                switch (sw_pos)
+                {
+                case 0:
+                default:
+                    return ANALOG_LEVEL_SW_0;
+                case 1:
+                    return ANALOG_LEVEL_SW_1;
+                case 2:
+                    return ANALOG_LEVEL_SW_2;
+                case 3:
+                    return ANALOG_LEVEL_SW_3;
+                }
+            case 3: // RCU
+                goto READ_RCU;
+            }
+        }
+        else
+            goto READ_RCU;
+    }
 }
 
 void MCU_AnalogSample(int channel)
@@ -408,7 +467,7 @@ uint8_t MCU_DeviceRead(uint32_t address)
     {
         int cfg = 0;
         if (!mcu_mk1)
-            cfg = 2; // bit 1: 0 - SC-155mk2 (???), 1 - SC-55mk2
+            cfg = mcu_sc155 ? 0 : 2; // bit 1: 0 - SC-155mk2 (???), 1 - SC-55mk2
 
         int dir = dev_register[DEV_P9DDR];
 
@@ -573,11 +632,13 @@ uint8_t MCU_Read(uint32_t address)
                     uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
 
                     if ((io_sd & 1) == 0)
-                        data &= 0x80 | (((button_pressed >> 0) & 127) ^ 127);
+                        data &= ((button_pressed >> 0) & 255) ^ 255;
                     if ((io_sd & 2) == 0)
-                        data &= 0x80 | (((button_pressed >> 7) & 127) ^ 127);
+                        data &= ((button_pressed >> 8) & 255) ^ 255;
                     if ((io_sd & 4) == 0)
-                        data &= 0x80 | (((button_pressed >> 14) & 127) ^ 127);
+                        data &= ((button_pressed >> 16) & 255) ^ 255;
+                    if ((io_sd & 8) == 0)
+                        data &= ((button_pressed >> 24) & 255) ^ 255;
                     return data;
                 }
                 else if (address == 0xf106)
@@ -1046,11 +1107,13 @@ uint8_t MCU_ReadP1(void)
     uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
 
     if ((mcu_p0_data & 1) == 0)
-        data &= 0x80 | (((button_pressed >> 0) & 127) ^ 127);
+        data &= ((button_pressed >> 0) & 255) ^ 255;
     if ((mcu_p0_data & 2) == 0)
-        data &= 0x80 | (((button_pressed >> 7) & 127) ^ 127);
+        data &= ((button_pressed >> 8) & 255) ^ 255;
     if ((mcu_p0_data & 4) == 0)
-        data &= 0x80 | (((button_pressed >> 14) & 127) ^ 127);
+        data &= ((button_pressed >> 16) & 255) ^ 255;
+    if ((mcu_p0_data & 8) == 0)
+        data &= ((button_pressed >> 24) & 255) ^ 255;
 
     return data;
 }
@@ -1399,6 +1462,16 @@ int main(int argc, char *argv[])
                 printf("  -gm                            Reset system in GM mode.\n");
                 return 0;
             }
+            else if (!strcmp(argv[i], "-sc155"))
+            {
+                romset = ROM_SET_SC155;
+                autodetect = false;
+            }
+            else if (!strcmp(argv[i], "-sc155mk2"))
+            {
+                romset = ROM_SET_SC155MK2;
+                autodetect = false;
+            }
         }
     }
 
@@ -1450,14 +1523,24 @@ int main(int argc, char *argv[])
     mcu_cm300 = false;
     mcu_st = false;
     mcu_jv880 = false;
+    mcu_scb55 = false;
+    mcu_sc155 = false;
     switch (romset)
     {
+        case ROM_SET_MK2:
+        case ROM_SET_SC155MK2:
+            if (romset == ROM_SET_SC155MK2)
+                mcu_sc155 = true;
+            break;
         case ROM_SET_ST:
             mcu_st = true;
             break;
         case ROM_SET_MK1:
+        case ROM_SET_SC155:
             mcu_mk1 = true;
             mcu_st = false;
+            if (romset == ROM_SET_SC155)
+                mcu_sc155 = true;
             break;
         case ROM_SET_CM300:
             mcu_mk1 = true;
