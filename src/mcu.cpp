@@ -1272,6 +1272,24 @@ void MIDI_Reset(ResetType resetType)
 
 }
 
+int MCU_stricmp(const char* a, const char* b)
+{
+    int lenA = strlen(a);
+    int lenB = strlen(b);
+    int len = lenA > lenB ? lenB : lenA;
+    int diff = lenA ^ lenB;
+    char chrA, chrB;
+    for (int i = 0; i < len && !diff; i++)
+    {
+        chrA = *(a + i);
+        chrA |= 0x20 * (chrA >= 'A' && chrA <= 'Z');
+        chrB = *(b + i);
+        chrB |= 0x20 * (chrB >= 'A' && chrB <= 'Z');
+        diff |= chrA ^ chrB;
+    }
+    return diff;
+}
+
 int main(int argc, char *argv[])
 {
     (void)argc;
@@ -1293,7 +1311,8 @@ int main(int argc, char *argv[])
             if (!strncmp(argv[i], "-p:", 3))
             {
                 port = atoi(argv[i] + 3);
-            } else if (!strncmp(argv[i], "-pn:", 4))
+            }
+            else if (!strncmp(argv[i], "-pn:", 4))
             {
                 pname = argv[i] + 4;
             }
@@ -1367,7 +1386,7 @@ int main(int argc, char *argv[])
         auto end = devices + length;
         while (start != end) {
             int len = strlen(start);
-            if (!strcmp(start, pname)) {
+            if (!MCU_stricmp(start, pname)) {
                 port = portNo;
                 break;
             }
@@ -1377,7 +1396,7 @@ int main(int argc, char *argv[])
         if (port != portNo) {
             printf("Port name \'%s\' not found.\n", pname);
         }
-        delete devices;
+        delete[] devices;
     }
 
 #if __linux__
