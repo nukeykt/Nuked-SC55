@@ -42,6 +42,7 @@
 #include "pcm.h"
 #include "lcd.h"
 #include "renderer.h"
+#include "gui.h"
 #include "submcu.h"
 #include "midi.h"
 #include "utf8main.h"
@@ -1122,11 +1123,14 @@ static void MCU_Run()
     {
         LCD_Update();
 
+        GUI_Update();
         REND_Render();
 
         SDL_Event sdl_event;
         while (SDL_PollEvent(&sdl_event))
         {
+            GUI_SDLEvent(&sdl_event);
+
             if (sdl_event.type == SDL_KEYDOWN)
             {
                 if (sdl_event.key.keysym.scancode == SDL_SCANCODE_COMMA)
@@ -1264,7 +1268,7 @@ static void MCU_Run()
                 }
             }
         }
-        SDL_Delay(15);
+        // SDL_Delay(15);
     }
 
     work_thread_run = false;
@@ -1928,6 +1932,7 @@ int main(int argc, char *argv[])
         fflush(stderr);
         return 0;
     }
+    GUI_Init();
     LCD_Init();
     MCU_Init();
     MCU_PatchROM();
@@ -1941,6 +1946,7 @@ int main(int argc, char *argv[])
 
     MCU_CloseAudio();
     MIDI_Quit();
+    GUI_Shutdown();
     LCD_UnInit();
     REND_Shutdown();
     SDL_Quit();

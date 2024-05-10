@@ -33,8 +33,11 @@
  */
 
 #include <SDL.h>
-#include "GL/gl3w.h"
+#include <SDL_opengl.h>
 #include <vector>
+#include "backends/imgui_impl_sdl2.h"
+#include "backends/imgui_impl_opengl3.h"
+#include "backends/imgui_impl_sdlrenderer2.h"
 #include "renderer.h"
 #include "mcu.h"
 #include "lcd.h"
@@ -58,23 +61,45 @@ struct lcdtexture_t {
 
 lcdtexture_t lcd_texture[lcd_maxtextures];
 
+#if 0
 GLuint shaders[2];
 GLuint program;
 GLuint vbo;
 GLuint vao;
 GLint texture_loc;
+#endif
+
+#define GLSLVERSION "#version 150"
 
 static bool LoadOpenGL()
 {
     const int major = 3;
     const int minor = 2;
+#if defined(__APPLE__)
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+#else
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+#endif
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, major);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, minor);
+
+#ifdef SDL_HINT_IME_SHOW_UI
+    SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
+#endif
+
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 
     context = SDL_GL_CreateContext(window);
     if (!context)
         return false;
 
+    SDL_GL_MakeCurrent(window, context);
+    SDL_GL_SetSwapInterval(1);
+
+#if 0
     if (gl3wInit())
     {
         return false;
@@ -84,10 +109,12 @@ static bool LoadOpenGL()
     {
         return false;
     }
+#endif
 
     return true;
 }
 
+#if 0
 static bool CompileShader(GLuint &shader, GLint stage, const char *src)
 {
     shader = glCreateShader(stage);
@@ -111,13 +138,15 @@ static bool CompileShader(GLuint &shader, GLint stage, const char *src)
 
     return true;
 }
+#endif
 
 static bool SetupOpenGL()
 {
     LoadOpenGL();
 
+#if 0
     static const char vertex_shader[] =
-        "#version 150\n"
+        GLSLVERSION "\n"
         "\n"
         "in vec4 vertex;\n"
         "out vec2 texcoord;\n"
@@ -129,7 +158,7 @@ static bool SetupOpenGL()
         "}\n"
         ;
     static const char fragment_shader[] =
-        "#version 150\n"
+        GLSLVERSION "\n"
         "\n"
         "in vec2 texcoord;\n"
         "out vec4 color;\n"
@@ -191,17 +220,19 @@ static bool SetupOpenGL()
 
     glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, NULL);
     glEnableVertexAttribArray(0);
-
+#endif
     return true;
 }
 
 static void DestroyOpenGL()
 {
+#if 0
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
     glDeleteProgram(program);
     glDeleteShader(shaders[0]);
     glDeleteShader(shaders[1]);
+#endif
 }
 
 bool REND_Init(rendapi api)
@@ -212,11 +243,11 @@ bool REND_Init(rendapi api)
 
     title += rs_name[romset];
 
-    int flags = SDL_WINDOW_SHOWN;
+    int flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
     if (rend_api == rendapi::opengl)
         flags |= SDL_WINDOW_OPENGL;
 
-    window = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, lcd_width, lcd_height, flags);
+    window = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1280, 720, flags);
     if (!window)
         return false;
 
@@ -227,13 +258,55 @@ bool REND_Init(rendapi api)
                 return false;
             break;
         case rendapi::sdl2:
-            renderer = SDL_CreateRenderer(window, -1, 0);
+            renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
             if (!renderer)
                 return false;
             break;
     }
 
     return true;
+}
+
+void REND_SetupImGui()
+{
+    switch (rend_api)
+    {
+        case rendapi::opengl:
+            ImGui_ImplSDL2_InitForOpenGL(window, context);
+            ImGui_ImplOpenGL3_Init(GLSLVERSION);
+            break;
+        case rendapi::sdl2:
+            ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
+            ImGui_ImplSDLRenderer2_Init(renderer);
+            break;
+    }
+}
+
+void REND_ShutdownImGui()
+{
+    switch (rend_api)
+    {
+        case rendapi::opengl:
+            ImGui_ImplOpenGL3_Shutdown();
+            break;
+        case rendapi::sdl2:
+            ImGui_ImplSDLRenderer2_Shutdown();
+            break;
+    }
+    ImGui_ImplSDL2_Shutdown();
+}
+
+void REND_BeginFrameImGui()
+{
+    switch (rend_api)
+    {
+        case rendapi::opengl:
+            ImGui_ImplOpenGL3_NewFrame();
+            break;
+        case rendapi::sdl2:
+            ImGui_ImplSDLRenderer2_NewFrame();
+            break;
+    }
 }
 
 int REND_SetupLCDTexture(uint32_t* ptr, int width, int height, int pitch)
@@ -276,6 +349,27 @@ int REND_SetupLCDTexture(uint32_t* ptr, int width, int height, int pitch)
     }
 
     return i;
+}
+
+ImTextureID REND_GetLCDTextureID(int id)
+{
+    if ((unsigned)id >= (unsigned)lcd_maxtextures)
+        return NULL;
+
+    lcdtexture_t &tex = lcd_texture[id];
+
+    if (!tex.use)
+        return NULL;
+
+    switch (rend_api)
+    {
+        case rendapi::opengl:
+            return (ImTextureID)tex.gl_texture;
+        case rendapi::sdl2:
+            return (ImTextureID)tex.sdl_texture;
+    }
+
+    return NULL;
 }
 
 void REND_FreeLCDTexture(int id)
@@ -348,19 +442,31 @@ void REND_Shutdown()
 
 void REND_Render()
 {
+    ImGuiIO& io = ImGui::GetIO();
     switch (rend_api)
     {
         case rendapi::opengl:
+            glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+            glClearColor(0, 0, 0, 1);
+            glClear(GL_COLOR_BUFFER_BIT);
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+#if 0
+            glViewport(0, 0, lcd_width, lcd_height);
             glUseProgram(program);
             glBindVertexArray(vao);
             glBindTexture(GL_TEXTURE_2D, lcd_texture[0].gl_texture);
             glProgramUniform1i(program, texture_loc, 0);
             glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-            glFinish();
+#endif
+
             SDL_GL_SwapWindow(window);
             break;
         case rendapi::sdl2:
-            SDL_RenderCopy(renderer, lcd_texture[0].sdl_texture, NULL, NULL);
+            SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+            SDL_RenderClear(renderer);
+            ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
             SDL_RenderPresent(renderer);
             break;
     }

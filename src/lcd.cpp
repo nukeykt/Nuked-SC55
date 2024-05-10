@@ -202,8 +202,8 @@ void LCD_UnInit(void)
         return;
 }
 
-uint32_t lcd_col1 = 0x000000;
-uint32_t lcd_col2 = 0x0050c8;
+uint32_t lcd_col1 = 0xff000000;
+uint32_t lcd_col2 = 0xff0050c8;
 
 void LCD_FontRenderStandard(int32_t x, int32_t y, uint8_t ch, bool overlay = false)
 {
