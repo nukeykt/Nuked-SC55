@@ -33,7 +33,7 @@
  */
 
 #include <SDL.h>
-#include <SDL_opengl.h>
+#include "GL\gl3w.h"
 #include <vector>
 #include "backends/imgui_impl_sdl2.h"
 #include "backends/imgui_impl_opengl3.h"
@@ -99,7 +99,6 @@ static bool LoadOpenGL()
     SDL_GL_MakeCurrent(window, context);
     SDL_GL_SetSwapInterval(1);
 
-#if 0
     if (gl3wInit())
     {
         return false;
@@ -109,7 +108,6 @@ static bool LoadOpenGL()
     {
         return false;
     }
-#endif
 
     return true;
 }
@@ -258,6 +256,7 @@ bool REND_Init(rendapi api)
                 return false;
             break;
         case rendapi::sdl2:
+            SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "best");
             renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
             if (!renderer)
                 return false;
@@ -335,10 +334,11 @@ int REND_SetupLCDTexture(uint32_t* ptr, int width, int height, int pitch)
             glBindTexture(GL_TEXTURE_2D, tex.gl_texture);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
                 GL_UNSIGNED_BYTE, NULL);
+            glGenerateMipmap(GL_TEXTURE_2D);
             break;
         case rendapi::sdl2:
             tex.sdl_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGR888, SDL_TEXTUREACCESS_STREAMING, width, height);
@@ -410,6 +410,7 @@ void REND_UpdateLCDTexture(int id)
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex.width, tex.height, 0, GL_RGBA,
                 GL_UNSIGNED_BYTE, tex.ptr);
             glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+            glGenerateMipmap(GL_TEXTURE_2D);
             break;
         case rendapi::sdl2:
             SDL_UpdateTexture(tex.sdl_texture, NULL, tex.ptr, tex.pitch * 4);

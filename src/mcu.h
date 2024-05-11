@@ -374,6 +374,13 @@ inline uint16_t MCU_PopStack(void)
 
 enum {
     // SC55
+    MCU_LED_STANDBY,
+    MCU_LED_INST_MUTE,
+    MCU_LED_INST_ALL
+};
+
+enum {
+    // SC55
     MCU_BUTTON_POWER = 0,
     MCU_BUTTON_INST_L = 3,
     MCU_BUTTON_INST_R = 4,
@@ -454,6 +461,8 @@ extern int mcu_scb55;
 extern int mcu_sc155;
 
 extern SDL_atomic_t mcu_button_pressed;
+extern uint32_t mcu_button_pressed_gui;
+extern uint32_t mcu_led;
 
 static const uint32_t uart_buffer_size = 8192;
 extern uint32_t uart_write_ptr;

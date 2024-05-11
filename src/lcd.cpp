@@ -352,7 +352,11 @@ void LCD_Update(void)
 
         if (!lcd_enable && !mcu_jv880)
         {
-            memset(lcd_buffer, 0, sizeof(lcd_buffer));
+            for (size_t i = 0; i < lcd_height; i++) {
+                for (size_t j = 0; j < lcd_width; j++) {
+                    lcd_buffer[i][j] = 0xFF000000;
+                }
+            }
         }
         else
         {

@@ -169,6 +169,10 @@ static uint8_t io_sd = 0x00;
 
 SDL_atomic_t mcu_button_pressed = { 0 };
 
+uint32_t mcu_button_pressed_gui;
+uint32_t mcu_button_pressed_kb;
+uint32_t mcu_led;
+
 uint8_t RCU_Read(void)
 {
     return 0;
@@ -1152,7 +1156,6 @@ static void MCU_Run()
                         continue;
                 
                     int mask = 0;
-                    uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
 
                     auto button_map = mcu_jv880 ? button_map_jv880 : button_map_sc55;
                     auto button_size = (mcu_jv880 ? sizeof(button_map_jv880) : sizeof(button_map_sc55)) / sizeof(button_map_sc55[0]);
@@ -1163,11 +1166,9 @@ static void MCU_Run()
                     }
 
                     if (sdl_event.type == SDL_KEYDOWN)
-                        button_pressed |= mask;
+                        mcu_button_pressed_kb |= mask;
                     else
-                        button_pressed &= ~mask;
-
-                    SDL_AtomicSet(&mcu_button_pressed, (int)button_pressed);
+                        mcu_button_pressed_kb &= ~mask;
 
 #if 0
                     if (sdl_event.key.keysym.scancode >= SDL_SCANCODE_1 && sdl_event.key.keysym.scancode < SDL_SCANCODE_0)
@@ -1268,6 +1269,8 @@ static void MCU_Run()
                 }
             }
         }
+
+        SDL_AtomicSet(&mcu_button_pressed, (int)(mcu_button_pressed_kb | mcu_button_pressed_gui));
         // SDL_Delay(15);
     }
 
@@ -1310,6 +1313,13 @@ uint8_t MCU_ReadP1(void)
 void MCU_WriteP0(uint8_t data)
 {
     mcu_p0_data = data;
+    mcu_led = 0;
+    if ((mcu_p0_data & 16) == 0)
+        mcu_led |= 1 << MCU_LED_STANDBY;
+    if ((mcu_p0_data & 32) == 0)
+        mcu_led |= 1 << MCU_LED_INST_MUTE;
+    if ((mcu_p0_data & 64) == 0)
+        mcu_led |= 1 << MCU_LED_INST_ALL;
 }
 
 void MCU_WriteP1(uint8_t data)
