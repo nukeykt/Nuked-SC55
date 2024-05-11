@@ -544,6 +544,17 @@ void MCU_UpdateAnalog(uint64_t cycles)
         analog_end_time = 0;
 }
 
+void MCU_UpdateLEDMK1()
+{
+    mcu_led = 0;
+    if ((io_sd & 16) == 0)
+        mcu_led |= 1 << MCU_LED_STANDBY;
+    if ((io_sd & 32) == 0)
+        mcu_led |= 1 << MCU_LED_INST_MUTE;
+    if ((io_sd & 64) == 0)
+        mcu_led |= 1 << MCU_LED_INST_ALL;
+}
+
 mcu_t mcu;
 
 uint8_t rom1[ROM1_SIZE];
@@ -634,6 +645,7 @@ uint8_t MCU_Read(uint32_t address)
                         return 0xff;
 
                     LCD_Enable((io_sd & 8) != 0);
+                    MCU_UpdateLEDMK1();
 
                     uint8_t data = 0xff;
                     uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
@@ -841,6 +853,7 @@ void MCU_Write(uint32_t address, uint8_t value)
                 {
                     io_sd = address & 0xff;
                     LCD_Enable((io_sd & 8) != 0);
+                    MCU_UpdateLEDMK1();
                 }
                 else if (address == 0xf105)
                 {

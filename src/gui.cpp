@@ -208,7 +208,7 @@ void GUI_DrawFaceSC55(bool sc155 = false)
 
     draw_list->AddCircleFilled(
         ImVec2(0.56 * window_size.y + window_pos.x, 0.20 * window_size.y + window_pos.y),
-        window_pos.y * 0.025,
+        window_size.y * 0.015,
         standby ? IM_COL32(255, 95, 15, 255) : IM_COL32_BLACK);
 
     // LCD Screen
@@ -333,7 +333,7 @@ void GUI_DrawFaceSC55(bool sc155 = false)
     float posy = window_size.y * 0.14f + frame_offset;
 
     ImGui::PushID(MCU_BUTTON_PART_L);
-    GUI_CircleButton(ImVec2(window_size.y * 3.60f, posy),
+    GUI_CircleButton(ImVec2(window_size.y * 3.57f, posy),
         window_size.y * 0.09f,
         cols1,
         -1);
@@ -341,7 +341,7 @@ void GUI_DrawFaceSC55(bool sc155 = false)
     ImGui::PopID();
 
     ImGui::PushID(MCU_BUTTON_PART_R);
-    GUI_CircleButton(ImVec2(window_size.y * 3.77f, posy),
+    GUI_CircleButton(ImVec2(window_size.y * 3.81f, posy),
         window_size.y * 0.09f,
         cols1,
         1);
