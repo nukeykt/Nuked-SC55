@@ -1066,13 +1066,32 @@ void unscramble(uint8_t *src, uint8_t *dst, int len)
     }
 }
 
+unsigned overrun = 0;
 void audio_callback(void* /*userdata*/, Uint8* stream, int len)
 {
-    len /= 2;
-    memcpy(stream, &sample_buffer[sample_read_ptr], len * 2);
-    memset(&sample_buffer[sample_read_ptr], 0, len * 2);
-    sample_read_ptr += len;
+    int samples_ready = ( sample_write_ptr >= sample_read_ptr )
+        ? ( sample_write_ptr - sample_read_ptr )
+        : ( audio_buffer_size - sample_read_ptr ) + sample_write_ptr;
+
+    int samples_requested = len / 2;
+    int samples_len = ( samples_requested < samples_ready ) ? samples_requested : samples_ready;
+
+    memcpy(stream, &sample_buffer[sample_read_ptr], samples_len * 2);
+    sample_read_ptr += samples_len;
     sample_read_ptr %= audio_buffer_size;
+
+    int underrun = samples_requested - samples_len;
+    if ( underrun )
+    {
+        fprintf(stderr, "Underrun by %d\n", underrun );
+        memset(&stream[samples_len], 0, len - (samples_len * 2));
+    }
+
+    if ( overrun )
+    {
+        fprintf(stderr, "Overrun by %d\n", overrun );
+        overrun = 0;
+    }
 }
 
 static const char* audio_format_to_str(int format)
@@ -1188,6 +1207,16 @@ void MCU_PostSample(int *sample)
     sample_buffer[sample_write_ptr + 0] = sample[0];
     sample_buffer[sample_write_ptr + 1] = sample[1];
     sample_write_ptr = (sample_write_ptr + 2) % audio_buffer_size;
+
+    // If the write pointer is the same as the read pointer
+    // after it has been incremented then there's no space
+    // in the buffer. The oldest sample is dropped by
+    // overwriting it above, so advance the read ptr
+    if ( sample_write_ptr == sample_read_ptr )
+    {
+        ++overrun;
+        sample_read_ptr = (sample_read_ptr + 2) % audio_buffer_size;
+    }
 }
 
 void MCU_GA_SetGAInt(int line, int value)
