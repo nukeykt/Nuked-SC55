@@ -1141,7 +1141,10 @@ void PCM_Update(uint64_t cycles)
             int xor1 = (b15 ^ !nibble_cmp1);
             int nibble_add = b6 ? check1 && xor1 : (!nibble_cmp1 && check1);
             int nibble_subtract = b6 && !xor1 && active && !xor2;
-            wave_address += nibble_add - nibble_subtract;
+            if (b7)
+                wave_address -= nibble_add - nibble_subtract;
+            else
+                wave_address += nibble_add - nibble_subtract;
             wave_address &= 0xfffff;
 
             int newnibble = PCM_ReadROM((hiaddr << 20) | wave_address);
