@@ -388,12 +388,12 @@ void MCU_DeviceWrite(uint32_t address, uint8_t data)
         if ((data & 0x80) == 0 && (ssr_rd & 0x80) != 0)
         {
             dev_register[address] &= ~0x80;
-            uart_tx_delay = mcu.cycles + 1000;
+            uart_tx_delay = mcu.cycles + 3000;
             MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_UART_TX, 0);
         }
         if ((data & 0x40) == 0 && (ssr_rd & 0x40) != 0)
         {
-            uart_rx_delay = mcu.cycles + 100;
+            uart_rx_delay = mcu.cycles + 3000;
             dev_register[address] &= ~0x40;
             MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_UART_RX, 0);
         }
