@@ -209,12 +209,15 @@ void LCD_LoadBack(lcd_t& lcd, const std::string& path)
     fclose(raw);
 }
 
-bool LCD_Init(lcd_t& lcd, mcu_t& mcu)
+void LCD_Init(lcd_t& lcd, mcu_t& mcu)
 {
     memset(&lcd, 0, sizeof(lcd_t));
     lcd.mcu = &mcu;
+}
 
-    if (mcu.romset == ROM_SET_JV880)
+bool LCD_CreateWindow(lcd_t& lcd)
+{
+    if (lcd.mcu->romset == ROM_SET_JV880)
     {
         lcd.lcd_width = 820;
         lcd.lcd_height = 100;
@@ -227,7 +230,7 @@ bool LCD_Init(lcd_t& lcd, mcu_t& mcu)
 
     std::string title = "Nuked SC-55: ";
 
-    title += EMU_RomsetName(mcu.romset);
+    title += EMU_RomsetName(lcd.mcu->romset);
 
     lcd.window = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, lcd.lcd_width, lcd.lcd_height, SDL_WINDOW_SHOWN);
     if (!lcd.window)
@@ -247,7 +250,21 @@ bool LCD_Init(lcd_t& lcd, mcu_t& mcu)
 
 void LCD_UnInit(lcd_t& lcd)
 {
-    (void)lcd;
+    if (lcd.texture)
+    {
+        SDL_DestroyTexture(lcd.texture);
+        lcd.texture = nullptr;
+    }
+    if (lcd.renderer)
+    {
+        SDL_DestroyRenderer(lcd.renderer);
+        lcd.renderer = nullptr;
+    }
+    if (lcd.window)
+    {
+        SDL_DestroyWindow(lcd.window);
+        lcd.window = nullptr;
+    }
 }
 
 uint32_t lcd_col1 = 0x000000;

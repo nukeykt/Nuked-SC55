@@ -87,13 +87,7 @@ bool EMU_Init(emu_t& emu)
     SM_Init(*emu.sm, *emu.mcu);
     PCM_Init(*emu.pcm, *emu.mcu);
     TIMER_Init(*emu.timer, *emu.mcu);
-
-    // TODO: LCD should be optional for use with other frontends
-    if (!LCD_Init(*emu.lcd, *emu.mcu))
-    {
-        EMU_Free(emu);
-        return false;
-    }
+    LCD_Init(*emu.lcd, *emu.mcu);
 
     return true;
 }

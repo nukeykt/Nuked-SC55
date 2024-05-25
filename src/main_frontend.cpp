@@ -385,6 +385,12 @@ bool FE_CreateInstance(frontend_t& container, const std::string& basePath, int r
     }
     EMU_Reset(fe->emu);
 
+    if (!LCD_CreateWindow(*fe->emu.lcd))
+    {
+        fprintf(stderr, "ERROR: Failed to create window.\n");
+        return false;
+    }
+
     return true;
 }
 
