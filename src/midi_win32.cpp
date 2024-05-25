@@ -43,6 +43,10 @@ static MIDIHDR midi_buffer;
 
 static char midi_in_buffer[1024];
 
+static frontend_t* midi_frontend = nullptr;
+
+void FE_RouteMIDI(frontend_t& fe, uint8_t* first, uint8_t* last);
+
 void CALLBACK MIDI_Callback(
     HMIDIIN   hMidiIn,
     UINT      wMsg,
@@ -65,14 +69,24 @@ void CALLBACK MIDI_Callback(
                 case 0xa0:
                 case 0xb0:
                 case 0xe0:
-                    MCU_PostUART(b1);
-                    MCU_PostUART((dwParam1 >> 8) & 0xff);
-                    MCU_PostUART((dwParam1 >> 16) & 0xff);
+                    {
+                        uint8_t buf[3] = {
+                            (uint8_t)b1,
+                            (uint8_t)((dwParam1 >> 8) & 0xff),
+                            (uint8_t)((dwParam1 >> 16) & 0xff),
+                        };
+                        FE_RouteMIDI(*midi_frontend, (uint8_t*)buf, (uint8_t*)buf + sizeof(buf));
+                    }
                     break;
                 case 0xc0:
                 case 0xd0:
-                    MCU_PostUART(b1);
-                    MCU_PostUART((dwParam1 >> 8) & 0xff);
+                    {
+                        uint8_t buf[2] = {
+                            (uint8_t)b1,
+                            (uint8_t)((dwParam1 >> 8) & 0xff),
+                        };
+                        FE_RouteMIDI(*midi_frontend, (uint8_t*)buf, (uint8_t*)buf + sizeof(buf));
+                    }
                     break;
             }
             break;
@@ -80,14 +94,23 @@ void CALLBACK MIDI_Callback(
         case MIM_LONGDATA:
         case MIM_LONGERROR:
         {
-            midiInUnprepareHeader(midi_handle, &midi_buffer, sizeof(MIDIHDR));
+            MMRESULT result = midiInUnprepareHeader(midi_handle, &midi_buffer, sizeof(MIDIHDR));
+            if (result == MMSYSERR_INVALHANDLE)
+            {
+                // If this happens, the frontend probably called MIDI_Quit and
+                // midi_frontend is no longer valid. We got here because this
+                // callback is running in a separate thread and might be called
+                // after MIDI_Quit.
+                break;
+            }
 
             if (wMsg == MIM_LONGDATA)
             {
-                for (int i = 0; i < midi_buffer.dwBytesRecorded; i++)
-                {
-                    MCU_PostUART(midi_in_buffer[i]);
-                }
+                FE_RouteMIDI(
+                    *midi_frontend,
+                    (uint8_t*)midi_in_buffer,
+                    (uint8_t*)midi_in_buffer + midi_buffer.dwBytesRecorded
+                );
             }
 
             midiInPrepareHeader(midi_handle, &midi_buffer, sizeof(MIDIHDR));
@@ -101,8 +124,10 @@ void CALLBACK MIDI_Callback(
     }
 }
 
-int MIDI_Init(int port)
+int MIDI_Init(frontend_t& frontend, int port)
 {
+    midi_frontend = &frontend;
+
     int num = midiInGetNumDevs();
 
     if (num == 0)
@@ -149,4 +174,5 @@ void MIDI_Quit()
         midiInClose(midi_handle);
         midi_handle = 0;
     }
+    midi_frontend = nullptr;
 }

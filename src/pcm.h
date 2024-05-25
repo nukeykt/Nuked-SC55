@@ -34,6 +34,8 @@
 #pragma once
 #include <stdint.h>
 
+struct mcu_t;
+
 struct pcm_t {
     uint32_t ram1[32][8];
     uint16_t ram2[32][16];
@@ -61,15 +63,16 @@ struct pcm_t {
     int accum_l;
     int accum_r;
     int rcsum[2];
+
+    mcu_t* mcu;
+
+    uint8_t waverom1[0x200000];
+    uint8_t waverom2[0x200000];
+    uint8_t waverom3[0x100000];
+    uint8_t waverom_exp[0x800000];
 };
 
-extern pcm_t pcm;
-extern uint8_t waverom1[];
-extern uint8_t waverom2[];
-extern uint8_t waverom3[];
-extern uint8_t waverom_exp[];
-
-void PCM_Write(uint32_t address, uint8_t data);
-uint8_t PCM_Read(uint32_t address);
-void PCM_Reset(void);
-void PCM_Update(uint64_t cycles);
+void PCM_Write(pcm_t& pcm, uint32_t address, uint8_t data);
+uint8_t PCM_Read(pcm_t& pcm, uint32_t address);
+void PCM_Init(pcm_t& pcm, mcu_t& mcu);
+void PCM_Update(pcm_t& pcm, uint64_t cycles);

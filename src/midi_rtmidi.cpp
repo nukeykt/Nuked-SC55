@@ -1,18 +1,20 @@
 #include <stdio.h>
 #include "mcu.h"
+#include "emu.h"
 #include "midi.h"
 #include <RtMidi.h>
 
 static RtMidiIn *s_midi_in = nullptr;
 
+static frontend_t* midi_frontend = nullptr;
+
+void FE_RouteMIDI(frontend_t& fe, uint8_t* first, uint8_t* last);
 
 static void MidiOnReceive(double, std::vector<uint8_t> *message, void *)
 {
     uint8_t *beg = message->data();
     uint8_t *end = message->data() + message->size();
-
-    while(beg < end)
-        MCU_PostUART(*beg++);
+    FE_RouteMIDI(*midi_frontend, beg, end);
 }
 
 static void MidiOnError(RtMidiError::Type, const std::string &errorText, void *)
@@ -21,13 +23,15 @@ static void MidiOnError(RtMidiError::Type, const std::string &errorText, void *)
     fflush(stderr);
 }
 
-int MIDI_Init(int port)
+int MIDI_Init(frontend_t& frontend, int port)
 {
     if (s_midi_in)
     {
         printf("MIDI already running\n");
         return 0; // Already running
     }
+
+    midi_frontend = &frontend;
 
     s_midi_in = new RtMidiIn(RtMidi::UNSPECIFIED, "Nuked SC55", 1024);
     s_midi_in->ignoreTypes(false, false, false); // SysEx disabled by default
@@ -62,5 +66,6 @@ void MIDI_Quit()
         s_midi_in->closePort();
         delete s_midi_in;
         s_midi_in = nullptr;
+        midi_frontend = nullptr;
     }
 }

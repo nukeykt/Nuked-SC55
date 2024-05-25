@@ -33,7 +33,24 @@
  */
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
 
-extern void (*MCU_Operand_Table[256])(mcu_t& mcu, uint8_t operand);
-extern void (*MCU_Opcode_Table[32])(mcu_t& mcu, uint8_t opcode, uint8_t opcode_reg);
+template <typename T>
+inline T min(T a, T b)
+{
+    return a < b ? a : b;
+}
+
+template <typename T>
+inline T clamp(T value, T min, T max)
+{
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+}
+
+inline int16_t saturating_add(int16_t a, int16_t b)
+{
+    int32_t result = (int32_t)a + (int32_t)b;
+    return (int16_t)clamp<int32_t>(result, INT16_MIN, INT16_MAX);
+}

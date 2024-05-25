@@ -34,6 +34,8 @@
 #pragma once
 #include <stdint.h>
 
+struct mcu_t;
+
 enum {
     SM_STATUS_C = 1,
     SM_STATUS_Z = 2,
@@ -54,14 +56,29 @@ struct submcu_t {
     uint8_t sr;
     uint64_t cycles;
     uint8_t sleep;
+    mcu_t* mcu;
+    uint8_t sm_rom[4096];
+
+    uint8_t sm_ram[128];
+    uint8_t sm_shared_ram[192];
+    uint8_t sm_access[0x18];
+
+    uint8_t sm_p0_dir;
+    uint8_t sm_p1_dir;
+
+    uint8_t sm_device_mode[32];
+    uint8_t sm_cts;
+
+    uint64_t sm_timer_cycles;
+    uint8_t sm_timer_prescaler;
+    uint8_t sm_timer_counter;
+
+    uint8_t uart_rx_gotbyte;
 };
 
-extern submcu_t sm;
-
-extern uint8_t sm_rom[4096];
-
-void SM_Reset(void);
-void SM_Update(uint64_t cycles);
-void SM_SysWrite(uint32_t address, uint8_t data);
-uint8_t SM_SysRead(uint32_t address);
-void SM_PostUART(uint8_t data);
+void SM_Init(submcu_t& sm, mcu_t& mcu);
+void SM_Reset(submcu_t& sm);
+void SM_Update(submcu_t& sm, uint64_t cycles);
+void SM_SysWrite(submcu_t& sm, uint32_t address, uint8_t data);
+uint8_t SM_SysRead(submcu_t& sm, uint32_t address);
+void SM_PostUART(submcu_t& sm, uint8_t data);
