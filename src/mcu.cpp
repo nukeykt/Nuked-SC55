@@ -1694,8 +1694,8 @@ int main(int argc, char *argv[])
         else
             printf("WaveRom EXP not found, skipping it.\n");
         
-        if (s_rf[5] && fread(tempbuf, 1, 0x100000, s_rf[5]))
-            unscramble(tempbuf, waverom_card, 0x100000);
+        if (s_rf[5] && fread(tempbuf, 1, 0x200000, s_rf[5]))
+            unscramble(tempbuf, waverom_card, 0x200000);
         else
             printf("WaveRom PCM not found, skipping it.\n");
     }

@@ -42,7 +42,7 @@ pcm_t pcm;
 uint8_t waverom1[0x200000];
 uint8_t waverom2[0x200000];
 uint8_t waverom3[0x100000];
-uint8_t waverom_card[0x100000];
+uint8_t waverom_card[0x200000];
 uint8_t waverom_exp[0x800000];
 
 uint8_t PCM_ReadROM(uint32_t address)
@@ -66,7 +66,7 @@ uint8_t PCM_ReadROM(uint32_t address)
                 return waverom2[address & 0x1fffff];
         case 2:
             if (mcu_jv880)
-                return waverom_card[address & 0xfffff];
+                return waverom_card[address & 0x1fffff];
             else
                 return waverom3[address & 0xfffff];
         case 3:
