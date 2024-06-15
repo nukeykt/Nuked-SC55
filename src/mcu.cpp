@@ -63,47 +63,56 @@ const char* rs_name[ROM_SET_COUNT] = {
     "SC-155mk2"
 };
 
-const char* roms[ROM_SET_COUNT][5] =
+static const int ROM_SET_N_FILES = 6;
+
+const char* roms[ROM_SET_COUNT][ROM_SET_N_FILES] =
 {
     "rom1.bin",
     "rom2.bin",
     "waverom1.bin",
     "waverom2.bin",
     "rom_sm.bin",
+    "",
 
     "rom1.bin",
     "rom2_st.bin",
     "waverom1.bin",
     "waverom2.bin",
     "rom_sm.bin",
+    "",
 
     "sc55_rom1.bin",
     "sc55_rom2.bin",
     "sc55_waverom1.bin",
     "sc55_waverom2.bin",
     "sc55_waverom3.bin",
+    "",
 
     "cm300_rom1.bin",
     "cm300_rom2.bin",
     "cm300_waverom1.bin",
     "cm300_waverom2.bin",
     "cm300_waverom3.bin",
+    "",
 
     "jv880_rom1.bin",
     "jv880_rom2.bin",
     "jv880_waverom1.bin",
     "jv880_waverom2.bin",
     "jv880_waverom_expansion.bin",
+    "jv880_waverom_pcmcard.bin",
 
     "scb55_rom1.bin",
     "scb55_rom2.bin",
     "scb55_waverom1.bin",
     "scb55_waverom2.bin",
     "",
+    "",
 
     "rlp3237_rom1.bin",
     "rlp3237_rom2.bin",
     "rlp3237_waverom1.bin",
+    "",
     "",
     "",
 
@@ -112,12 +121,14 @@ const char* roms[ROM_SET_COUNT][5] =
     "sc155_waverom1.bin",
     "sc155_waverom2.bin",
     "sc155_waverom3.bin",
+    "",
 
     "rom1.bin",
     "rom2.bin",
     "waverom1.bin",
     "waverom2.bin",
     "rom_sm.bin",
+    "",
 };
 
 int romset = ROM_SET_MK2;
@@ -1564,12 +1575,12 @@ int main(int argc, char *argv[])
             break;
     }
 
-    std::string rpaths[5];
+    std::string rpaths[ROM_SET_N_FILES];
 
     bool r_ok = true;
     std::string errors_list;
 
-    for(size_t i = 0; i < 5; ++i)
+    for(size_t i = 0; i < ROM_SET_N_FILES; ++i)
     {
         if (roms[romset][i][0] == '\0')
         {
@@ -1578,7 +1589,7 @@ int main(int argc, char *argv[])
         }
         rpaths[i] = basePath + "/" + roms[romset][i];
         s_rf[i] = Files::utf8_fopen(rpaths[i].c_str(), "rb");
-        bool optional = mcu_jv880 && i == 4;
+        bool optional = mcu_jv880 && i >= 4;
         r_ok &= optional || (s_rf[i] != nullptr);
         if(!s_rf[i])
         {
@@ -1677,11 +1688,16 @@ int main(int argc, char *argv[])
         }
 
         unscramble(tempbuf, waverom2, 0x200000);
-
+        
         if (s_rf[4] && fread(tempbuf, 1, 0x800000, s_rf[4]))
             unscramble(tempbuf, waverom_exp, 0x800000);
         else
             printf("WaveRom EXP not found, skipping it.\n");
+        
+        if (s_rf[5] && fread(tempbuf, 1, 0x100000, s_rf[5]))
+            unscramble(tempbuf, waverom_card, 0x100000);
+        else
+            printf("WaveRom PCM not found, skipping it.\n");
     }
     else
     {
