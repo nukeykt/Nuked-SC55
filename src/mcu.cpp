@@ -1555,6 +1555,8 @@ int main(int argc, char *argv[])
             rom2_mask /= 2; // rom is half the size
             lcd_width = 820;
             lcd_height = 100;
+            lcd_col1 = 0x000000;
+            lcd_col2 = 0x78b500;
             break;
         case ROM_SET_SCB55:
         case ROM_SET_RLP3237:
