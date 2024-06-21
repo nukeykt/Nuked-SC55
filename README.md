@@ -6,7 +6,7 @@ Supported models:
 - SC-55mk1 (v1.21/v2.0 firmwares are confirmed to work)
 - CM-300/SCC-1 (v1.10/v1.20 firmwares are confirmed to work)
 - SC-55st (v1.01)
-- JV-880 (v1.0.0)
+- JV-880 (v1.0.0/v1.0.1)
 - SCB-55/RLP-3194
 - RLP-3237
 - SC-155
