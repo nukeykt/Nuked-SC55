@@ -1316,10 +1316,9 @@ void MCU_EncoderTrigger(int dir)
     MCU_GA_SetGAInt(dir == 0 ? 3 : 4, 1);
 }
 
-
-static const size_t rf_num = 5;
-static FILE *s_rf[rf_num] =
+static FILE *s_rf[ROM_SET_N_FILES] =
 {
+    nullptr,
     nullptr,
     nullptr,
     nullptr,
@@ -1329,7 +1328,7 @@ static FILE *s_rf[rf_num] =
 
 static void closeAllR()
 {
-    for(size_t i = 0; i < rf_num; ++i)
+    for(size_t i = 0; i < ROM_SET_N_FILES; ++i)
     {
         if(s_rf[i])
             fclose(s_rf[i]);
