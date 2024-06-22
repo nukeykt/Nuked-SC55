@@ -6,7 +6,7 @@ Supported models:
 - SC-55mk1 (v1.21/v2.0 firmwares are confirmed to work)
 - CM-300/SCC-1 (v1.10/v1.20 firmwares are confirmed to work)
 - SC-55st (v1.01)
-- JV-880 (v1.0.0)
+- JV-880 (v1.0.0/v1.0.1)
 - SCB-55/RLP-3194
 - RLP-3237
 - SC-155
@@ -97,6 +97,7 @@ R15199810 (H8/532 mcu) -> jv880_rom1.bin
 R15209386 (H8/532 extra code) -> jv880_rom2.bin
 R15209312 (WAVE A) -> jv880_waverom1.bin
 R15209313 (WAVE B) -> jv880_waverom2.bin
+PCM Cards -> jv880_waverom_pcmcard.bin (optional)
 Expansion PCBs -> jv880_waverom_expansion.bin (optional)
 
 SCB-55/RLP-3194:
