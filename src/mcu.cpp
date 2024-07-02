@@ -1318,12 +1318,12 @@ void MCU_Write(uint32_t address, uint8_t value)
             else if (address == 0xc11f)
             {
                 LCD_Write(0, value);
-                ga_lcd_counter = 500;
+                ga_lcd_counter = 1;
             }
             else if (address > 0xc11f)
             {
                 LCD_Write(1, value);
-                ga_lcd_counter = 500;
+                ga_lcd_counter = 1;
             }
             else
                 printf("%02x%04x: write-f %02x%04x %02x %c\n", mcu.cp, mcu.pc, page, address, value, value);
@@ -1593,7 +1593,7 @@ void MCU_Reset(void)
 
     MCU_DeviceReset();
 
-    if (mcu_mk1 || mcu_sc88) // really needed?
+    if (mcu_mk1 || mcu_sc88)
     {
         ga_int_enable = 255;
     }
