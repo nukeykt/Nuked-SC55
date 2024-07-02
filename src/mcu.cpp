@@ -1607,12 +1607,6 @@ void MCU_PostUART(uint8_t data)
 
 void MCU_UpdateUART_RX(void)
 {
-    if (mcu_sc88)
-    {
-        // FIXME
-        MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ2, 1);
-        return;
-    }
 
     if ((dev_register[DEV_SCR] & 16) == 0) // RX disabled
         return;
@@ -1624,6 +1618,13 @@ void MCU_UpdateUART_RX(void)
 
     if (mcu.cycles < uart_rx_delay)
         return;
+
+    if (mcu_sc88)
+    {
+        // FIXME
+        MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ2, 1);
+        return;
+    }
 
     uart_rx_byte = uart_buffer[uart_read_ptr];
     uart_read_ptr = (uart_read_ptr + 1) % uart_buffer_size;
@@ -1761,7 +1762,7 @@ void MCU_PatchROM(void)
 {
     if (mcu_xp10) // make the WAVE test pass without dump
         rom2[0x52217] = 0x27;
-    
+
     //rom2[0x1333] = 0x11;
     //rom2[0x1334] = 0x19;
     //rom1[0x622d] = 0x19;
