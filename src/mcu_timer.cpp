@@ -404,12 +404,16 @@ void TIMER_Clock(uint64_t cycles)
                 {
                     dev_WDT_TCSR |= 0x80;
                     if (overflow && (dev_WDT_TCSR & 0x40) == 0)
+                    {
                         if (mcu_h8_510)
                             MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_WDT, 1);
                         else
                             MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ0, 1);
+                    }
                     else if (overflow)
+                    {
                         MCU_Reset();
+                    }
                 }
             }
         }
