@@ -1298,6 +1298,8 @@ void MCU_Write(uint32_t address, uint8_t value)
         {
             if (address == 0xfe87) // P4DR, contrast
             { }
+            else if (mcu_sc88vl && address == 0xfe8b) // P6DR
+                LCD_Enable(value & 1);
             else if (address >= 0xfe80 && address <= 0xff1f)
                 MCU_DeviceWrite_510(address, value);
             else if (address >= 0x8000 && address <= 0xffff)

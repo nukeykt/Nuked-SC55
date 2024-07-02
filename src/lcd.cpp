@@ -210,6 +210,7 @@ const int button_map_sc55[][2] =
 
 const int button_map_sc88[][2] =
 {
+    SDL_SCANCODE_Q, MCU_BUTTON_POWER,
     SDL_SCANCODE_W, MCU_BUTTON_INST_ALL,
     SDL_SCANCODE_E, MCU_BUTTON_INST_MUTE,
     SDL_SCANCODE_R, MCU_BUTTON_PART_L,
