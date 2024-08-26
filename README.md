@@ -2,11 +2,14 @@
 Roland SC-55 emulator, by nukeykt.
 
 Supported models:
-- SC-55mk2 (v1.01 firmware is confirmed to work)
+- SC-55mk2/SC-155mk2 (v1.01 firmware is confirmed to work)
 - SC-55mk1 (v1.21/v2.0 firmwares are confirmed to work)
 - CM-300/SCC-1 (v1.10/v1.20 firmwares are confirmed to work)
 - SC-55st (v1.01)
-- JV-880 (v1.0.0)
+- JV-880 (v1.0.0/v1.0.1)
+- SCB-55/RLP-3194
+- RLP-3237
+- SC-155
 
 Special thanks:
 - John McMaster: SC-55 PCM chip decap.
@@ -16,6 +19,11 @@ Special thanks:
 - mattw.
 - HardWareMan.
 - giulioz: JV-880 support
+
+## License
+
+Nuked SC-55 can be distributed and used under the original MAME license (see LICENSE file).
+Non-commercial license was chosen to prevent making and selling SC-55 emulation boxes using (or around) this code, as well as preventing from using it in the commercial music production.
 
 ## Status
 
@@ -42,7 +50,7 @@ MCUs are emulated using info from their datasheets. PCM chip info is derived fro
 Put firmware image into the same folder as Nuked SC-55. Files should be names as such:
 
 ```
-SC-55mk2 (v1.01):
+SC-55mk2/SC-155mk2 (v1.01):
 R15199858 (H8/532 mcu) -> rom1.bin
 R00233567 (H8/532 extra code) -> rom2.bin
 R15199880 (M37450M2 mcu) -> rom_sm.bin
@@ -89,14 +97,35 @@ R15199810 (H8/532 mcu) -> jv880_rom1.bin
 R15209386 (H8/532 extra code) -> jv880_rom2.bin
 R15209312 (WAVE A) -> jv880_waverom1.bin
 R15209313 (WAVE B) -> jv880_waverom2.bin
+PCM Cards -> jv880_waverom_pcmcard.bin (optional)
 Expansion PCBs -> jv880_waverom_expansion.bin (optional)
 
+SCB-55/RLP-3194:
+R15199827 (H8/532 mcu) -> scb55_rom1.bin
+R15279828 (H8/532 extra code) -> scb55_rom2.bin
+R15209359 (WAVE 16M) -> scb55_waverom1.bin
+R15279813 (WAVE 8M) -> scb55_waverom2.bin
+
+RLP-3237:
+R15199827 (H8/532 mcu) -> rlp3237_rom1.bin
+R15209486 (H8/532 extra code) -> rlp3237_rom2.bin
+R15279824 (WAVE 16M) -> rlp3237_waverom1.bin
+
+SC-155 (rev 1):
+R15199799 (H8/532 mcu) -> sc155_rom1.bin
+R15209361 (H8/532 extra code) -> sc155_rom2.bin
+R15209276 (WAVE A) -> sc155_waverom1.bin
+R15209277 (WAVE B) -> sc155_waverom2.bin
+R15209281 (WAVE C) -> sc155_waverom3.bin
+
+SC-155 (rev 2):
+R15199799 (H8/532 mcu) -> sc155_rom1.bin
+R15209400 (H8/532 extra code) -> sc155_rom2.bin
+R15209276 (WAVE A) -> sc155_waverom1.bin
+R15209277 (WAVE B) -> sc155_waverom2.bin
+R15209281 (WAVE C) -> sc155_waverom3.bin
+
 ```
-
-## License
-
-Nuked SC-55 can be distributed and used under the original MAME license (see LICENSE file).
-Non-commercial license was chosen to prevent making and selling SC-55 emulation boxes using (or around) this code, as well as preventing from using it in the commercial music production.
 
 ## Additional info
 
@@ -149,6 +178,10 @@ COMMA -> ENCODER L
 PERIOD -> ENCODER R
 ```
 
-- `-mk2`, `-st`, `mk1`, `-cm300` and `-jv880` command line arguments can be used to specify rom set. If no model is specified emulator will try to autodetect rom set (based on file names). 
+- `-mk2`, `-st`, `-mk1`, `-cm300`, `-jv880`, `-scb55`, `-rlp3237`, `-sc155` and `-sc155mk2` command line arguments can be used to specify rom set. If no model is specified emulator will try to autodetect rom set (based on file names). 
 
 - Due to a bug in the SC-55mk2's firmware, some parameters don't reset properly on startup. Do GM, GS or MT-32 reset using buttons to fix this issue.
+
+- SC-155 doesn't reset properly on startup (firmware bug?), use `Init All` option to workaround this issue.
+
+- SC-155's additional buttons/sliders are not emulated at the moment. They will be emulated in the future after proper GUI is implemented.

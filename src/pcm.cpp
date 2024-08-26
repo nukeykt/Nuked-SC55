@@ -42,6 +42,7 @@ pcm_t pcm;
 uint8_t waverom1[0x200000];
 uint8_t waverom2[0x200000];
 uint8_t waverom3[0x100000];
+uint8_t waverom_card[0x200000];
 uint8_t waverom_exp[0x800000];
 
 uint8_t PCM_ReadROM(uint32_t address)
@@ -64,8 +65,10 @@ uint8_t PCM_ReadROM(uint32_t address)
             else
                 return waverom2[address & 0x1fffff];
         case 2:
-            if (mcu_jv880) return 0;
-            return waverom3[address & 0xfffff];
+            if (mcu_jv880)
+                return waverom_card[address & 0x1fffff];
+            else
+                return waverom3[address & 0xfffff];
         case 3:
         case 4:
         case 5:
@@ -1141,7 +1144,10 @@ void PCM_Update(uint64_t cycles)
             int xor1 = (b15 ^ !nibble_cmp1);
             int nibble_add = b6 ? check1 && xor1 : (!nibble_cmp1 && check1);
             int nibble_subtract = b6 && !xor1 && active && !xor2;
-            wave_address += nibble_add - nibble_subtract;
+            if (b7)
+                wave_address -= nibble_add - nibble_subtract;
+            else
+                wave_address += nibble_add - nibble_subtract;
             wave_address &= 0xfffff;
 
             int newnibble = PCM_ReadROM((hiaddr << 20) | wave_address);

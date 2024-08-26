@@ -39,6 +39,9 @@
 extern int lcd_width;
 extern int lcd_height;
 
+extern uint32_t lcd_col1;
+extern uint32_t lcd_col2;
+
 void LCD_SetBackPath(const std::string &path);
 void LCD_Init(void);
 void LCD_UnInit(void);

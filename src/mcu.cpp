@@ -56,40 +56,79 @@ const char* rs_name[ROM_SET_COUNT] = {
     "SC-55st",
     "SC-55mk1",
     "CM-300/SCC-1",
-    "JV880"
+    "JV-880",
+    "SCB-55",
+    "RLP-3237",
+    "SC-155",
+    "SC-155mk2"
 };
 
-const char* roms[ROM_SET_COUNT][5] =
+static const int ROM_SET_N_FILES = 6;
+
+const char* roms[ROM_SET_COUNT][ROM_SET_N_FILES] =
 {
     "rom1.bin",
     "rom2.bin",
     "waverom1.bin",
     "waverom2.bin",
     "rom_sm.bin",
+    "",
 
     "rom1.bin",
     "rom2_st.bin",
     "waverom1.bin",
     "waverom2.bin",
     "rom_sm.bin",
+    "",
 
     "sc55_rom1.bin",
     "sc55_rom2.bin",
     "sc55_waverom1.bin",
     "sc55_waverom2.bin",
     "sc55_waverom3.bin",
+    "",
 
     "cm300_rom1.bin",
     "cm300_rom2.bin",
     "cm300_waverom1.bin",
     "cm300_waverom2.bin",
     "cm300_waverom3.bin",
+    "",
 
     "jv880_rom1.bin",
     "jv880_rom2.bin",
     "jv880_waverom1.bin",
     "jv880_waverom2.bin",
     "jv880_waverom_expansion.bin",
+    "jv880_waverom_pcmcard.bin",
+
+    "scb55_rom1.bin",
+    "scb55_rom2.bin",
+    "scb55_waverom1.bin",
+    "scb55_waverom2.bin",
+    "",
+    "",
+
+    "rlp3237_rom1.bin",
+    "rlp3237_rom2.bin",
+    "rlp3237_waverom1.bin",
+    "",
+    "",
+    "",
+
+    "sc155_rom1.bin",
+    "sc155_rom2.bin",
+    "sc155_waverom1.bin",
+    "sc155_waverom2.bin",
+    "sc155_waverom3.bin",
+    "",
+
+    "rom1.bin",
+    "rom2.bin",
+    "waverom1.bin",
+    "waverom2.bin",
+    "rom_sm.bin",
+    "",
 };
 
 int romset = ROM_SET_MK2;
@@ -121,6 +160,8 @@ int mcu_mk1 = 0; // 0 - SC-55mkII, SC-55ST. 1 - SC-55, CM-300/SCC-1
 int mcu_cm300 = 0; // 0 - SC-55, 1 - CM-300/SCC-1
 int mcu_st = 0; // 0 - SC-55mk2, 1 - SC-55ST
 int mcu_jv880 = 0; // 0 - SC-55, 1 - JV880
+int mcu_scb55 = 0; // 0 - sub mcu (e.g SC-55mk2), 1 - no sub mcu (e.g SCB-55)
+int mcu_sc155 = 0; // 0 - SC-55(MK2), 1 - SC-155(MK2)
 
 static int ga_int[8];
 static int ga_int_enable = 0;
@@ -152,6 +193,20 @@ enum {
     ANALOG_LEVEL_BATTERY = 0x2a0,
 };
 
+uint16_t MCU_SC155Sliders(uint32_t index)
+{
+    // 0 - 1/9
+    // 1 - 2/10
+    // 2 - 3/11
+    // 3 - 4/12
+    // 4 - 5/13
+    // 5 - 6/14
+    // 6 - 7/15
+    // 7 - 8/16
+    // 8 - ALL
+    return 0x0;
+}
+
 uint16_t MCU_AnalogReadPin(uint32_t pin)
 {
     if (mcu_cm300)
@@ -162,39 +217,69 @@ uint16_t MCU_AnalogReadPin(uint32_t pin)
             return ANALOG_LEVEL_BATTERY;
         return 0x3ff;
     }
-    uint8_t rcu;
-    if (pin == 7)
+    if (0)
     {
-        if (mcu_mk1)
-            return ANALOG_LEVEL_BATTERY;
-        switch ((io_sd >> 2) & 3)
-        {
-        case 0: // Battery voltage
-            return ANALOG_LEVEL_BATTERY;
-        case 1: // NC
-            return 0;
-        case 2: // SW
-            switch (sw_pos)
-            {
-            case 0:
-            default:
-                return ANALOG_LEVEL_SW_0;
-            case 1:
-                return ANALOG_LEVEL_SW_1;
-            case 2:
-                return ANALOG_LEVEL_SW_2;
-            case 3:
-                return ANALOG_LEVEL_SW_3;
-            }
-        case 3: // RCU
-            break;
-        }
+READ_RCU:
+        uint8_t rcu = RCU_Read();
+        if (rcu & (1 << pin))
+            return ANALOG_LEVEL_RCU_HIGH;
+        else
+            return ANALOG_LEVEL_RCU_LOW;
     }
-    rcu = RCU_Read();
-    if (rcu & (1 << pin))
-        return ANALOG_LEVEL_RCU_HIGH;
+    if (mcu_mk1)
+    {
+        if (mcu_sc155 && (dev_register[DEV_P9DR] & 1) != 0)
+        {
+            return MCU_SC155Sliders(pin);
+        }
+        if (pin == 7)
+        {
+            if (mcu_sc155 && (dev_register[DEV_P9DR] & 2) != 0)
+                return MCU_SC155Sliders(8);
+            else
+                return ANALOG_LEVEL_BATTERY;
+        }
+        else
+            goto READ_RCU;
+    }
     else
-        return ANALOG_LEVEL_RCU_LOW;
+    {
+        if (mcu_sc155 && (io_sd & 16) != 0)
+        {
+            return MCU_SC155Sliders(pin);
+        }
+        if (pin == 7)
+        {
+            if (mcu_mk1)
+                return ANALOG_LEVEL_BATTERY;
+            switch ((io_sd >> 2) & 3)
+            {
+            case 0: // Battery voltage
+                return ANALOG_LEVEL_BATTERY;
+            case 1: // NC
+                if (mcu_sc155)
+                    return MCU_SC155Sliders(8);
+                return 0;
+            case 2: // SW
+                switch (sw_pos)
+                {
+                case 0:
+                default:
+                    return ANALOG_LEVEL_SW_0;
+                case 1:
+                    return ANALOG_LEVEL_SW_1;
+                case 2:
+                    return ANALOG_LEVEL_SW_2;
+                case 3:
+                    return ANALOG_LEVEL_SW_3;
+                }
+            case 3: // RCU
+                goto READ_RCU;
+            }
+        }
+        else
+            goto READ_RCU;
+    }
 }
 
 void MCU_AnalogSample(int channel)
@@ -314,12 +399,12 @@ void MCU_DeviceWrite(uint32_t address, uint8_t data)
         if ((data & 0x80) == 0 && (ssr_rd & 0x80) != 0)
         {
             dev_register[address] &= ~0x80;
-            uart_tx_delay = mcu.cycles + 1000;
+            uart_tx_delay = mcu.cycles + 3000;
             MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_UART_TX, 0);
         }
         if ((data & 0x40) == 0 && (ssr_rd & 0x40) != 0)
         {
-            uart_rx_delay = mcu.cycles + 100;
+            uart_rx_delay = mcu.cycles + 3000;
             dev_register[address] &= ~0x40;
             MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_UART_RX, 0);
         }
@@ -393,7 +478,7 @@ uint8_t MCU_DeviceRead(uint32_t address)
     {
         int cfg = 0;
         if (!mcu_mk1)
-            cfg = 2; // bit 1: 0 - SC-155mk2 (???), 1 - SC-55mk2
+            cfg = mcu_sc155 ? 0 : 2; // bit 1: 0 - SC-155mk2 (???), 1 - SC-55mk2
 
         int dir = dev_register[DEV_P9DDR];
 
@@ -496,7 +581,7 @@ uint8_t MCU_Read(uint32_t address)
                 {
                     ret = PCM_Read(address & 0x3f);
                 }
-                else if (address >= 0xec00 && address < 0xf000)
+                else if (!mcu_scb55 && address >= 0xec00 && address < 0xf000)
                 {
                     ret = SM_SysRead(address & 0xff);
                 }
@@ -558,11 +643,13 @@ uint8_t MCU_Read(uint32_t address)
                     uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
 
                     if ((io_sd & 1) == 0)
-                        data &= 0x80 | (((button_pressed >> 0) & 127) ^ 127);
+                        data &= ((button_pressed >> 0) & 255) ^ 255;
                     if ((io_sd & 2) == 0)
-                        data &= 0x80 | (((button_pressed >> 7) & 127) ^ 127);
+                        data &= ((button_pressed >> 8) & 255) ^ 255;
                     if ((io_sd & 4) == 0)
-                        data &= 0x80 | (((button_pressed >> 14) & 127) ^ 127);
+                        data &= ((button_pressed >> 16) & 255) ^ 255;
+                    if ((io_sd & 8) == 0)
+                        data &= ((button_pressed >> 24) & 255) ^ 255;
                     return data;
                 }
                 else if (address == 0xf106)
@@ -713,7 +800,7 @@ void MCU_Write(uint32_t address, uint8_t value)
                 {
                     PCM_Write(address & 0x3f, value);
                 }
-                else if (address >= 0xec00 && address < 0xf000)
+                else if (!mcu_scb55 && address >= 0xec00 && address < 0xf000)
                 {
                     SM_SysWrite(address & 0xff, value);
                 }
@@ -778,6 +865,10 @@ void MCU_Write(uint32_t address, uint8_t value)
                     printf("Unknown write %x %x\n", address, value);
                 }
             }
+        }
+        else if (mcu_jv880 && address >= 0x6196 && address <= 0x6199)
+        {
+            // nop: the jv880 rom writes into the rom at 002E77-002E7D
         }
         else
         {
@@ -960,7 +1051,7 @@ int SDLCALL work_thread(void* data)
 
         TIMER_Clock(mcu.cycles);
 
-        if (!mcu_mk1 && !mcu_jv880)
+        if (!mcu_mk1 && !mcu_jv880 && !mcu_scb55)
             SM_Update(mcu.cycles);
         else
         {
@@ -1031,11 +1122,13 @@ uint8_t MCU_ReadP1(void)
     uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
 
     if ((mcu_p0_data & 1) == 0)
-        data &= 0x80 | (((button_pressed >> 0) & 127) ^ 127);
+        data &= ((button_pressed >> 0) & 255) ^ 255;
     if ((mcu_p0_data & 2) == 0)
-        data &= 0x80 | (((button_pressed >> 7) & 127) ^ 127);
+        data &= ((button_pressed >> 8) & 255) ^ 255;
     if ((mcu_p0_data & 4) == 0)
-        data &= 0x80 | (((button_pressed >> 14) & 127) ^ 127);
+        data &= ((button_pressed >> 16) & 255) ^ 255;
+    if ((mcu_p0_data & 8) == 0)
+        data &= ((button_pressed >> 24) & 255) ^ 255;
 
     return data;
 }
@@ -1223,10 +1316,9 @@ void MCU_EncoderTrigger(int dir)
     MCU_GA_SetGAInt(dir == 0 ? 3 : 4, 1);
 }
 
-
-static const size_t rf_num = 5;
-static FILE *s_rf[rf_num] =
+static FILE *s_rf[ROM_SET_N_FILES] =
 {
+    nullptr,
     nullptr,
     nullptr,
     nullptr,
@@ -1236,7 +1328,7 @@ static FILE *s_rf[rf_num] =
 
 static void closeAllR()
 {
-    for(size_t i = 0; i < rf_num; ++i)
+    for(size_t i = 0; i < ROM_SET_N_FILES; ++i)
     {
         if(s_rf[i])
             fclose(s_rf[i]);
@@ -1366,6 +1458,16 @@ int main(int argc, char *argv[])
                 romset = ROM_SET_JV880;
                 autodetect = false;
             }
+            else if (!strcmp(argv[i], "-scb55"))
+            {
+                romset = ROM_SET_SCB55;
+                autodetect = false;
+            }
+            else if (!strcmp(argv[i], "-rlp3237"))
+            {
+                romset = ROM_SET_RLP3237;
+                autodetect = false;
+            }
             else if (!strcmp(argv[i], "-gs"))
             {
                 resetType = ResetType::GS_RESET;
@@ -1373,6 +1475,39 @@ int main(int argc, char *argv[])
             else if (!strcmp(argv[i], "-gm"))
             {
                 resetType = ResetType::GM_RESET;
+            }
+            else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "-help") || !strcmp(argv[i], "--help"))
+            {
+                // TODO: Might want to try to find a way to print out the executable's actual name (without any full paths).
+                printf("Usage: nuked-sc55 [options]\n");
+                printf("Options:\n");
+                printf("  -h, -help, --help              Display this information.\n");
+                printf("\n");
+                printf("  -p:<port_number>               Set MIDI port.\n");
+                printf("  -a:<device_number>             Set Audio Device index.\n");
+                printf("  -ab:<page_size>:[page_count]   Set Audio Buffer size.\n");
+                printf("\n");
+                printf("  -mk2                           Use SC-55mk2 ROM set.\n");
+                printf("  -st                            Use SC-55st ROM set.\n");
+                printf("  -mk1                           Use SC-55mk1 ROM set.\n");
+                printf("  -cm300                         Use CM-300/SCC-1 ROM set.\n");
+                printf("  -jv880                         Use JV-880 ROM set.\n");
+                printf("  -scb55                         Use SCB-55 ROM set.\n");
+                printf("  -rlp3237                       Use RLP-3237 ROM set.\n");
+                printf("\n");
+                printf("  -gs                            Reset system in GS mode.\n");
+                printf("  -gm                            Reset system in GM mode.\n");
+                return 0;
+            }
+            else if (!strcmp(argv[i], "-sc155"))
+            {
+                romset = ROM_SET_SC155;
+                autodetect = false;
+            }
+            else if (!strcmp(argv[i], "-sc155mk2"))
+            {
+                romset = ROM_SET_SC155MK2;
+                autodetect = false;
             }
         }
     }
@@ -1423,6 +1558,8 @@ int main(int argc, char *argv[])
             bool good = true;
             for (size_t j = 0; j < 5; j++)
             {
+                if (roms[i][j][0] == '\0')
+                    continue;
                 std::string path = basePath + "/" + roms[i][j];
                 auto h = Files::utf8_fopen(path.c_str(), "rb");
                 if (!h)
@@ -1445,14 +1582,24 @@ int main(int argc, char *argv[])
     mcu_cm300 = false;
     mcu_st = false;
     mcu_jv880 = false;
+    mcu_scb55 = false;
+    mcu_sc155 = false;
     switch (romset)
     {
+        case ROM_SET_MK2:
+        case ROM_SET_SC155MK2:
+            if (romset == ROM_SET_SC155MK2)
+                mcu_sc155 = true;
+            break;
         case ROM_SET_ST:
             mcu_st = true;
             break;
         case ROM_SET_MK1:
+        case ROM_SET_SC155:
             mcu_mk1 = true;
             mcu_st = false;
+            if (romset == ROM_SET_SC155)
+                mcu_sc155 = true;
             break;
         case ROM_SET_CM300:
             mcu_mk1 = true;
@@ -1463,25 +1610,30 @@ int main(int argc, char *argv[])
             rom2_mask /= 2; // rom is half the size
             lcd_width = 820;
             lcd_height = 100;
+            lcd_col1 = 0x000000;
+            lcd_col2 = 0x78b500;
+            break;
+        case ROM_SET_SCB55:
+        case ROM_SET_RLP3237:
+            mcu_scb55 = true;
             break;
     }
 
-    std::string rpaths[5] =
-    {
-        basePath + "/" + roms[romset][0],
-        basePath + "/" + roms[romset][1],
-        basePath + "/" + roms[romset][2],
-        basePath + "/" + roms[romset][3],
-        basePath + "/" + roms[romset][4]
-    };
+    std::string rpaths[ROM_SET_N_FILES];
 
     bool r_ok = true;
     std::string errors_list;
 
-    for(size_t i = 0; i < 5; ++i)
+    for(size_t i = 0; i < ROM_SET_N_FILES; ++i)
     {
+        if (roms[romset][i][0] == '\0')
+        {
+            rpaths[i] = "";
+            continue;
+        }
+        rpaths[i] = basePath + "/" + roms[romset][i];
         s_rf[i] = Files::utf8_fopen(rpaths[i].c_str(), "rb");
-        bool optional = mcu_jv880 && i == 4;
+        bool optional = mcu_jv880 && i >= 4;
         r_ok &= optional || (s_rf[i] != nullptr);
         if(!s_rf[i])
         {
@@ -1580,11 +1732,16 @@ int main(int argc, char *argv[])
         }
 
         unscramble(tempbuf, waverom2, 0x200000);
-
+        
         if (s_rf[4] && fread(tempbuf, 1, 0x800000, s_rf[4]))
             unscramble(tempbuf, waverom_exp, 0x800000);
         else
             printf("WaveRom EXP not found, skipping it.\n");
+        
+        if (s_rf[5] && fread(tempbuf, 1, 0x200000, s_rf[5]))
+            unscramble(tempbuf, waverom_card, 0x200000);
+        else
+            printf("WaveRom PCM not found, skipping it.\n");
     }
     else
     {
@@ -1598,17 +1755,20 @@ int main(int argc, char *argv[])
 
         unscramble(tempbuf, waverom1, 0x200000);
 
-        if (fread(tempbuf, 1, 0x100000, s_rf[3]) != 0x100000)
+        if (s_rf[3])
         {
-            fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom2.\n");
-            fflush(stderr);
-            closeAllR();
-            return 1;
+            if (fread(tempbuf, 1, 0x100000, s_rf[3]) != 0x100000)
+            {
+                fprintf(stderr, "FATAL ERROR: Failed to read the WaveRom2.\n");
+                fflush(stderr);
+                closeAllR();
+                return 1;
+            }
+
+            unscramble(tempbuf, mcu_scb55 ? waverom3 : waverom2, 0x100000);
         }
 
-        unscramble(tempbuf, waverom2, 0x100000);
-
-        if (fread(sm_rom, 1, ROMSM_SIZE, s_rf[4]) != ROMSM_SIZE)
+        if (s_rf[4] && fread(sm_rom, 1, ROMSM_SIZE, s_rf[4]) != ROMSM_SIZE)
         {
             fprintf(stderr, "FATAL ERROR: Failed to read the sub mcu ROM.\n");
             fflush(stderr);

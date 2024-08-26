@@ -379,20 +379,37 @@ enum {
     MCU_BUTTON_INST_R = 4,
     MCU_BUTTON_INST_MUTE = 5,
     MCU_BUTTON_INST_ALL = 6,
-    MCU_BUTTON_MIDI_CH_L = 7,
-    MCU_BUTTON_MIDI_CH_R = 8,
-    MCU_BUTTON_CHORUS_L = 9,
-    MCU_BUTTON_CHORUS_R = 10,
-    MCU_BUTTON_PAN_L = 11,
-    MCU_BUTTON_PAN_R = 12,
-    MCU_BUTTON_PART_R = 13,
-    MCU_BUTTON_KEY_SHIFT_L = 14,
-    MCU_BUTTON_KEY_SHIFT_R = 15,
-    MCU_BUTTON_REVERB_L = 16,
-    MCU_BUTTON_REVERB_R = 17,
-    MCU_BUTTON_LEVEL_L = 18,
-    MCU_BUTTON_LEVEL_R = 19,
-    MCU_BUTTON_PART_L = 20,
+
+    MCU_BUTTON_MIDI_CH_L = 8,
+    MCU_BUTTON_MIDI_CH_R = 9,
+    MCU_BUTTON_CHORUS_L = 10,
+    MCU_BUTTON_CHORUS_R = 11,
+    MCU_BUTTON_PAN_L = 12,
+    MCU_BUTTON_PAN_R = 13,
+    MCU_BUTTON_PART_R = 14,
+
+    MCU_BUTTON_KEY_SHIFT_L = 16,
+    MCU_BUTTON_KEY_SHIFT_R = 17,
+    MCU_BUTTON_REVERB_L = 18,
+    MCU_BUTTON_REVERB_R = 19,
+    MCU_BUTTON_LEVEL_L = 20,
+    MCU_BUTTON_LEVEL_R = 21,
+    MCU_BUTTON_PART_L = 22,
+
+    // SC155 extra buttons
+    MCU_BUTTON_USER = 1,
+    MCU_BUTTON_PART_SEL = 2,
+    MCU_BUTTON_INST_CALL = 7,
+    MCU_BUTTON_PAN = 15,
+    MCU_BUTTON_LEVEL = 23,
+    MCU_BUTTON_PART1 = 24,
+    MCU_BUTTON_PART2 = 25,
+    MCU_BUTTON_PART3 = 26,
+    MCU_BUTTON_PART4 = 27,
+    MCU_BUTTON_PART5 = 28,
+    MCU_BUTTON_PART6 = 29,
+    MCU_BUTTON_PART7 = 30,
+    MCU_BUTTON_PART8 = 31,
 
     // JV880
     MCU_BUTTON_CURSOR_L = 0,
@@ -418,6 +435,10 @@ enum {
     ROM_SET_MK1,
     ROM_SET_CM300,
     ROM_SET_JV880,
+    ROM_SET_SCB55,
+    ROM_SET_RLP3237,
+    ROM_SET_SC155,
+    ROM_SET_SC155MK2,
     ROM_SET_COUNT
 };
 
@@ -429,6 +450,8 @@ extern int mcu_mk1;
 extern int mcu_cm300;
 extern int mcu_st;
 extern int mcu_jv880;
+extern int mcu_scb55;
+extern int mcu_sc155;
 
 extern SDL_atomic_t mcu_button_pressed;
 

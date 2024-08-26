@@ -67,6 +67,7 @@ extern pcm_t pcm;
 extern uint8_t waverom1[];
 extern uint8_t waverom2[];
 extern uint8_t waverom3[];
+extern uint8_t waverom_card[];
 extern uint8_t waverom_exp[];
 
 void PCM_Write(uint32_t address, uint8_t data);

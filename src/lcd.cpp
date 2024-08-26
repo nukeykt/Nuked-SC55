@@ -412,7 +412,7 @@ void LCD_Update(void)
     if (!lcd_init)
         return;
 
-    if (!mcu_cm300 && !mcu_st)
+    if (!mcu_cm300 && !mcu_st && !mcu_scb55)
     {
         MCU_WorkThread_Lock();
 
@@ -426,7 +426,7 @@ void LCD_Update(void)
             {
                 for (size_t i = 0; i < lcd_height; i++) {
                     for (size_t j = 0; j < lcd_width; j++) {
-                        lcd_buffer[i][j] = 0xFF0F6FFF;
+                        lcd_buffer[i][j] = 0xFF03be51;
                     }
                 }
             }
