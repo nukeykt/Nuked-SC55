@@ -5,6 +5,7 @@ Supported models:
 - SC-55mk2/SC-155mk2 (v1.01 firmware is confirmed to work)
 - SC-55mk1 (v1.0/v1.21/v2.0 firmwares are confirmed to work)
 - CM-300/SCC-1 (v1.10/v1.20 firmwares are confirmed to work)
+- SCC-1A
 - SC-55st (v1.01)
 - JV-880 (v1.0.0/v1.0.1)
 - SCB-55/RLP-3194
@@ -21,6 +22,7 @@ Special thanks:
 - giulioz: JV-880 support
 - Cloudschatze.
 - NikitaLita.
+- Karmeck.
 
 ## License
 
@@ -97,6 +99,13 @@ R15279808 (WAVE C) -> cm300_waverom3.bin
 CM-300/SCC-1 (v1.20):
 R15199774 (H8/532 mcu) -> cm300_rom1.bin
 R15279812 (H8/532 extra code) -> cm300_rom2.bin
+R15279806 (WAVE A) -> cm300_waverom1.bin
+R15279807 (WAVE B) -> cm300_waverom2.bin
+R15279808 (WAVE C) -> cm300_waverom3.bin
+
+SCC-1A:
+R00128523 (H8/532 mcu) -> cm300_rom1.bin
+R00128567 (H8/532 extra code) -> cm300_rom2.bin
 R15279806 (WAVE A) -> cm300_waverom1.bin
 R15279807 (WAVE B) -> cm300_waverom2.bin
 R15279808 (WAVE C) -> cm300_waverom3.bin
