@@ -44,11 +44,12 @@
 #include "utils/files.h"
 
 
-static uint32_t LCD_DL, LCD_N, LCD_F, LCD_D, LCD_C, LCD_B, LCD_ID, LCD_S;
+static uint32_t LCD_DL, LCD_N, LCD_F, LCD_D, LCD_C, LCD_B, LCD_ID = 1, LCD_S;
 static uint32_t LCD_DD_RAM, LCD_AC, LCD_CG_RAM;
 static uint32_t LCD_RAM_MODE = 0;
 static uint8_t LCD_Data[80];
 static uint8_t LCD_CG[64];
+static uint8_t LCD_7SEG[3];
 
 static uint8_t lcd_enable = 1;
 static bool lcd_quit_requested = false;
@@ -162,6 +163,11 @@ void LCD_Write(uint32_t address, uint8_t data)
     //    printf("\n");
 }
 
+void LCD_Write_7seg(uint8_t address, uint8_t data)
+{
+    LCD_7SEG[address] = data;
+}
+
 int lcd_width = 741;
 int lcd_height = 268;
 static const int lcd_width_max = 1024;
@@ -202,22 +208,98 @@ const int button_map_sc55[][2] =
     SDL_SCANCODE_RIGHT, MCU_BUTTON_PART_R,
 };
 
+const int button_map_sc88[][2] =
+{
+    SDL_SCANCODE_Q, MCU_BUTTON_POWER,
+    SDL_SCANCODE_W, MCU_BUTTON_INST_ALL,
+    SDL_SCANCODE_E, MCU_BUTTON_INST_MUTE,
+    SDL_SCANCODE_R, MCU_BUTTON_PART_L,
+    SDL_SCANCODE_T, MCU_BUTTON_PART_R,
+    SDL_SCANCODE_Y, MCU_BUTTON_INST_L,
+    SDL_SCANCODE_U, MCU_BUTTON_INST_R,
+    SDL_SCANCODE_I, MCU_BUTTON_KEY_SHIFT_L,
+    SDL_SCANCODE_O, MCU_BUTTON_KEY_SHIFT_R,
+    SDL_SCANCODE_P, MCU_BUTTON_LEVEL_L,
+    SDL_SCANCODE_LEFTBRACKET, MCU_BUTTON_LEVEL_R,
+    SDL_SCANCODE_A, MCU_BUTTON_MIDI_CH_L,
+    SDL_SCANCODE_S, MCU_BUTTON_MIDI_CH_R,
+    SDL_SCANCODE_D, MCU_BUTTON_PAN_L,
+    SDL_SCANCODE_F, MCU_BUTTON_PAN_R,
+    SDL_SCANCODE_G, MCU_BUTTON_REVERB_L,
+    SDL_SCANCODE_H, MCU_BUTTON_REVERB_R,
+    SDL_SCANCODE_J, MCU_BUTTON_CHORUS_L,
+    SDL_SCANCODE_K, MCU_BUTTON_CHORUS_R,
+    SDL_SCANCODE_LEFT, MCU_BUTTON_PART_L,
+    SDL_SCANCODE_RIGHT, MCU_BUTTON_PART_R,
+
+    SDL_SCANCODE_1, MCU_SC88_BUTTON_EQ,
+    SDL_SCANCODE_2, MCU_SC88_BUTTON_INSTMAP,
+    SDL_SCANCODE_3, MCU_SC88_BUTTON_USER_INST,
+    SDL_SCANCODE_4, MCU_SC88_BUTTON_EDIT,
+    SDL_SCANCODE_Z, MCU_SC88_BUTTON_VIB_RATE_L,
+    SDL_SCANCODE_X, MCU_SC88_BUTTON_VIB_RATE_R,
+    SDL_SCANCODE_C, MCU_SC88_BUTTON_VIB_DEPTH_L,
+    SDL_SCANCODE_V, MCU_SC88_BUTTON_VIB_DEPTH_R,
+    SDL_SCANCODE_B, MCU_SC88_BUTTON_VIB_DELAY_L,
+    SDL_SCANCODE_N, MCU_SC88_BUTTON_VIB_DELAY_R,
+    SDL_SCANCODE_TAB, MCU_SC88_BUTTON_PREVIEW,
+};
+
 const int button_map_jv880[][2] =
 {
-    SDL_SCANCODE_P, MCU_BUTTON_PREVIEW,
-    SDL_SCANCODE_LEFT, MCU_BUTTON_CURSOR_L,
-    SDL_SCANCODE_RIGHT, MCU_BUTTON_CURSOR_R,
-    SDL_SCANCODE_TAB, MCU_BUTTON_DATA,
-    SDL_SCANCODE_Q, MCU_BUTTON_TONE_SELECT,
-    SDL_SCANCODE_A, MCU_BUTTON_PATCH_PERFORM,
-    SDL_SCANCODE_W, MCU_BUTTON_EDIT,
-    SDL_SCANCODE_E, MCU_BUTTON_SYSTEM,
-    SDL_SCANCODE_R, MCU_BUTTON_RHYTHM,
-    SDL_SCANCODE_T, MCU_BUTTON_UTILITY,
-    SDL_SCANCODE_S, MCU_BUTTON_MUTE,
-    SDL_SCANCODE_D, MCU_BUTTON_MONITOR,
-    SDL_SCANCODE_F, MCU_BUTTON_COMPARE,
-    SDL_SCANCODE_G, MCU_BUTTON_ENTER,
+    SDL_SCANCODE_P, MCU_JV880_BUTTON_PREVIEW,
+    SDL_SCANCODE_LEFT, MCU_JV880_BUTTON_CURSOR_L,
+    SDL_SCANCODE_RIGHT, MCU_JV880_BUTTON_CURSOR_R,
+    SDL_SCANCODE_TAB, MCU_JV880_BUTTON_DATA,
+    SDL_SCANCODE_Q, MCU_JV880_BUTTON_TONE_SELECT,
+    SDL_SCANCODE_A, MCU_JV880_BUTTON_PATCH_PERFORM,
+    SDL_SCANCODE_W, MCU_JV880_BUTTON_EDIT,
+    SDL_SCANCODE_E, MCU_JV880_BUTTON_SYSTEM,
+    SDL_SCANCODE_R, MCU_JV880_BUTTON_RHYTHM,
+    SDL_SCANCODE_T, MCU_JV880_BUTTON_UTILITY,
+    SDL_SCANCODE_S, MCU_JV880_BUTTON_MUTE,
+    SDL_SCANCODE_D, MCU_JV880_BUTTON_MONITOR,
+    SDL_SCANCODE_F, MCU_JV880_BUTTON_COMPARE,
+    SDL_SCANCODE_G, MCU_JV880_BUTTON_ENTER,
+};
+
+const int button_map_rd500[][2] =
+{
+    // TODO
+};
+
+const int button_map_xp10[][2] =
+{
+    SDL_SCANCODE_I, MCU_XP10_BUTTON_UTILITY,
+    SDL_SCANCODE_U, MCU_XP10_BUTTON_EDIT,
+    SDL_SCANCODE_Y, MCU_XP10_BUTTON_TRANSPOSE,
+    SDL_SCANCODE_R, MCU_XP10_BUTTON_ARPEGGIO,
+    SDL_SCANCODE_E, MCU_XP10_BUTTON_XDUAL,
+    SDL_SCANCODE_W, MCU_XP10_BUTTON_DUAL,
+    SDL_SCANCODE_Q, MCU_XP10_BUTTON_SPLIT,
+    SDL_SCANCODE_O, MCU_XP10_BUTTON_SEQCTRL,
+    SDL_SCANCODE_T, MCU_XP10_BUTTON_SELECT,
+    
+    SDL_SCANCODE_D, MCU_XP10_BUTTON_PERFORM,
+    SDL_SCANCODE_S, MCU_XP10_BUTTON_PARTP,
+    SDL_SCANCODE_A, MCU_XP10_BUTTON_PARTM,
+    SDL_SCANCODE_F, MCU_XP10_BUTTON_VARIATION,
+
+    SDL_SCANCODE_X, MCU_XP10_BUTTON_VALUEP,
+    SDL_SCANCODE_Z, MCU_XP10_BUTTON_VALUEM,
+    SDL_SCANCODE_V, MCU_XP10_BUTTON_ENTER,
+    SDL_SCANCODE_C, MCU_XP10_BUTTON_TONE,
+    
+    SDL_SCANCODE_1, MCU_XP10_BUTTON_1,
+    SDL_SCANCODE_2, MCU_XP10_BUTTON_2,
+    SDL_SCANCODE_3, MCU_XP10_BUTTON_3,
+    SDL_SCANCODE_4, MCU_XP10_BUTTON_4,
+    SDL_SCANCODE_5, MCU_XP10_BUTTON_5,
+    SDL_SCANCODE_6, MCU_XP10_BUTTON_6,
+    SDL_SCANCODE_7, MCU_XP10_BUTTON_7,
+    SDL_SCANCODE_8, MCU_XP10_BUTTON_8,
+    SDL_SCANCODE_9, MCU_XP10_BUTTON_9,
+    SDL_SCANCODE_0, MCU_XP10_BUTTON_0,
 };
 
 
@@ -407,6 +489,39 @@ void LCD_FontRenderLR(uint8_t ch)
     }
 }
 
+void LCD_HorizontalSegment(int x, int y, int length, int thickness)
+{
+    for (int i = 0; i < thickness; i++) {
+        for (int j = 0; j < length; j++) {
+            lcd_buffer[y + i][x + j] = 1;
+        }
+    }
+}
+
+void LCD_VerticalSegment(int x, int y, int length, int thickness)
+{
+    for (int i = 0; i < length; i++) {
+        for (int j = 0; j < thickness; j++) {
+            lcd_buffer[y + i][x + j] = 1;
+        }
+    }
+}
+
+void LCD_RenderSegments(int32_t x, int32_t y, uint8_t digit)
+{
+    int segmentLength = 20;
+    int segmentThickness = 3;
+
+    if (digit & 0x01) LCD_HorizontalSegment(x + segmentThickness, y, segmentLength, segmentThickness);
+    if (digit & 0x02) LCD_VerticalSegment(x + segmentLength + segmentThickness, y + segmentThickness, segmentLength, segmentThickness);
+    if (digit & 0x04) LCD_VerticalSegment(x + segmentLength + segmentThickness, y + 2 * segmentThickness + segmentLength, segmentLength, segmentThickness);
+    if (digit & 0x08) LCD_HorizontalSegment(x + segmentThickness, y + 2 * (segmentThickness + segmentLength), segmentLength, segmentThickness);
+    if (digit & 0x10) LCD_VerticalSegment(x, y + 2 * segmentThickness + segmentLength, segmentLength, segmentThickness);
+    if (digit & 0x20) LCD_VerticalSegment(x, y + segmentThickness, segmentLength, segmentThickness);
+    if (digit & 0x40) LCD_HorizontalSegment(x + segmentThickness, y + segmentThickness + segmentLength, segmentLength, segmentThickness);
+    if (digit & 0x80) LCD_HorizontalSegment(x + segmentLength + 3 * segmentThickness, y + 2 * (segmentThickness + segmentLength), segmentThickness, segmentThickness);
+}
+
 void LCD_Update(void)
 {
     if (!lcd_init)
@@ -422,11 +537,12 @@ void LCD_Update(void)
         }
         else
         {
-            if (mcu_jv880)
+            if (mcu_jv880 || mcu_xp10 || mcu_rd500 || mcu_ra30)
             {
+                uint32_t back_color = 0xFF03be51;
                 for (size_t i = 0; i < lcd_height; i++) {
                     for (size_t j = 0; j < lcd_width; j++) {
-                        lcd_buffer[i][j] = 0xFF03be51;
+                        lcd_buffer[i][j] = back_color;
                     }
                 }
             }
@@ -439,11 +555,18 @@ void LCD_Update(void)
                 }
             }
 
-            if (mcu_jv880)
+            if (mcu_rd500 || mcu_ra30)
             {
+                LCD_RenderSegments(10 + 40 * 0, 10, LCD_7SEG[0]);
+                LCD_RenderSegments(10 + 40 * 1, 10, LCD_7SEG[1]);
+                LCD_RenderSegments(10 + 40 * 2, 10, LCD_7SEG[2]);
+            }
+            else if (mcu_jv880 || mcu_xp10)
+            {
+                int width = mcu_jv880 ? 24 : 16;
                 for (int i = 0; i < 2; i++)
                 {
-                    for (int j = 0; j < 24; j++)
+                    for (int j = 0; j < width; j++)
                     {
                         uint8_t ch = LCD_Data[i * 40 + j];
                         LCD_FontRenderStandard(4 + i * 50, 4 + j * 34, ch);
@@ -545,8 +668,19 @@ void LCD_Update(void)
                 int mask = 0;
                 uint32_t button_pressed = (uint32_t)SDL_AtomicGet(&mcu_button_pressed);
 
-                auto button_map = mcu_jv880 ? button_map_jv880 : button_map_sc55;
-                auto button_size = (mcu_jv880 ? sizeof(button_map_jv880) : sizeof(button_map_sc55)) / sizeof(button_map_sc55[0]);
+                auto button_map =
+                    mcu_xp10 ? button_map_xp10 :
+                    mcu_rd500 ? button_map_rd500 :
+                    mcu_jv880 ? button_map_jv880 :
+                    mcu_sc88 ? button_map_sc88 :
+                    button_map_sc55;
+                auto button_size = (
+                    mcu_xp10 ? sizeof(button_map_xp10) :
+                    mcu_rd500 ? sizeof(button_map_rd500) :
+                    mcu_jv880 ? sizeof(button_map_jv880) :
+                    mcu_sc88 ? sizeof(button_map_sc88) :
+                    sizeof(button_map_sc55)
+                ) / sizeof(button_map_sc55[0]);
                 for (size_t i = 0; i < button_size; i++)
                 {
                     if (button_map[i][0] == sdl_event.key.keysym.scancode)
@@ -660,4 +794,3 @@ void LCD_Update(void)
         }
     }
 }
-

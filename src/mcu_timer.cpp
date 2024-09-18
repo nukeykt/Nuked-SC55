@@ -42,6 +42,9 @@ uint8_t timer_tempreg;
 frt_t frt[3];
 mcu_timer_t timer;
 
+uint8_t dev_WDT_TCSR;
+uint8_t dev_WDT_TCNT;
+
 enum {
     REG_TCR = 0x00,
     REG_TCSR = 0x01,
@@ -61,6 +64,8 @@ void TIMER_Reset(void)
     timer_tempreg = 0;
     memset(frt, 0, sizeof(frt));
     memset(&timer, 0, sizeof(timer));
+    dev_WDT_TCSR = 0x00;
+    dev_WDT_TCNT = 0x00;
 }
 
 void TIMER_Write(uint32_t address, uint8_t data)
@@ -224,7 +229,7 @@ void TIMER_Clock(uint64_t cycles)
     uint32_t i;
     while (timer_cycles*2 < cycles) // FIXME
     {
-        for (i = 0; i < 3; i++)
+        for (i = 0; i < (mcu_h8_510 ? 2 : 3); i++)
         {
             frt_t *timer = &frt[i];
             uint32_t offset = 0x10 * i;
@@ -244,7 +249,7 @@ void TIMER_Clock(uint64_t cycles)
                     continue;
                 break;
             case 3: // ext (o / 2)
-                if (mcu_mk1)
+                if (mcu_mk1 || mcu_sc88) // FIXME SC88
                 {
                     if (timer_cycles & 3)
                         continue;
@@ -305,7 +310,7 @@ void TIMER_Clock(uint64_t cycles)
         case 5:
         case 6:
         case 7: // ext (o / 2)
-            if (mcu_mk1)
+            if (mcu_mk1 || mcu_sc88)
             {
                 if ((timer_cycles & 3) == 0)
                     timer_step = 1;
@@ -345,6 +350,72 @@ void TIMER_Clock(uint64_t cycles)
                 MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_TIMER_CMIA, 1);
             if ((timer.tcr & 0x80) != 0 && (timer.tcsr & 0x80) != 0)
                 MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_TIMER_CMIB, 1);
+        }
+
+        if ((dev_WDT_TCSR & 0x20) == 0)
+        {
+            dev_WDT_TCNT = 0;
+        }
+        else
+        {
+            int32_t wdt_step = 0;
+
+            switch (dev_WDT_TCSR & 7)
+            {
+            case 0:  // o / 2
+                if ((timer_cycles & 1) == 0)
+                    wdt_step = 1;
+                break;
+            case 1: // o / 32
+                if ((timer_cycles & 31) == 0)
+                    wdt_step = 1;
+                break;
+            case 2: // o / 64
+                if ((timer_cycles & 63) == 0)
+                    wdt_step = 1;
+                break;
+            case 3: // o / 128
+                if ((timer_cycles & 127) == 0)
+                    wdt_step = 1;
+                break;
+            case 4: // o / 256
+                if ((timer_cycles & 255) == 0)
+                    wdt_step = 1;
+                break;
+            case 5: // o / 512
+                if ((timer_cycles & 511) == 0)
+                    wdt_step = 1;
+                break;
+            case 6: // o / 2048
+                if ((timer_cycles & 2047) == 0)
+                    wdt_step = 1;
+                break;
+            case 7: // o / 4096
+                if ((timer_cycles & 4095) == 0)
+                    wdt_step = 1;
+                break;
+            }
+            if (wdt_step)
+            {
+                bool overflow = ((int)dev_WDT_TCNT + 1) > 0xff;
+                dev_WDT_TCNT++;
+
+                if (overflow)
+                {
+                    dev_WDT_TCSR |= 0x80;
+                    if (overflow && (dev_WDT_TCSR & 0x40) == 0)
+                    {
+                        if (mcu_h8_510)
+                            MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_WDT, 1);
+                        else
+                            MCU_Interrupt_SetRequest(INTERRUPT_SOURCE_IRQ0, 1);
+                    }
+                    else if (overflow)
+                    {
+                        MCU_Reset();
+                    }
+                }
+            }
         }
 
         timer_cycles++;

@@ -53,6 +53,11 @@ struct mcu_timer_t {
     uint8_t status_rd;
 };
 
+extern uint8_t dev_WDT_TCSR;
+extern uint8_t dev_WDT_TCNT;
+
+void TIMER_Reset();
+
 void TIMER_Write(uint32_t address, uint8_t data);
 uint8_t TIMER_Read(uint32_t address);
 void TIMER_Clock(uint64_t cycles);

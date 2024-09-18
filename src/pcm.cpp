@@ -41,7 +41,8 @@
 pcm_t pcm;
 uint8_t waverom1[0x200000];
 uint8_t waverom2[0x200000];
-uint8_t waverom3[0x100000];
+uint8_t waverom3[0x200000];
+uint8_t waverom4[0x200000];
 uint8_t waverom_card[0x200000];
 uint8_t waverom_exp[0x800000];
 
@@ -60,20 +61,24 @@ uint8_t PCM_ReadROM(uint32_t address)
             else
                 return waverom1[address & 0x1fffff];
         case 1:
-            if (!mcu_jv880)
+            if (!mcu_jv880 && !mcu_rd500 && !mcu_xp10)
                 return waverom2[address & 0xfffff];
             else
                 return waverom2[address & 0x1fffff];
         case 2:
             if (mcu_jv880)
                 return waverom_card[address & 0x1fffff];
+            else if (mcu_rd500)
+                return waverom3[address & 0x1fffff];
             else
                 return waverom3[address & 0xfffff];
         case 3:
         case 4:
         case 5:
         case 6:
-            if (mcu_jv880)
+            if (mcu_rd500)
+                return waverom4[address & 0x1fffff];
+            else if (mcu_jv880)
                 return waverom_exp[(address & 0x1fffff) + (bank - 3) * 0x200000];
         default:
             break;
@@ -1572,6 +1577,6 @@ void PCM_Update(uint64_t cycles)
 
         int cycles = (reg_slots + 1) * 25;
 
-        pcm.cycles += mcu_jv880 ? (cycles * 25) / 29 : cycles;
+        pcm.cycles += mcu_jv880 || mcu_rd500 ? (cycles * 25) / 29 : cycles;
     }
 }
