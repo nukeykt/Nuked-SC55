@@ -150,3 +150,22 @@ void MIDI_Quit()
         midi_handle = 0;
     }
 }
+
+int MIDI_GetMidiInDevices(char* devices) {
+    int numDevices = midiInGetNumDevs();
+    int length = 0;
+    MIDIINCAPSA caps;
+    for (int i = 0; i < numDevices; i++) {
+        if (midiInGetDevCapsA(i, &caps, sizeof caps) == MMSYSERR_NOERROR) {
+            int len = strlen(caps.szPname);
+            len = len >= 32 ? 32 : len;
+            if (devices != NULL) {
+                memcpy(devices + length, caps.szPname, len);
+                *(devices + length + len) = 0;
+            }
+            length += len;
+        }
+        length++;
+    }
+    return length;
+}
