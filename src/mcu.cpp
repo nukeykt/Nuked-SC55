@@ -1491,20 +1491,22 @@ int main(int argc, char *argv[])
 
 #if __linux__
     char self_path[PATH_MAX];
+    char self_path_absolute[PATH_MAX];
     memset(&self_path[0], 0, PATH_MAX);
+    memset(&self_path_absolute[0], 0, PATH_MAX);
 
     if(readlink("/proc/self/exe", self_path, PATH_MAX) == -1)
-        basePath = Files::real_dirname(argv[0]);
+        basePath = Files::real_dirname(realpath(argv[0], self_path_absolute));
     else
-        basePath = Files::dirname(self_path);
+        basePath = Files::dirname(realpath(self_path, self_path_absolute));
 #else
     basePath = Files::real_dirname(argv[0]);
 #endif
 
-    printf("Base path is: %s\n", argv[0]);
-
     if(Files::dirExists(basePath + "/../share/nuked-sc55"))
         basePath += "/../share/nuked-sc55";
+
+    printf("Base path is: %s\n", basePath.c_str());
 
     if (autodetect)
     {
