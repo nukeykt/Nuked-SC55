@@ -101,7 +101,7 @@ void CALLBACK MIDI_Callback(
     }
 }
 
-int MIDI_Init(int port)
+int MIDI_Init(int port, bool listMidi)
 {
     int num = midiInGetNumDevs();
 
@@ -109,6 +109,23 @@ int MIDI_Init(int port)
     {
         printf("No midi input\n");
         return 0;
+    }
+
+    if (listMidi) {
+        for (int i = 0; i < num; i++) {
+            auto res = midiInOpen(&midi_handle, i, (DWORD_PTR)MIDI_Callback, 0, CALLBACK_FUNCTION);
+            
+            if (res != MMSYSERR_NOERROR) {
+                printf("Can't open midi input\n");
+                return 0;
+            }
+            
+            LPUINT puDeviceId;
+            midiInGetId(&midi_handle, &puDeviceId);
+            printf("Port[%u]: %s\n", i, puDeviceId);
+            
+            Midi_Quit();            
+        }
     }
 
     if (port < 0 || port >= num)
