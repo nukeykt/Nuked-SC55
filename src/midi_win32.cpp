@@ -111,20 +111,11 @@ int MIDI_Init(int port, bool listMidi)
         return 0;
     }
 
-    if (listMidi) {
+    if (listMidi) {              
         for (int i = 0; i < num; i++) {
-            auto res = midiInOpen(&midi_handle, i, (DWORD_PTR)MIDI_Callback, 0, CALLBACK_FUNCTION);
-            
-            if (res != MMSYSERR_NOERROR) {
-                printf("Can't open midi input\n");
-                return 0;
-            }
-            
-            LPUINT puDeviceId;
-            midiInGetId(&midi_handle, &puDeviceId);
-            printf("Port[%u]: %s\n", i, puDeviceId);
-            
-            Midi_Quit();            
+            MIDIINCAPSA caps;
+            midiInGetDevCapsA(i, &caps, sizeof(MIDIINCAPSA));
+            printf("Port[%d]: %s\n", i, caps.szPname);
         }
     }
 
