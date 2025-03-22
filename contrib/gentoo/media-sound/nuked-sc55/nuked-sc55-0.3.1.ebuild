@@ -3,9 +3,14 @@
 
 EAPI=8
 
+inherit cmake-multilib desktop
+
+DESCRIPTION="Roland SoundCanvas SC-55 emulator"
+HOMEPAGE="http://nukeykt.retrohost.net/"
+
 MY_PN="Nuked-SC55"
 
-if [[ ${PV} == "9999" ]]; then
+if [[ ${PV} == 9999 ]]; then
 	EGIT_REPO_URI="https://github.com/nukeykt/${MY_PN}.git"
 	inherit git-r3
 else
@@ -13,14 +18,8 @@ else
 	KEYWORDS="~amd64 ~x86"
 fi
 
-inherit cmake-multilib desktop
-
-DESCRIPTION="Roland SoundCanvas SC-55 emulator"
-HOMEPAGE="http://nukeykt.retrohost.net/"
-
 LICENSE="XMAME"
 SLOT="0"
-IUSE=""
 
 DEPEND="
 	media-libs/libsdl2
