@@ -38,6 +38,20 @@
 		RLP-3237
 		SC-155
 	</longdescription>
+	<longdescription lang="de">
+	Roland SC-55-Eemulator von nukeykt.
+
+	Unterstützte Modelle:
+		SC-55mk2/SC-155mk2 (Funktionsfähigkeit bestätigt mit Firmware v1.01)
+		SC-55mk1 (Funktionsfähigkeit bestätigt mit Firmwaren v1.0/v1.21/v2.0)
+		CM-300/SCC-1 (Funktionsfähigkeit bestätigt mit Firmwaren v1.10/v1.20)
+		SCC-1A
+		SC-55st (Firmware v1.01)
+		JV-880 (Firmwaren v1.0.0/v1.0.1)
+		SCB-55/RLP-3194
+		RLP-3237
+		SC-155
+	</longdescription>
 	<upstream>
 		<maintainer status="active">
 			<name>Alexey Khokholov</name>
