@@ -999,40 +999,13 @@ void MCU_UpdateUART_TX(void)
     // printf("tx:%x\n", dev_register[DEV_TDR]);
 }
 
-static bool work_thread_run = false;
-
-static SDL_mutex *work_thread_lock;
-
-void MCU_WorkThread_Lock(void)
+int SDLCALL work_thread(void)
 {
-    SDL_LockMutex(work_thread_lock);
-}
-
-void MCU_WorkThread_Unlock(void)
-{
-    SDL_UnlockMutex(work_thread_lock);
-}
-
-int SDLCALL work_thread(void* data)
-{
-    work_thread_lock = SDL_CreateMutex();
-
-    MCU_WorkThread_Lock();
-    while (work_thread_run)
     {
         if (pcm.config_reg_3c & 0x40)
             sample_write_ptr &= ~3;
         else
             sample_write_ptr &= ~1;
-        if (sample_read_ptr == sample_write_ptr)
-        {
-            MCU_WorkThread_Unlock();
-            while (sample_read_ptr == sample_write_ptr)
-            {
-                SDL_Delay(1);
-            }
-            MCU_WorkThread_Lock();
-        }
 
         if (!mcu.ex_ignore)
             MCU_Interrupt_Handle();
@@ -1074,9 +1047,6 @@ int SDLCALL work_thread(void* data)
             }
         }
     }
-    MCU_WorkThread_Unlock();
-
-    SDL_DestroyMutex(work_thread_lock);
 
     return 0;
 }
@@ -1084,21 +1054,23 @@ int SDLCALL work_thread(void* data)
 static void MCU_Run()
 {
     bool working = true;
+    Uint64 counts_per_second = SDL_GetPerformanceFrequency();
 
-    work_thread_run = true;
-    SDL_Thread *thread = SDL_CreateThread(work_thread, "work thread", 0);
-
+    Uint64 start_count = SDL_GetPerformanceCounter();
     while (working)
     {
         if(LCD_QuitRequested())
             working = false;
 
-        LCD_Update();
-        SDL_Delay(15);
-    }
+        work_thread();
+        Uint64 end_count = SDL_GetPerformanceCounter();
 
-    work_thread_run = false;
-    SDL_WaitThread(thread, 0);
+        if( ( end_count - start_count ) > ( 1.0/60.0 * counts_per_second ) )
+        {
+            start_count = SDL_GetPerformanceCounter();
+            LCD_Update();
+        }
+    }
 }
 
 void MCU_PatchROM(void)
@@ -1172,13 +1144,32 @@ void unscramble(uint8_t *src, uint8_t *dst, int len)
     }
 }
 
+unsigned overrun = 0;
 void audio_callback(void* /*userdata*/, Uint8* stream, int len)
 {
-    len /= 2;
-    memcpy(stream, &sample_buffer[sample_read_ptr], len * 2);
-    memset(&sample_buffer[sample_read_ptr], 0, len * 2);
-    sample_read_ptr += len;
+    int samples_ready = ( sample_write_ptr >= sample_read_ptr )
+        ? ( sample_write_ptr - sample_read_ptr )
+        : ( audio_buffer_size - sample_read_ptr ) + sample_write_ptr;
+
+    int samples_requested = len / 2;
+    int samples_len = ( samples_requested < samples_ready ) ? samples_requested : samples_ready;
+
+    memcpy(stream, &sample_buffer[sample_read_ptr], samples_len * 2);
+    sample_read_ptr += samples_len;
     sample_read_ptr %= audio_buffer_size;
+
+    int underrun = samples_requested - samples_len;
+    if ( underrun )
+    {
+        fprintf(stderr, "Underrun by %d\n", underrun );
+        memset(&stream[samples_len], 0, len - (samples_len * 2));
+    }
+
+    if ( overrun )
+    {
+        fprintf(stderr, "Overrun by %d\n", overrun );
+        overrun = 0;
+    }
 }
 
 static const char* audio_format_to_str(int format)
@@ -1294,6 +1285,16 @@ void MCU_PostSample(int *sample)
     sample_buffer[sample_write_ptr + 0] = sample[0];
     sample_buffer[sample_write_ptr + 1] = sample[1];
     sample_write_ptr = (sample_write_ptr + 2) % audio_buffer_size;
+
+    // If the write pointer is the same as the read pointer
+    // after it has been incremented then there's no space
+    // in the buffer. The oldest sample is dropped by
+    // overwriting it above, so advance the read ptr
+    if ( sample_write_ptr == sample_read_ptr )
+    {
+        ++overrun;
+        sample_read_ptr = (sample_read_ptr + 2) % audio_buffer_size;
+    }
 }
 
 void MCU_GA_SetGAInt(int line, int value)
