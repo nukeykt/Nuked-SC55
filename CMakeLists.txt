@@ -221,6 +221,11 @@ else()
     target_link_libraries(nuked-sc55 PRIVATE ${SDL2_LIBRARIES})
 endif()
 
+# Add linker flag MSVC
+if(MSVC)
+    set_property(TARGET "nuked-sc55" APPEND_STRING PROPERTY LINK_FLAGS " /ENTRY:WinMainCRTStartup")
+endif()
+
 if(USE_RTMIDI)
     if(USE_SYSTEM_RTMIDI)
         target_compile_options(nuked-sc55 PRIVATE ${SYSTEM_RTMIDI_CFLAGS})
