@@ -1375,6 +1375,7 @@ int main(int argc, char *argv[])
     int pageNum = 32;
     bool autodetect = true;
     ResetType resetType = ResetType::NONE;
+    bool listMidi = false;
 
     romset = ROM_SET_MK2;
 
@@ -1453,6 +1454,10 @@ int main(int argc, char *argv[])
             {
                 resetType = ResetType::GM_RESET;
             }
+            else if (!strcmp(argv[i], "-pl"))
+            {
+                listMidi = true;
+            }
             else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "-help") || !strcmp(argv[i], "--help"))
             {
                 // TODO: Might want to try to find a way to print out the executable's actual name (without any full paths).
@@ -1474,6 +1479,8 @@ int main(int argc, char *argv[])
                 printf("\n");
                 printf("  -gs                            Reset system in GS mode.\n");
                 printf("  -gm                            Reset system in GM mode.\n");
+                printf("\n");
+                printf("  -pl                            List all MIDI ports.\n");
                 return 0;
             }
             else if (!strcmp(argv[i], "-sc155"))
@@ -1749,7 +1756,7 @@ int main(int argc, char *argv[])
         return 2;
     }
 
-    if(!MIDI_Init(port))
+    if(!MIDI_Init(port, listMidi))
     {
         fprintf(stderr, "ERROR: Failed to initialize the MIDI Input.\nWARNING: Continuing without MIDI Input...\n");
         fflush(stderr);

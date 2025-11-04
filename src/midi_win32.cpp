@@ -101,7 +101,7 @@ void CALLBACK MIDI_Callback(
     }
 }
 
-int MIDI_Init(int port)
+int MIDI_Init(int port, bool listMidi)
 {
     int num = midiInGetNumDevs();
 
@@ -109,6 +109,14 @@ int MIDI_Init(int port)
     {
         printf("No midi input\n");
         return 0;
+    }
+
+    if (listMidi) {              
+        for (int i = 0; i < num; i++) {
+            MIDIINCAPSA caps;
+            midiInGetDevCapsA(i, &caps, sizeof(MIDIINCAPSA));
+            printf("Port[%d]: %s\n", i, caps.szPname);
+        }
     }
 
     if (port < 0 || port >= num)
