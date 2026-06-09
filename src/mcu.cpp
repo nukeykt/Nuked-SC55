@@ -1761,6 +1761,7 @@ int main(int argc, char *argv[])
     MCU_Reset();
     SM_Reset();
     PCM_Reset();
+    TIMER_Reset();
 
     if (resetType != ResetType::NONE) MIDI_Reset(resetType);
     
