@@ -26,8 +26,8 @@ Special thanks:
 
 ## License
 
-Nuked SC-55 can be distributed and used under the original MAME license (see LICENSE file).
-Non-commercial license was chosen to prevent making and selling SC-55 emulation boxes using (or around) this code, as well as preventing from using it in the commercial music production.
+Nuked SC-55 can be distributed and used under the GPL v2.0 or later license.
+See LICENSE file for the details.
 
 ## Status
 
