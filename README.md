@@ -9,7 +9,7 @@ This coupled with pressure to relicense the project and usage info/code from my 
 So in 2026 decision was made to relicense the project to GPL2, archive the repository and completely cease any further work. Sorry if I disappointed anyone with this decision, but doing so is going be better to my mental health.
 
 # Nuked SC-55
-Roland SC-55 emulator, by nukeykt.
+Roland SC-55 emulator, by [nukeykt](https://github.com/nukeykt).
 
 Supported models:
 - SC-55mk2/SC-155mk2 (v1.01 firmware is confirmed to work)
