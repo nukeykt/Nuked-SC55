@@ -43,7 +43,15 @@ void TIMER_Reset(void)
     timer_cycles = 0;
     timer_tempreg = 0;
     memset(frt, 0, sizeof(frt));
+    for (int i = 0; i < 3; ++i)
+    {
+        frt[i].ocra = 0xffff;
+        frt[i].ocrb = 0xffff;
+    }
     memset(&timer, 0, sizeof(timer));
+    timer.tcora = 0xff;
+    timer.tcorb = 0xff;
+    timer.tcsr = 0x10;
 }
 
 void TIMER_Write(uint32_t address, uint8_t data)
