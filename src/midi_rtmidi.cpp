@@ -36,9 +36,16 @@ int MIDI_Init(int port)
 
     unsigned count = s_midi_in->getPortCount();
 
+
     if (count == 0)
     {
         printf("No midi input\n");
+	    auto current_api = s_midi_in->getCurrentApi();
+	    if (current_api == RtMidi::LINUX_ALSA || current_api == RtMidi::UNIX_JACK || current_api == RtMidi::MACOSX_CORE) {
+			printf("creating a virtual port\n");
+			s_midi_in->openVirtualPort("Nuked SC55");
+			return 1;
+	    }
         delete s_midi_in;
         s_midi_in = nullptr;
         return 0;
