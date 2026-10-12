@@ -21,7 +21,7 @@ static void MidiOnError(RtMidiError::Type, const std::string &errorText, void *)
     fflush(stderr);
 }
 
-int MIDI_Init(int port)
+int MIDI_Init(int port, bool listMidi)
 {
     if (s_midi_in)
     {
@@ -35,6 +35,12 @@ int MIDI_Init(int port)
     s_midi_in->setErrorCallback(&MidiOnError, nullptr);
 
     unsigned count = s_midi_in->getPortCount();
+
+    if (listMidi) {
+        for (unsigned i = 0; i < count; i++) {
+            printf("Port[%u]: %s\n", i, s_midi_in->getPortName(i).c_str());
+        }
+    }
 
     if (count == 0)
     {

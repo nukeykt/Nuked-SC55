@@ -16,6 +16,6 @@
  */
 #pragma once
 
-int MIDI_Init(int port);
+int MIDI_Init(int port, bool listMidi);
 void MIDI_Quit(void);
 
